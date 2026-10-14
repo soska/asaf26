@@ -1,0 +1,17 @@
+[package]
+name = "asaf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "asaf"
+path = "src/main.rs"
+
+[dependencies]
+asaf-core.workspace = true
+asaf-server.workspace = true
+asaf-projector.workspace = true
+asaf-console.workspace = true
+gpui.workspace = true

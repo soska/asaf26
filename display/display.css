@@ -1,0 +1,101 @@
+:root {
+  --fade: 300ms;
+  --font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-weight: 700;
+  --line-height: 1.2;
+  --color: #fff;
+  --outline-color: rgba(0, 0, 0, 0.9);
+  --outline-width: 0.45vh;
+  --shadow: 0 0.4vh 1.2vh rgba(0, 0, 0, 0.85);
+  --align: center;
+  --mx: 6vw;
+  --my: 8vh;
+  --bg-color: #101018;
+  --bg-image: none;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  cursor: none;
+}
+
+#bg, .layer, #black {
+  position: absolute;
+  inset: 0;
+}
+
+#bg {
+  background: var(--bg-color) var(--bg-image) center / cover no-repeat;
+}
+
+.layer {
+  opacity: 0;
+  transition: opacity var(--fade) ease-in-out;
+}
+.layer.on { opacity: 1; }
+
+/* The area text must fit in. The footer sits in the bottom margin. */
+.safe {
+  position: absolute;
+  inset: var(--my) var(--mx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text, .footer {
+  color: var(--color);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight);
+  text-align: var(--align);
+  /* Stroke is centred on the glyph edge; painting it first keeps the fill crisp. */
+  -webkit-text-stroke: var(--outline-width) var(--outline-color);
+  paint-order: stroke fill;
+  text-shadow: var(--shadow);
+}
+
+.text {
+  line-height: var(--line-height);
+  white-space: nowrap;
+}
+.text.wrap {
+  white-space: normal;
+  max-width: 100%;
+}
+
+.footer {
+  position: absolute;
+  left: var(--mx);
+  right: var(--mx);
+  bottom: calc(var(--my) * 0.3);
+  font-size: 2.2vh;
+  font-weight: 500;
+  -webkit-text-stroke-width: 0.25vh;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+#black {
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fade) ease-in-out;
+}
+#black.on { opacity: 1; }
+
+#debug {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  font: 12px/1.4 ui-monospace, Menlo, monospace;
+  color: #0f0;
+  background: rgba(0, 0, 0, 0.7);
+  white-space: pre;
+  z-index: 10;
+}

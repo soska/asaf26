@@ -1,0 +1,12 @@
+[package]
+name = "asaf-console"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+asaf-core.workspace = true
+asaf-projector.workspace = true
+gpui.workspace = true
+anyhow = "1"

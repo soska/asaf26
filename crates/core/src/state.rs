@@ -1,0 +1,38 @@
+use serde::Serialize;
+
+use crate::{Slide, Theme};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+pub enum Blank {
+    #[default]
+    None,
+    /// Everything black, background included.
+    Black,
+    /// Hide the text, keep the theme background.
+    Background,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Transition {
+    pub kind: String,
+    pub duration_ms: u32,
+}
+
+impl Default for Transition {
+    fn default() -> Self {
+        Self { kind: "fade".into(), duration_ms: 300 }
+    }
+}
+
+/// Everything a display needs, flattened. Sent as JSON over the websocket.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct DisplayState {
+    pub slide: Option<Slide>,
+    pub blank: Blank,
+    pub theme: Theme,
+    pub transition: Transition,
+    /// Increments on every change.
+    pub revision: u64,
+    /// Unix time in ms when this revision was produced; lets the display measure latency.
+    pub changed_at_ms: u64,
+}

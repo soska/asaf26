@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <!-- Deliberately busy test background: bright blobs and stripes to check text readability. -->
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1464"/>
+      <stop offset="0.45" stop-color="#7b2ff7"/>
+      <stop offset="0.75" stop-color="#f107a3"/>
+      <stop offset="1" stop-color="#ff9f1c"/>
+    </linearGradient>
+    <radialGradient id="glowA"><stop offset="0" stop-color="#fffbe6" stop-opacity="0.95"/><stop offset="1" stop-color="#fffbe6" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#3ae0ff" stop-opacity="0.9"/><stop offset="1" stop-color="#3ae0ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowC"><stop offset="0" stop-color="#ffe14d" stop-opacity="0.9"/><stop offset="1" stop-color="#ffe14d" stop-opacity="0"/></radialGradient>
+    <pattern id="stripes" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <rect width="34" height="80" fill="#ffffff" fill-opacity="0.12"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <rect width="1920" height="1080" fill="url(#stripes)"/>
+  <circle cx="520" cy="430" r="520" fill="url(#glowA)"/>
+  <circle cx="1450" cy="300" r="460" fill="url(#glowB)"/>
+  <circle cx="1180" cy="860" r="520" fill="url(#glowC)"/>
+  <circle cx="240" cy="980" r="300" fill="url(#glowB)"/>
+</svg>
