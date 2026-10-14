@@ -68,15 +68,16 @@ impl Projector {
         cx.spawn(async move |cx| {
             loop {
                 cx.background_executor().timer(DISPLAY_POLL).await;
-                if cx.update(reconcile).is_err() {
-                    break;
-                }
+                cx.update(reconcile);
             }
         })
         .detach();
     }
 
     pub fn displays(cx: &App) -> Vec<DisplayInfo> {
+        if !cx.has_global::<Projector>() {
+            return Vec::new();
+        }
         let primary = cx.primary_display().map(|d| d.id());
         let current = cx.global::<Projector>().current_display(cx);
         cx.displays()

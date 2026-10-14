@@ -11,7 +11,10 @@ path = "src/main.rs"
 
 [dependencies]
 asaf-core.workspace = true
+asaf-library.workspace = true
+asaf-openlyrics.workspace = true
 asaf-server.workspace = true
 asaf-projector.workspace = true
 asaf-console.workspace = true
 gpui.workspace = true
+dirs = "6"

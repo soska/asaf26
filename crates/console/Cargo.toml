@@ -7,6 +7,11 @@ publish.workspace = true
 
 [dependencies]
 asaf-core.workspace = true
+asaf-library.workspace = true
+asaf-openlyrics.workspace = true
 asaf-projector.workspace = true
 gpui.workspace = true
 anyhow = "1"
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }

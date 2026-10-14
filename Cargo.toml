@@ -14,9 +14,12 @@ asaf-core = { path = "crates/core" }
 asaf-server = { path = "crates/server" }
 asaf-projector = { path = "crates/projector" }
 asaf-console = { path = "crates/console" }
+asaf-library = { path = "crates/library" }
+asaf-openlyrics = { path = "crates/openlyrics" }
 
-# GPUI is pinned to an exact version: see README ("Why GPUI is pinned").
-gpui = { version = "=0.2.2", features = ["runtime_shaders"] }
+# GPUI Kit (GPUI snapshot + gpui-component), pinned exactly: see README
+# ("Why GPUI is pinned"). Aliased as `gpui` so GPUI's derive macros resolve.
+gpui = { package = "gpui-kit", version = "=0.7.3" }
 wry = "=0.57.0"
 objc2 = "0.6"
 objc2-app-kit = "0.3.2"

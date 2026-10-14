@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.8" createdIn="OpenLP 1.9.0">
+  <properties>
+    <titles><title>Amazing Grace</title></titles>
+    <authors><author>John Newton</author></authors>
+  </properties>
+  <lyrics>
+    <verse name="v1">
+      <lines>
+        <line>Amazing grace! How sweet the sound</line>
+        <line>That saved a wretch like me!</line>
+      </lines>
+    </verse>
+    <verse name="v2">
+      <lines>
+        <line>'Twas grace that taught my heart to fear,</line>
+      </lines>
+    </verse>
+  </lyrics>
+</song>

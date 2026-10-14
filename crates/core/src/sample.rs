@@ -4,7 +4,7 @@ use crate::{Song, Verse};
 /// The short ending slide exercises auto-fit at the large end of the size range.
 pub fn sample_song() -> Song {
     Song {
-        id: 1,
+        id: None,
         title: "Blessed Assurance".into(),
         alt_title: None,
         authors: vec!["Fanny J. Crosby".into()],

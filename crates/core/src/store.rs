@@ -26,6 +26,7 @@ struct Live {
 /// What the console needs to draw itself.
 #[derive(Clone, Debug)]
 pub struct LiveSnapshot {
+    pub song_id: Option<i64>,
     pub title: String,
     pub slides: Vec<Slide>,
     pub current: usize,
@@ -63,6 +64,7 @@ impl Store {
     pub fn snapshot(&self) -> LiveSnapshot {
         let live = self.live.lock().unwrap();
         LiveSnapshot {
+            song_id: live.song.id,
             title: live.song.title.clone(),
             slides: live.slides.clone(),
             current: live.current,
@@ -71,42 +73,78 @@ impl Store {
         }
     }
 
+    /// Puts `song` live, starting at slide `index` (clamped).
+    pub fn load_song(&self, song: Song, index: usize) {
+        self.update(|l| {
+            l.slides = song.slides();
+            l.song = song;
+            l.current = index.min(l.slides.len().saturating_sub(1));
+            true
+        });
+    }
+
+    /// The live song was edited: show the new text, keeping the position.
+    /// Does nothing if `song` isn't the live song.
+    pub fn song_edited(&self, song: &Song) {
+        self.update(|l| {
+            if song.id.is_none() || l.song.id != song.id {
+                return false;
+            }
+            l.slides = song.slides();
+            l.song = song.clone();
+            l.current = l.current.min(l.slides.len().saturating_sub(1));
+            true
+        });
+    }
+
     pub fn next(&self) {
         self.update(|l| {
-            if l.current + 1 < l.slides.len() {
+            let ok = l.current + 1 < l.slides.len();
+            if ok {
                 l.current += 1;
             }
+            ok
         });
     }
 
     pub fn previous(&self) {
-        self.update(|l| l.current = l.current.saturating_sub(1));
+        self.update(|l| {
+            let ok = l.current > 0;
+            if ok {
+                l.current -= 1;
+            }
+            ok
+        });
     }
 
     pub fn go_to(&self, index: usize) {
         self.update(|l| {
-            if index < l.slides.len() {
+            let ok = index < l.slides.len() && index != l.current;
+            if ok {
                 l.current = index;
             }
+            ok
         });
     }
 
     /// Switches to `mode`, or back to showing text if `mode` is already active.
     pub fn toggle_blank(&self, mode: Blank) {
-        self.update(|l| l.blank = if l.blank == mode { Blank::None } else { mode });
+        self.update(|l| {
+            l.blank = if l.blank == mode { Blank::None } else { mode };
+            true
+        });
     }
 
     pub fn set_blank(&self, mode: Blank) {
-        self.update(|l| l.blank = mode);
+        self.update(|l| std::mem::replace(&mut l.blank, mode) != mode);
     }
 
-    /// Applies `change`; bumps the revision and notifies only if something changed.
-    fn update(&self, change: impl FnOnce(&mut Live)) {
+    /// Applies `change`, which returns whether it changed anything; if so,
+    /// bumps the revision and notifies listeners.
+    fn update(&self, change: impl FnOnce(&mut Live) -> bool) {
         let state = {
             let mut live = self.live.lock().unwrap();
-            let before = (live.current, live.blank);
-            change(&mut live);
-            if (live.current, live.blank) == before {
+            if !change(&mut live) {
                 return;
             }
             live.revision += 1;
@@ -182,6 +220,29 @@ mod tests {
         s.toggle_blank(Blank::Black);
         assert_eq!(calls.load(Ordering::SeqCst), 4);
         assert_eq!(s.display_state().blank, Blank::None);
+    }
+
+    #[test]
+    fn load_and_edit_live_song() {
+        let s = store();
+        let mut song = crate::sample_song();
+        song.id = Some(7);
+        s.load_song(song.clone(), 3);
+        assert_eq!(s.snapshot().current, 3);
+        assert_eq!(s.snapshot().song_id, Some(7));
+
+        // Editing the live song keeps the position but clamps it.
+        song.verse_order = vec!["v1".into(), "c1".into()];
+        s.song_edited(&song);
+        assert_eq!(s.snapshot().slides.len(), 2);
+        assert_eq!(s.snapshot().current, 1);
+
+        // Edits to other songs are ignored.
+        let rev = s.snapshot().revision;
+        let mut other = song.clone();
+        other.id = Some(8);
+        s.song_edited(&other);
+        assert_eq!(s.snapshot().revision, rev);
     }
 
     #[test]
