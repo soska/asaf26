@@ -25,12 +25,15 @@ pub struct Verse {
     pub lines: Vec<String>,
 }
 
-/// What a screen shows. Derived from songs (and later passages), never stored.
+/// What a screen shows. Derived from songs and passages, never stored.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Slide {
     pub lines: Vec<String>,
     pub label: String,
     pub footer: Option<String>,
+    /// Prose (Bible verses): lines wrap to fill the screen. Lyric lines stay
+    /// whole unless they can't fit at the minimum size.
+    pub wrap: bool,
 }
 
 impl Verse {
@@ -76,6 +79,7 @@ impl Song {
                     lines: part.to_vec(),
                     label: if parts.len() > 1 { format!("{label}.{}", i + 1) } else { label.clone() },
                     footer: footer.clone(),
+                    wrap: false,
                 });
             }
         }

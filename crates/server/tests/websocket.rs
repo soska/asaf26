@@ -76,3 +76,29 @@ async fn serves_display_page_and_assets() {
         assert!(buf.starts_with("HTTP/1.1 200"), "{path}: {}", buf.lines().next().unwrap_or(""));
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn passages_reach_the_display_as_wrapping_slides() {
+    let store = Store::new(sample_song(), Theme::default());
+    let port = asaf_server::start(store.clone(), 0).unwrap().addr.port();
+    let mut ws = connect(port).await;
+    assert_eq!(next_state(&mut ws).await["slide"]["wrap"], false);
+
+    let names = asaf_core::BookNames::new("en", &[]);
+    let ranges = asaf_core::parse_reference("Jn 11:35", &names).unwrap();
+    let verses = [asaf_core::BibleVerse { book: 43, chapter: 11, verse: 35, text: "Jesus wept.".into() }];
+    let slides = asaf_core::bible::passage_slides(
+        &verses,
+        &ranges,
+        &names,
+        "KJV",
+        &asaf_core::BibleLayout::default(),
+        &Theme::default(),
+    );
+    let passage = asaf_core::Passage { bible_id: 1, ranges };
+    store.load_passage(passage, "John 11:35 (KJV)".into(), slides, 0);
+    let st = next_state(&mut ws).await;
+    assert_eq!(st["slide"]["lines"][0], "³⁵ Jesus wept.");
+    assert_eq!(st["slide"]["footer"], "John 11:35 (KJV)");
+    assert_eq!(st["slide"]["wrap"], true);
+}

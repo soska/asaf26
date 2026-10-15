@@ -1,6 +1,8 @@
-//! The operator console: song library, slide preview, live control and the
-//! song editor. It drives the core store and never draws projected output.
+//! The operator console: song library, Bible lookup, slide preview, live
+//! control and the song editor. It drives the core store and never draws
+//! projected output.
 
+mod bible;
 mod console;
 mod editor;
 mod transfer;
@@ -24,8 +26,10 @@ actions!(
         BlankBackground,
         Unblank,
         FocusSearch,
-        SelectNextSong,
-        SelectPreviousSong,
+        ShowSongs,
+        ShowBible,
+        SelectNext,
+        SelectPrevious,
         LeaveSearch,
         NewSong,
         EditSong,
@@ -51,10 +55,15 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("cmd-l", FocusSearch, Some("Console")),
         KeyBinding::new("cmd-n", NewSong, Some("Console")),
         KeyBinding::new("cmd-e", EditSong, Some("Console")),
-        // In the search box, arrows move through results and Esc goes back to live control.
-        KeyBinding::new("down", SelectNextSong, Some("SongSearch > Input")),
-        KeyBinding::new("up", SelectPreviousSong, Some("SongSearch > Input")),
+        KeyBinding::new("cmd-1", ShowSongs, Some("Console")),
+        KeyBinding::new("cmd-2", ShowBible, Some("Console")),
+        // In a search box, arrows move through results and Esc goes back to live control.
+        KeyBinding::new("down", SelectNext, Some("SongSearch > Input")),
+        KeyBinding::new("up", SelectPrevious, Some("SongSearch > Input")),
         KeyBinding::new("escape", LeaveSearch, Some("SongSearch > Input")),
+        KeyBinding::new("down", SelectNext, Some("BibleSearch > Input")),
+        KeyBinding::new("up", SelectPrevious, Some("BibleSearch > Input")),
+        KeyBinding::new("escape", LeaveSearch, Some("BibleSearch > Input")),
         KeyBinding::new("cmd-s", SaveSong, Some("SongEditor")),
     ]);
 }

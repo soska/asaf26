@@ -261,6 +261,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "asaf-bible"
+version = "0.0.1"
+dependencies = [
+ "asaf-core",
+ "roxmltree 0.21.1",
+]
+
+[[package]]
 name = "asaf-console"
 version = "0.0.1"
 dependencies = [
@@ -284,6 +292,7 @@ dependencies = [
 name = "asaf-library"
 version = "0.0.1"
 dependencies = [
+ "asaf-bible",
  "asaf-core",
  "asaf-openlyrics",
  "rusqlite",

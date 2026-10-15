@@ -16,6 +16,7 @@ asaf-projector = { path = "crates/projector" }
 asaf-console = { path = "crates/console" }
 asaf-library = { path = "crates/library" }
 asaf-openlyrics = { path = "crates/openlyrics" }
+asaf-bible = { path = "crates/bible" }
 
 # GPUI Kit (GPUI snapshot + gpui-component), pinned exactly: see README
 # ("Why GPUI is pinned"). Aliased as `gpui` so GPUI's derive macros resolve.

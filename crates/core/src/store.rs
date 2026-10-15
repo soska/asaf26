@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{Blank, DisplayState, Slide, Song, Theme, Transition};
+use crate::{Blank, DisplayState, Passage, Slide, Song, Theme, Transition};
 
 type Listener = Box<dyn Fn(&DisplayState) + Send + Sync>;
 
@@ -13,7 +13,7 @@ pub struct Store {
 }
 
 struct Live {
-    song: Song,
+    item: LiveItem,
     slides: Vec<Slide>,
     current: usize,
     blank: Blank,
@@ -23,10 +23,18 @@ struct Live {
     changed_at_ms: u64,
 }
 
+/// What is live: a song, or a Bible passage laid out by the console.
+enum LiveItem {
+    Song(Song),
+    Passage { passage: Passage, title: String },
+}
+
 /// What the console needs to draw itself.
 #[derive(Clone, Debug)]
 pub struct LiveSnapshot {
     pub song_id: Option<i64>,
+    /// The live passage, if a passage is live.
+    pub passage: Option<Passage>,
     pub title: String,
     pub slides: Vec<Slide>,
     pub current: usize,
@@ -39,7 +47,7 @@ impl Store {
         let slides = song.slides();
         Arc::new(Self {
             live: Mutex::new(Live {
-                song,
+                item: LiveItem::Song(song),
                 slides,
                 current: 0,
                 blank: Blank::None,
@@ -63,9 +71,14 @@ impl Store {
 
     pub fn snapshot(&self) -> LiveSnapshot {
         let live = self.live.lock().unwrap();
+        let (song_id, passage, title) = match &live.item {
+            LiveItem::Song(song) => (song.id, None, song.title.clone()),
+            LiveItem::Passage { passage, title } => (None, Some(passage.clone()), title.clone()),
+        };
         LiveSnapshot {
-            song_id: live.song.id,
-            title: live.song.title.clone(),
+            song_id,
+            passage,
+            title,
             slides: live.slides.clone(),
             current: live.current,
             blank: live.blank,
@@ -77,8 +90,19 @@ impl Store {
     pub fn load_song(&self, song: Song, index: usize) {
         self.update(|l| {
             l.slides = song.slides();
-            l.song = song;
+            l.item = LiveItem::Song(song);
             l.current = index.min(l.slides.len().saturating_sub(1));
+            true
+        });
+    }
+
+    /// Puts a passage live, already laid out as `slides`, at slide `index`
+    /// (clamped). `title` is its reference, for the console.
+    pub fn load_passage(&self, passage: Passage, title: String, slides: Vec<Slide>, index: usize) {
+        self.update(|l| {
+            l.current = index.min(slides.len().saturating_sub(1));
+            l.slides = slides;
+            l.item = LiveItem::Passage { passage, title };
             true
         });
     }
@@ -87,11 +111,12 @@ impl Store {
     /// Does nothing if `song` isn't the live song.
     pub fn song_edited(&self, song: &Song) {
         self.update(|l| {
-            if song.id.is_none() || l.song.id != song.id {
+            let LiveItem::Song(live_song) = &l.item else { return false };
+            if song.id.is_none() || live_song.id != song.id {
                 return false;
             }
             l.slides = song.slides();
-            l.song = song.clone();
+            l.item = LiveItem::Song(song.clone());
             l.current = l.current.min(l.slides.len().saturating_sub(1));
             true
         });
@@ -242,6 +267,26 @@ mod tests {
         let mut other = song.clone();
         other.id = Some(8);
         s.song_edited(&other);
+        assert_eq!(s.snapshot().revision, rev);
+    }
+
+    #[test]
+    fn passages_go_live_like_songs() {
+        let s = store();
+        let passage = Passage { bible_id: 1, ranges: Vec::new() };
+        let slide = |label: &str| Slide { lines: vec!["text".into()], label: label.into(), footer: None, wrap: true };
+        s.load_passage(passage.clone(), "Juan 3:16-18".into(), vec![slide("a"), slide("b")], 5);
+        let snap = s.snapshot();
+        assert_eq!((snap.current, snap.song_id, snap.passage.as_ref()), (1, None, Some(&passage)));
+        assert_eq!(snap.title, "Juan 3:16-18");
+        s.previous();
+        assert_eq!(s.display_state().slide.unwrap().label, "a");
+
+        // A song edit doesn't touch a live passage.
+        let rev = s.snapshot().revision;
+        let mut song = crate::sample_song();
+        song.id = Some(1);
+        s.song_edited(&song);
         assert_eq!(s.snapshot().revision, rev);
     }
 

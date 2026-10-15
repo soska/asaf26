@@ -6,7 +6,7 @@ use asaf_library::SongSummary;
 use asaf_projector::Projector;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
-use gpui::component::{ActiveTheme as _, Disableable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
+use gpui::component::{ActiveTheme as _, Disableable as _, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
 use gpui::component::notification::Notification;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
@@ -16,19 +16,29 @@ use gpui::{
     UniformListScrollHandle, Window, WindowBounds, WindowOptions, div, px, size, uniform_list,
 };
 
+use crate::bible::BibleState;
 use crate::editor::{SongEditor, SongSaved};
 use crate::{
-    BlankBackground, BlankBlack, EditSong, FocusSearch, LeaveSearch, NewSong, Next, Previous,
-    SelectNextSong, SelectPreviousSong, SharedLibrary, Unblank, transfer,
+    BlankBackground, BlankBlack, EditSong, FocusSearch, LeaveSearch, NewSong, Next, Previous, SelectNext,
+    SelectPrevious, SharedLibrary, ShowBible, ShowSongs, Unblank, transfer,
 };
 
 const RESULT_LIMIT: usize = 1000;
 
+/// What the left column shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    Songs,
+    Bible,
+}
+
 pub struct Console {
-    store: Arc<Store>,
-    library: SharedLibrary,
+    pub(crate) store: Arc<Store>,
+    pub(crate) library: SharedLibrary,
     display_url: SharedString,
-    focus: FocusHandle,
+    pub(crate) focus: FocusHandle,
+    pub(crate) mode: Mode,
+    pub(crate) bible: BibleState,
     search: Entity<InputState>,
     results: Vec<SongSummary>,
     results_scroll: UniformListScrollHandle,
@@ -75,7 +85,13 @@ impl Console {
         cx: &mut Context<Self>,
     ) -> Self {
         let search = cx.new(|cx| InputState::new(window, cx).placeholder("Search title, lyrics or author"));
+        let bible = BibleState::new(window, cx);
         let subscriptions = vec![
+            cx.subscribe_in(&bible.input, window, |this, _, event: &InputEvent, window, cx| match event {
+                InputEvent::Change => this.bible_text_changed(cx),
+                InputEvent::PressEnter { secondary, .. } => this.bible_enter(*secondary, window, cx),
+                _ => {}
+            }),
             cx.subscribe_in(&search, window, |this, _, event: &InputEvent, window, cx| match event {
                 InputEvent::Change => this.refresh_search(cx),
                 InputEvent::PressEnter { .. } => this.go_live(0, window, cx),
@@ -88,6 +104,8 @@ impl Console {
             library,
             display_url: display_url.into(),
             focus: cx.focus_handle(),
+            mode: Mode::Songs,
+            bible,
             search,
             results: Vec::new(),
             results_scroll: UniformListScrollHandle::new(),
@@ -97,7 +115,19 @@ impl Console {
             _subscriptions: subscriptions,
         };
         console.refresh_search(cx);
+        console.refresh_bibles(None, cx);
         console
+    }
+
+    /// Switches the left column and puts the cursor in its search box.
+    pub(crate) fn show_mode(&mut self, mode: Mode, window: &mut Window, cx: &mut Context<Self>) {
+        self.mode = mode;
+        let input = match mode {
+            Mode::Songs => &self.search,
+            Mode::Bible => &self.bible.input,
+        };
+        input.update(cx, |s, cx| s.focus(window, cx));
+        cx.notify();
     }
 
     pub(crate) fn library(&self) -> &SharedLibrary {
@@ -207,11 +237,17 @@ impl Render for Console {
                 this.act(cx, |s| s.toggle_blank(Blank::Background))
             }))
             .on_action(cx.listener(|this, _: &Unblank, _, cx| this.act(cx, |s| s.set_blank(Blank::None))))
-            .on_action(cx.listener(|this, _: &FocusSearch, window, cx| {
-                this.search.update(cx, |s, cx| s.focus(window, cx));
+            .on_action(cx.listener(|this, _: &FocusSearch, window, cx| this.show_mode(this.mode, window, cx)))
+            .on_action(cx.listener(|this, _: &ShowSongs, window, cx| this.show_mode(Mode::Songs, window, cx)))
+            .on_action(cx.listener(|this, _: &ShowBible, window, cx| this.show_mode(Mode::Bible, window, cx)))
+            .on_action(cx.listener(|this, _: &SelectNext, _, cx| match this.mode {
+                Mode::Songs => this.move_selection(1, cx),
+                Mode::Bible => this.move_hit(1, cx),
             }))
-            .on_action(cx.listener(|this, _: &SelectNextSong, _, cx| this.move_selection(1, cx)))
-            .on_action(cx.listener(|this, _: &SelectPreviousSong, _, cx| this.move_selection(-1, cx)))
+            .on_action(cx.listener(|this, _: &SelectPrevious, _, cx| match this.mode {
+                Mode::Songs => this.move_selection(-1, cx),
+                Mode::Bible => this.move_hit(-1, cx),
+            }))
             .on_action(cx.listener(|this, _: &LeaveSearch, window, cx| this.focus.focus(window, cx)))
             .on_action(cx.listener(|this, _: &NewSong, window, cx| this.edit(Song::default(), window, cx)))
             .on_action(cx.listener(|this, _: &EditSong, window, cx| {
@@ -229,8 +265,11 @@ impl Render for Console {
                 h_flex()
                     .flex_1()
                     .min_h_0()
-                    .child(self.library_column(window, cx))
-                    .child(self.preview_column(&live, cx))
+                    .child(self.left_column(window, cx))
+                    .child(match self.mode {
+                        Mode::Songs => self.preview_column(&live, cx).into_any_element(),
+                        Mode::Bible => self.passage_preview_column(&live, cx).into_any_element(),
+                    })
                     .child(self.live_column(&live, cx)),
             )
             .child(self.controls(&live, cx))
@@ -238,15 +277,43 @@ impl Render for Console {
 }
 
 impl Console {
-    fn library_column(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn left_column(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
-        let count = self.results.len();
+        let tab = |id: &'static str, label: &'static str, mode: Mode, tip: &'static str, cx: &mut Context<Self>| {
+            Button::new(id)
+                .small()
+                .ghost()
+                .label(label)
+                .tooltip(tip)
+                .selected(self.mode == mode)
+                .on_click(cx.listener(move |this, _, window, cx| this.show_mode(mode, window, cx)))
+        };
         v_flex()
             .w(px(340.))
             .flex_none()
             .h_full()
             .border_r_1()
             .border_color(theme.border)
+            .child(
+                h_flex()
+                    .gap_1()
+                    .px_3()
+                    .pt_3()
+                    .child(tab("tab-songs", "Songs", Mode::Songs, "Songs (⌘1)", cx))
+                    .child(tab("tab-bible", "Bible", Mode::Bible, "Bible (⌘2)", cx)),
+            )
+            .child(match self.mode {
+                Mode::Songs => self.library_column(window, cx).into_any_element(),
+                Mode::Bible => self.bible_column(cx).into_any_element(),
+            })
+    }
+
+    fn library_column(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let count = self.results.len();
+        v_flex()
+            .flex_1()
+            .min_h_0()
             .child(
                 v_flex()
                     .gap_2()
@@ -497,7 +564,8 @@ impl Console {
                     .text_color(theme.muted_foreground)
                     .child("→ ↓ Space  next   ·   ← ↑  previous")
                     .child("B  black   ·   ⇧B  hide text   ·   Esc  unblank")
-                    .child("⌘F  search   ·   ⌘E  edit   ·   ⌘N  new song")
+                    .child("⌘1  songs   ·   ⌘2  Bible   ·   ⌘F  search")
+                    .child("⌘E  edit song   ·   ⌘N  new song")
                     .child(div().mt_1().truncate().child(self.display_url.clone())),
             )
     }
@@ -562,11 +630,19 @@ mod tests {
     use super::*;
 
     fn setup(cx: &mut TestAppContext) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
+        setup_with(cx, |_| {})
+    }
+
+    fn setup_with(
+        cx: &mut TestAppContext,
+        prepare: impl FnOnce(&mut Library),
+    ) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
         cx.update(|cx| {
             gpui::init(cx);
             crate::init(cx);
         });
         let mut lib = Library::open_in_memory().unwrap();
+        prepare(&mut lib);
         lib.save(&sample_song()).unwrap();
         lib.save(&Song {
             title: "Cuán Grande Es Él".into(),
@@ -678,5 +754,298 @@ mod tests {
         assert_eq!(live.current, 1, "position kept");
         assert_eq!(live.slides[1].lines[0], "This is my story (edited)");
     }
-}
 
+    // ---- Bible mode -------------------------------------------------------------
+
+    use std::time::{Duration, Instant};
+
+    use asaf_core::bible::BOOKS;
+    use asaf_core::{Bible, BibleLayout, BibleVerse, VersesPerSlide};
+
+    use crate::bible::Status;
+
+    fn fixture(name: &str) -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../bible/tests/fixtures").join(name)
+    }
+
+    /// Public-domain excerpts: KJV (English, OSIS) and RV1909 (Spanish, Zefania).
+    fn with_bibles(lib: &mut Library) {
+        lib.import_bible(&fixture("kjv-excerpt.osis.xml")).unwrap();
+        lib.import_bible(&fixture("rv1909-excerpt.zefania.xml")).unwrap();
+    }
+
+    fn choose(cx: &mut TestAppContext, console: &Entity<Console>, abbreviation: &str) {
+        console.update(cx, |c, cx| {
+            let i = c.bible.bibles.iter().position(|b| b.abbreviation == abbreviation);
+            c.choose_bible(i, cx);
+        });
+    }
+
+    /// The preview's reference and its slides' text, one string per slide.
+    fn preview(cx: &mut TestAppContext, console: &Entity<Console>) -> Option<(String, Vec<String>)> {
+        cx.update(|cx| {
+            console.read(cx).bible.preview.as_ref().map(|p| {
+                (p.reference.clone(), p.slides.iter().map(|s| s.lines.join(" ")).collect())
+            })
+        })
+    }
+
+    fn status(cx: &mut TestAppContext, console: &Entity<Console>) -> Status {
+        cx.update(|cx| console.read(cx).bible.status.clone())
+    }
+
+    /// Types `text` into the (focused, emptied) Bible box and presses ⏎;
+    /// returns how long ⏎ took to fill the preview.
+    fn look_up(cx: &mut TestAppContext, h: AnyWindowHandle, text: &str) -> Duration {
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-2", cx);
+            w.press("cmd-a", cx);
+            w.press("backspace", cx);
+            w.input(text, cx);
+        });
+        let t = Instant::now();
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        let elapsed = t.elapsed();
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+        elapsed
+    }
+
+    #[gpui::test]
+    fn reference_and_enter_shows_verses_then_goes_live(cx: &mut TestAppContext) {
+        let (store, console, h) = setup_with(cx, with_bibles);
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+        choose(cx, &console, "RV1909");
+        console.update(cx, |c, cx| {
+            c.set_bible_layout(BibleLayout { verses_per_slide: VersesPerSlide::Count(1), ..c.bible.layout }, cx)
+        });
+
+        // Spanish.
+        let took = look_up(cx, h, "Jn 3:16-18");
+        let (reference, slides) = preview(cx, &console).expect("verses in preview");
+        assert_eq!(reference, "Juan 3:16-18");
+        assert_eq!(slides.len(), 3);
+        assert!(slides[0].starts_with("¹⁶ Porque de tal manera amó Dios al mundo"), "{}", slides[0]);
+        assert!(slides[2].starts_with("¹⁸ El que en él cree, no es condenado"), "{}", slides[2]);
+        assert!(took < Duration::from_secs(1), "{took:?}");
+        eprintln!("Jn 3:16-18 (RV1909): ⏎ to preview in {took:?}");
+        // Previewing doesn't touch the projector.
+        assert!(store.snapshot().slides.is_empty());
+
+        // ⏎ again: live, and focus is back on live control.
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        let live = store.snapshot();
+        assert_eq!(live.title, "Juan 3:16-18 (RV1909)");
+        assert_eq!((live.current, live.slides.len()), (0, 3));
+        assert_eq!(live.slides[0].footer.as_deref(), Some("Juan 3:16 (RV1909)"));
+        with_window(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("right", cx);
+        });
+        assert_eq!(store.snapshot().current, 1);
+
+        // Cross-chapter ranges and lists.
+        look_up(cx, h, "Gn 1:30-2:3");
+        let (reference, slides) = preview(cx, &console).unwrap();
+        assert_eq!((reference.as_str(), slides.len()), ("Génesis 1:30-2:3", 5));
+        look_up(cx, h, "Sal 23; 91:1-4");
+        let (reference, slides) = preview(cx, &console).unwrap();
+        assert_eq!((reference.as_str(), slides.len()), ("Salmos 23; 91:1-4", 10));
+        assert!(slides[6].starts_with("¹ EL que habita al abrigo del Altísimo"), "{}", slides[6]);
+
+        // English: switching translation re-fetches the same passage.
+        choose(cx, &console, "KJV");
+        let (reference, slides) = preview(cx, &console).unwrap();
+        assert_eq!(reference, "Psalms 23; 91:1-4");
+        assert!(slides[0].starts_with("¹ The LORD is my shepherd"), "{}", slides[0]);
+        let took = look_up(cx, h, "John 3:16");
+        let (reference, slides) = preview(cx, &console).unwrap();
+        assert_eq!(reference, "John 3:16");
+        assert!(slides[0].starts_with("¹⁶ For God so loved the world"), "{}", slides[0]);
+        assert!(took < Duration::from_secs(1), "{took:?}");
+        eprintln!("John 3:16 (KJV): ⏎ to preview in {took:?}");
+
+        // ⌘⏎ goes live straight away.
+        look_up(cx, h, "Jude 24-25");
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-2", cx);
+            w.press("cmd-enter", cx);
+        });
+        assert_eq!(store.snapshot().title, "Jude 24-25 (KJV)");
+    }
+
+    #[gpui::test]
+    fn typing_in_the_bible_box_never_drives_the_projector(cx: &mut TestAppContext) {
+        let (store, _console, h) = setup_with(cx, with_bibles);
+        with_window(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("cmd-1", cx);
+            w.input("bless", cx);
+            w.press("enter", cx);
+        });
+        assert_eq!(store.snapshot().title, "Blessed Assurance");
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-2", cx);
+            w.input("b", cx);
+            w.press("right", cx);
+            w.press("space", cx);
+        });
+        assert_eq!(store.snapshot().blank, Blank::None);
+        assert_eq!(store.snapshot().current, 0);
+        // Esc leaves the box; keys drive the projector again.
+        with_window(cx, h, |w, cx| {
+            w.press("escape", cx);
+            w.press("right", cx);
+            w.press("b", cx);
+        });
+        assert_eq!(store.snapshot().current, 1);
+        assert_eq!(store.snapshot().blank, Blank::Black);
+    }
+
+    #[gpui::test]
+    fn search_by_words_lists_verses(cx: &mut TestAppContext) {
+        let (store, console, h) = setup_with(cx, with_bibles);
+        choose(cx, &console, "RV1909");
+        with_window(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("cmd-2", cx);
+            w.input("senor", cx);
+            w.render_frame(cx);
+        });
+        let hits = cx.update(|cx| console.read(cx).bible.hits.len());
+        assert!(hits > 1, "{hits}");
+        let first = preview(cx, &console).unwrap().0;
+        with_window(cx, h, |w, cx| w.press("down", cx));
+        let second = preview(cx, &console).unwrap().0;
+        assert_ne!(first, second);
+
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-a", cx);
+            w.input("tal manera amo", cx);
+        });
+        assert_eq!(preview(cx, &console).unwrap().0, "Juan 3:16");
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(store.snapshot().title, "Juan 3:16 (RV1909)");
+
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-2", cx);
+            w.press("cmd-a", cx);
+            w.input("zzzz", cx);
+        });
+        assert!(matches!(status(cx, &console), Status::Error(_)));
+        // Nothing found: ⏎ doesn't put the previous hit live.
+        let before = store.snapshot().revision;
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(store.snapshot().revision, before);
+    }
+
+    #[gpui::test]
+    fn bad_references_explain_themselves(cx: &mut TestAppContext) {
+        let (_, console, h) = setup_with(cx, with_bibles);
+        choose(cx, &console, "RV1909");
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-2", cx);
+            w.input("Juan 22", cx);
+        });
+        assert_eq!(status(cx, &console), Status::Error("Juan has 21 chapters, not 22".into()));
+        look_up(cx, h, "Juan 3:99");
+        assert_eq!(status(cx, &console), Status::Error("Juan 3:99 isn't in RV1909.".into()));
+        assert!(preview(cx, &console).is_none());
+        look_up(cx, h, "Juan 3:16");
+        assert!(matches!(status(cx, &console), Status::Hint(_)));
+    }
+
+    #[gpui::test]
+    fn no_bibles_installed(cx: &mut TestAppContext) {
+        let (store, console, h) = setup(cx);
+        look_up(cx, h, "Jn 3:16");
+        assert!(matches!(status(cx, &console), Status::Error(e) if e.contains("Import a Bible")));
+        assert!(store.snapshot().slides.is_empty());
+    }
+
+    #[gpui::test]
+    fn layout_changes_update_a_live_passage_in_place(cx: &mut TestAppContext) {
+        let (store, console, h) = setup_with(cx, with_bibles);
+        choose(cx, &console, "KJV");
+        console.update(cx, |c, cx| {
+            c.set_bible_layout(BibleLayout { verses_per_slide: VersesPerSlide::Count(1), ..c.bible.layout }, cx)
+        });
+        look_up(cx, h, "Ps 23");
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        with_window(cx, h, |w, cx| {
+            w.press("right", cx);
+            w.press("right", cx);
+        });
+        assert_eq!(store.snapshot().slides[store.snapshot().current].label, "Psalms 23:3");
+
+        console.update(cx, |c, cx| {
+            c.set_bible_layout(
+                BibleLayout {
+                    verses_per_slide: VersesPerSlide::Count(2),
+                    verse_numbers: false,
+                    reference: asaf_core::ReferencePlacement::LastSlide,
+                },
+                cx,
+            )
+        });
+        let live = store.snapshot();
+        assert_eq!(live.slides.len(), 3);
+        assert_eq!(live.slides[live.current].label, "Psalms 23:3-4", "verse 3 stays on screen");
+        assert_eq!(live.slides[2].lines.last().unwrap(), "Psalms 23 (KJV)");
+        assert!(!live.slides[0].lines[0].starts_with('¹'));
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+    }
+
+    /// A made-up translation the size of a real Bible (~31,000 verses).
+    fn full_size_bible(language: &str, abbreviation: &str) -> (Bible, Vec<BibleVerse>) {
+        let words = ["lux", "aqua", "terra", "caelum", "verbum", "vita", "pax", "via", "spes", "fides"];
+        let mut verses = Vec::new();
+        for (i, b) in BOOKS.iter().enumerate() {
+            for chapter in 1..=b.chapters {
+                for verse in 1..=26u16 {
+                    let text: Vec<&str> = (0..24).map(|k| words[(i + usize::from(chapter) + usize::from(verse) * k) % 10]).collect();
+                    verses.push(BibleVerse { book: i as u8 + 1, chapter, verse, text: text.join(" ") });
+                }
+            }
+        }
+        let bible = Bible {
+            name: format!("Synthetic {abbreviation}"),
+            abbreviation: abbreviation.into(),
+            language: language.into(),
+            ..Default::default()
+        };
+        (bible, verses)
+    }
+
+    /// Phase 2 "done when": typing a reference and pressing ⏎ shows the right
+    /// verses in the preview in under a second, in both languages.
+    #[gpui::test]
+    fn enter_to_preview_under_a_second_on_full_size_bibles(cx: &mut TestAppContext) {
+        let (_, console, h) = setup_with(cx, |lib| {
+            for (lang, abbr) in [("es", "SES"), ("en", "SEN")] {
+                let (bible, verses) = full_size_bible(lang, abbr);
+                lib.save_bible(&bible, &verses).unwrap();
+            }
+        });
+        let mut worst = Duration::ZERO;
+        for (abbr, typed, reference, verses) in [
+            ("SES", "Jn 3:16-18", "Juan 3:16-18", 3),
+            ("SES", "Gn 1:25-2:3", "Génesis 1:25-2:3", 5),
+            ("SES", "Sal 23; 91:1-4", "Salmos 23; 91:1-4", 30),
+            ("SES", "1 Juan 4", "1 Juan 4", 26),
+            ("SES", "Apocalipsis 21-22", "Apocalipsis 21-22", 52),
+            ("SEN", "John 3:16-18", "John 3:16-18", 3),
+            ("SEN", "Gen 1:25-2:3", "Genesis 1:25-2:3", 5),
+            ("SEN", "Ps 119", "Psalms 119", 26),
+            ("SEN", "1 Cor 13:4-7", "1 Corinthians 13:4-7", 4),
+            ("SEN", "Rev 21-22", "Revelation 21-22", 52),
+        ] {
+            choose(cx, &console, abbr);
+            let took = look_up(cx, h, typed);
+            worst = worst.max(took);
+            let n = cx.update(|cx| console.read(cx).bible.preview.as_ref().map(|p| (p.reference.clone(), p.verses.len())));
+            assert_eq!(n, Some((reference.to_string(), verses)), "{typed}");
+        }
+        eprintln!("slowest ⏎ → preview on a full-size Bible: {worst:?}");
+        assert!(worst < Duration::from_secs(1), "{worst:?}");
+    }
+}

@@ -41,7 +41,8 @@
   // ---- auto-fit -------------------------------------------------------------
 
   // Largest font size in [min, max] at which the text fits the safe area.
-  // Lines are kept whole when possible; only at the minimum size do we wrap.
+  // Lyric lines are kept whole when possible and wrap only at the minimum
+  // size; prose (Bible verses, `slide.wrap`) always wraps.
   function fit(layer) {
     if (!state) return;
     const text = layer.querySelector(".text");
@@ -67,13 +68,14 @@
       return lo;
     };
 
-    text.classList.remove("wrap");
+    const prose = text.classList.contains("prose");
+    text.classList.toggle("wrap", prose);
     let size = search();
-    if (size === null) {
+    if (size === null && !prose) {
       text.classList.add("wrap");
-      size = search() ?? min; // still too long: minimum size, overflow clipped
+      size = search();
     }
-    text.style.fontSize = `${size}px`;
+    text.style.fontSize = `${size ?? min}px`; // still too long: minimum size, overflow clipped
   }
 
   let refitQueued = false;
@@ -102,6 +104,7 @@
         return div;
       }),
     );
+    text.classList.toggle("prose", !!slide.wrap);
     layer.querySelector(".footer").textContent = slide.footer ?? "";
     fit(layer);
   }

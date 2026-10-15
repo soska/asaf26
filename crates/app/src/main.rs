@@ -4,6 +4,9 @@
 //! asaf                        run the app
 //! asaf import <file|dir>...   import OpenLyrics files into the library
 //! asaf export <dir>           export every song as OpenLyrics
+//! asaf import-bible <file>...  import OSIS or Zefania Bibles
+//! asaf bibles                  list installed Bibles
+//! asaf remove-bible <abbrev>   remove an installed Bible
 //! ```
 //!
 //! Environment:
@@ -39,8 +42,13 @@ fn main() -> ExitCode {
         None => run_app(library),
         Some("import") if args.len() > 1 => import(library, &args[1..]),
         Some("export") if args.len() == 2 => export(library, &args[1]),
+        Some("import-bible") if args.len() > 1 => import_bibles(library, &args[1..]),
+        Some("bibles") if args.len() == 1 => list_bibles(library),
+        Some("remove-bible") if args.len() == 2 => remove_bible(library, &args[1]),
         _ => {
-            eprintln!("usage: asaf [import <file|dir>... | export <dir>]");
+            eprintln!(
+                "usage: asaf [import <file|dir>... | export <dir> | import-bible <file>... | bibles | remove-bible <abbrev>]"
+            );
             ExitCode::FAILURE
         }
     }
@@ -93,6 +101,60 @@ fn export(library: Library, dir: &str) -> ExitCode {
         }
         Err(e) => {
             eprintln!("asaf: export failed: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn import_bibles(mut library: Library, paths: &[String]) -> ExitCode {
+    let mut ok = true;
+    for path in paths {
+        match library.import_bible(path.as_ref()) {
+            Ok(report) => println!("{}", report.summary()),
+            Err(e) => {
+                eprintln!("asaf: {e}");
+                ok = false;
+            }
+        }
+    }
+    if ok { ExitCode::SUCCESS } else { ExitCode::FAILURE }
+}
+
+fn list_bibles(library: Library) -> ExitCode {
+    match library.bibles() {
+        Ok(bibles) if bibles.is_empty() => println!("No Bibles installed. Add one with: asaf import-bible <file>"),
+        Ok(bibles) => {
+            for b in bibles {
+                let verses = b.id.and_then(|id| library.verse_count(id).ok()).unwrap_or(0);
+                println!("{:<10} {} [{}], {verses} verses", b.abbreviation, b.name, b.language);
+            }
+        }
+        Err(e) => {
+            eprintln!("asaf: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+fn remove_bible(mut library: Library, name: &str) -> ExitCode {
+    match library.find_bible(name) {
+        Ok(Some(id)) => match library.delete_bible(id) {
+            Ok(()) => {
+                println!("Removed {name}.");
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("asaf: {e}");
+                ExitCode::FAILURE
+            }
+        },
+        Ok(None) => {
+            eprintln!("asaf: no Bible called {name} (see `asaf bibles`)");
+            ExitCode::FAILURE
+        }
+        Err(e) => {
+            eprintln!("asaf: {e}");
             ExitCode::FAILURE
         }
     }

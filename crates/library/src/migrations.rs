@@ -23,6 +23,33 @@ const MIGRATIONS: &[&str] = &[
         title, alt_title, authors, lyrics,
         tokenize = 'unicode61 remove_diacritics 2'
      );",
+    // 2: Bibles. Verses have an explicit integer id (a rowid that VACUUM and
+    // dump/restore keep) so the full-text index can point at them.
+    "CREATE TABLE bibles (
+        id           INTEGER PRIMARY KEY,
+        name         TEXT NOT NULL,
+        abbreviation TEXT NOT NULL,
+        language     TEXT NOT NULL DEFAULT '',  -- 'es', 'en'…
+        copyright    TEXT,
+        book_names   TEXT NOT NULL DEFAULT '',  -- 66 lines; a blank line means the default name
+        created_at   INTEGER NOT NULL DEFAULT (unixepoch())
+     );
+     CREATE TABLE bible_verses (
+        id       INTEGER PRIMARY KEY,
+        bible_id INTEGER NOT NULL REFERENCES bibles (id) ON DELETE CASCADE,
+        book     INTEGER NOT NULL,              -- 1..66, Protestant canon order
+        chapter  INTEGER NOT NULL,
+        verse    INTEGER NOT NULL,
+        text     TEXT NOT NULL,
+        UNIQUE (bible_id, book, chapter, verse)
+     );
+     -- External content: maintained by asaf-library on import and delete.
+     CREATE VIRTUAL TABLE bible_fts USING fts5(
+        text,
+        content = 'bible_verses',
+        content_rowid = 'id',
+        tokenize = 'unicode61 remove_diacritics 2'
+     );",
 ];
 
 pub fn run(conn: &mut Connection) -> Result<()> {

@@ -1,4 +1,4 @@
-//! OpenLyrics import and export from the console.
+//! OpenLyrics import and export, and Bible import, from the console.
 
 use std::path::PathBuf;
 
@@ -39,6 +39,42 @@ pub fn import(window: &mut Window, cx: &mut Context<Console>) {
             };
             window.push_notification(note, cx);
             this.refresh_search(cx);
+        });
+    })
+    .detach();
+}
+
+/// Imports OSIS or Zefania Bibles and switches to the last one imported.
+pub fn import_bible(window: &mut Window, cx: &mut Context<Console>) {
+    let library = cx.entity().read(cx).library().clone();
+    let paths = cx.prompt_for_paths(PathPromptOptions {
+        files: true,
+        directories: false,
+        multiple: true,
+        prompt: Some("Import Bible".into()),
+    });
+    cx.spawn_in(window, async move |this, cx| {
+        let Ok(Ok(Some(paths))) = paths.await else { return };
+        let results = cx
+            .background_executor()
+            .spawn(async move {
+                let mut library = library.lock().unwrap();
+                paths.iter().map(|p| library.import_bible(p)).collect::<Vec<_>>()
+            })
+            .await;
+        let _ = this.update_in(cx, |this, window, cx| {
+            let mut last = None;
+            for result in results {
+                let note = match result {
+                    Ok(report) => {
+                        last = report.bible.id;
+                        Notification::success(report.summary())
+                    }
+                    Err(e) => Notification::error(format!("Bible import failed: {e}")),
+                };
+                window.push_notification(note, cx);
+            }
+            this.refresh_bibles(last, cx);
         });
     })
     .detach();

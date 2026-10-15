@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace">
+<osisText osisIDWork="Bible.en.kjv" osisRefWork="bible" xml:lang="en" canonical="true">
+<header><work osisWork="Bible.en.kjv"><title>King James Version (excerpt)</title><rights>Public domain</rights></work></header>
+<div type="book" osisID="Gen" canonical="true"><title type="main" short="Genesis">The First Book of Moses, called Genesis</title>
+<chapter osisRef="Gen.1" sID="Gen.1.seID.00001" n="1" />        <p>          <verse osisID="Gen.1.1" sID="Gen.1.1.seID.00002" n="1" />In the beginning God created the heaven and the earth.
+<verse eID="Gen.1.1.seID.00002" /><verse osisID="Gen.1.2" sID="Gen.1.2.seID.00003" n="2" />And the earth was without form, and void; and darkness
+<transChange type="added">was
+</transChange> upon the face of the deep. And the Spirit of God moved upon the face of the waters.
+<verse eID="Gen.1.2.seID.00003" /></p>        <p>          <verse osisID="Gen.1.3" sID="Gen.1.3.seID.00004" n="3" />And God said, Let there be light: and there was light.
+<verse eID="Gen.1.3.seID.00004" /><verse osisID="Gen.1.4" sID="Gen.1.4.seID.00005" n="4" />And God saw the light, that
+<transChange type="added">it was</transChange> good: and God divided the light from the darkness.
+<verse eID="Gen.1.4.seID.00005" /><verse osisID="Gen.1.5" sID="Gen.1.5.seID.00006" n="5" />And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day.
+<verse eID="Gen.1.5.seID.00006" /></p>        <p>          <verse osisID="Gen.1.6" sID="Gen.1.6.seID.00007" n="6" />And God said, Let there be a firmament in the midst of the waters, and let it divide the waters from the waters.
+<verse eID="Gen.1.6.seID.00007" /><verse osisID="Gen.1.7" sID="Gen.1.7.seID.00008" n="7" />And God made the firmament, and divided the waters which
+<transChange type="added">were
+</transChange> under the firmament from the waters which
+<transChange type="added">were</transChange> above the firmament: and it was so.
+<verse eID="Gen.1.7.seID.00008" /><verse osisID="Gen.1.8" sID="Gen.1.8.seID.00009" n="8" />And God called the firmament Heaven. And the evening and the morning were the second day.
+<verse eID="Gen.1.8.seID.00009" /></p>        <p>          <verse osisID="Gen.1.9" sID="Gen.1.9.seID.00010" n="9" />And God said, Let the waters under the heaven be gathered together unto one place, and let the dry
+<transChange type="added">land</transChange> appear: and it was so.
+<verse eID="Gen.1.9.seID.00010" /><verse osisID="Gen.1.10" sID="Gen.1.10.seID.00011" n="10" />And God called the dry
+<transChange type="added">land</transChange> Earth; and the gathering together of the waters called he Seas: and God saw that
+<transChange type="added">it was</transChange> good.
+<verse eID="Gen.1.10.seID.00011" /><verse osisID="Gen.1.11" sID="Gen.1.11.seID.00012" n="11" />And God said, Let the earth bring forth grass, the herb yielding seed,
+<transChange type="added">and</transChange> the fruit tree yielding fruit after his kind, whose seed
+<transChange type="added">is</transChange> in itself, upon the earth: and it was so.
+<verse eID="Gen.1.11.seID.00012" /><verse osisID="Gen.1.12" sID="Gen.1.12.seID.00013" n="12" />And the earth brought forth grass,
+<transChange type="added">and</transChange> herb yielding seed after his kind, and the tree yielding fruit, whose seed
+<transChange type="added">was</transChange> in itself, after his kind: and God saw that
+<transChange type="added">it was</transChange> good.
+<verse eID="Gen.1.12.seID.00013" /><verse osisID="Gen.1.13" sID="Gen.1.13.seID.00014" n="13" />And the evening and the morning were the third day.
+<verse eID="Gen.1.13.seID.00014" /></p>        <p>          <verse osisID="Gen.1.14" sID="Gen.1.14.seID.00015" n="14" />And God said, Let there be lights in the firmament of the heaven to divide the day from the night; and let them be for signs, and for seasons, and for days, and years:
+<verse eID="Gen.1.14.seID.00015" /><verse osisID="Gen.1.15" sID="Gen.1.15.seID.00016" n="15" />And let them be for lights in the firmament of the heaven to give light upon the earth: and it was so.
+<verse eID="Gen.1.15.seID.00016" /><verse osisID="Gen.1.16" sID="Gen.1.16.seID.00017" n="16" />And God made two great lights; the greater light to rule the day, and the lesser light to rule the night:
+<transChange type="added">he made</transChange> the stars also.
+<verse eID="Gen.1.16.seID.00017" /><verse osisID="Gen.1.17" sID="Gen.1.17.seID.00018" n="17" />And God set them in the firmament of the heaven to give light upon the earth,
+<verse eID="Gen.1.17.seID.00018" /><verse osisID="Gen.1.18" sID="Gen.1.18.seID.00019" n="18" />And to rule over the day and over the night, and to divide the light from the darkness: and God saw that
+<transChange type="added">it was</transChange> good.
+<verse eID="Gen.1.18.seID.00019" /><verse osisID="Gen.1.19" sID="Gen.1.19.seID.00020" n="19" />And the evening and the morning were the fourth day.
+<verse eID="Gen.1.19.seID.00020" /><verse osisID="Gen.1.20" sID="Gen.1.20.seID.00021" n="20" />And God said, Let the waters bring forth abundantly the moving creature that hath life, and fowl
+<transChange type="added">that</transChange> may fly above the earth in the open firmament of heaven.
+<verse eID="Gen.1.20.seID.00021" /><verse osisID="Gen.1.21" sID="Gen.1.21.seID.00022" n="21" />And God created great whales, and every living creature that moveth, which the waters brought forth abundantly, after their kind, and every winged fowl after his kind: and God saw that
+<transChange type="added">it was</transChange> good.
+<verse eID="Gen.1.21.seID.00022" /><verse osisID="Gen.1.22" sID="Gen.1.22.seID.00023" n="22" />And God blessed them, saying, Be fruitful, and multiply, and fill the waters in the seas, and let fowl multiply in the earth.
+<verse eID="Gen.1.22.seID.00023" /><verse osisID="Gen.1.23" sID="Gen.1.23.seID.00024" n="23" />And the evening and the morning were the fifth day.
+<verse eID="Gen.1.23.seID.00024" /></p>        <p>          <verse osisID="Gen.1.24" sID="Gen.1.24.seID.00025" n="24" />And God said, Let the earth bring forth the living creature after his kind, cattle, and creeping thing, and beast of the earth after his kind: and it was so.
+<verse eID="Gen.1.24.seID.00025" /><verse osisID="Gen.1.25" sID="Gen.1.25.seID.00026" n="25" />And God made the beast of the earth after his kind, and cattle after their kind, and every thing that creepeth upon the earth after his kind: and God saw that
+<transChange type="added">it was</transChange> good.
+<verse eID="Gen.1.25.seID.00026" /></p>        <p>          <verse osisID="Gen.1.26" sID="Gen.1.26.seID.00027" n="26" />And God said, Let us make man in our image, after our likeness: and let them have dominion over the fish of the sea, and over the fowl of the air, and over the cattle, and over all the earth, and over every creeping thing that creepeth upon the earth.
+<verse eID="Gen.1.26.seID.00027" /><verse osisID="Gen.1.27" sID="Gen.1.27.seID.00028" n="27" />So God created man in his
+<transChange type="added">own</transChange> image, in the image of God created he him; male and female created he them.
+<verse eID="Gen.1.27.seID.00028" /><verse osisID="Gen.1.28" sID="Gen.1.28.seID.00029" n="28" />And God blessed them, and God said unto them, Be fruitful, and multiply, and replenish the earth, and subdue it: and have dominion over the fish of the sea, and over the fowl of the air, and over every living thing that moveth upon the earth.
+<verse eID="Gen.1.28.seID.00029" /></p>        <p>          <verse osisID="Gen.1.29" sID="Gen.1.29.seID.00030" n="29" />And God said, Behold, I have given you every herb bearing seed, which
+<transChange type="added">is</transChange> upon the face of all the earth, and every tree, in the which
+<transChange type="added">is</transChange> the fruit of a tree yielding seed; to you it shall be for meat.
+<verse eID="Gen.1.29.seID.00030" /><verse osisID="Gen.1.30" sID="Gen.1.30.seID.00031" n="30" />And to every beast of the earth, and to every fowl of the air, and to every thing that creepeth upon the earth, wherein
+<transChange type="added">there is</transChange> life,
+<transChange type="added">I have given</transChange> every green herb for meat: and it was so.
+<verse eID="Gen.1.30.seID.00031" /><verse osisID="Gen.1.31" sID="Gen.1.31.seID.00032" n="31" />And God saw every thing that he had made, and, behold,
+<transChange type="added">it was
+</transChange> very good. And the evening and the morning were the sixth day.
+<verse eID="Gen.1.31.seID.00032" /></p>        <chapter eID="Gen.1.seID.00001" />
+<chapter osisRef="Gen.2" sID="Gen.2.seID.00033" n="2" />        <p>          <verse osisID="Gen.2.1" sID="Gen.2.1.seID.00034" n="1" />Thus the heavens and the earth were finished, and all the host of them.
+<verse eID="Gen.2.1.seID.00034" /><verse osisID="Gen.2.2" sID="Gen.2.2.seID.00035" n="2" />And on the seventh day God ended his work which he had made; and he rested on the seventh day from all his work which he had made.
+<verse eID="Gen.2.2.seID.00035" /><verse osisID="Gen.2.3" sID="Gen.2.3.seID.00036" n="3" />And God blessed the seventh day, and sanctified it: because that in it he had rested from all his work which God created and made.
+<verse eID="Gen.2.3.seID.00036" /></p>        <p>          <verse osisID="Gen.2.4" sID="Gen.2.4.seID.00037" n="4" />These
+<transChange type="added">are</transChange> the generations of the heavens and of the earth when they were created, in the day that the LORD God made the earth and the heavens,
+<verse eID="Gen.2.4.seID.00037" /><verse osisID="Gen.2.5" sID="Gen.2.5.seID.00038" n="5" />And every plant of the field before it was in the earth, and every herb of the field before it grew: for the LORD God had not caused it to rain upon the earth, and
+<transChange type="added">there was</transChange> not a man to till the ground.
+<verse eID="Gen.2.5.seID.00038" /><verse osisID="Gen.2.6" sID="Gen.2.6.seID.00039" n="6" />But there went up a mist from the earth, and watered the whole face of the ground.
+<verse eID="Gen.2.6.seID.00039" /><verse osisID="Gen.2.7" sID="Gen.2.7.seID.00040" n="7" />And the LORD God formed man
+<transChange type="added">of</transChange> the dust of the ground, and breathed into his nostrils the breath of life; and man became a living soul.
+<verse eID="Gen.2.7.seID.00040" /></p>        <p>          <verse osisID="Gen.2.8" sID="Gen.2.8.seID.00041" n="8" />And the LORD God planted a garden eastward in Eden; and there he put the man whom he had formed.
+<verse eID="Gen.2.8.seID.00041" /><verse osisID="Gen.2.9" sID="Gen.2.9.seID.00042" n="9" />And out of the ground made the LORD God to grow every tree that is pleasant to the sight, and good for food; the tree of life also in the midst of the garden, and the tree of knowledge of good and evil.
+<verse eID="Gen.2.9.seID.00042" /><verse osisID="Gen.2.10" sID="Gen.2.10.seID.00043" n="10" />And a river went out of Eden to water the garden; and from thence it was parted, and became into four heads.
+<verse eID="Gen.2.10.seID.00043" /><verse osisID="Gen.2.11" sID="Gen.2.11.seID.00044" n="11" />The name of the first
+<transChange type="added">is</transChange> Pison: that
+<transChange type="added">is</transChange> it which compasseth the whole land of Havilah, where
+<transChange type="added">there is</transChange> gold;
+<verse eID="Gen.2.11.seID.00044" /><verse osisID="Gen.2.12" sID="Gen.2.12.seID.00045" n="12" />And the gold of that land
+<transChange type="added">is</transChange> good: there
+<transChange type="added">is</transChange> bdellium and the onyx stone.
+<verse eID="Gen.2.12.seID.00045" /><verse osisID="Gen.2.13" sID="Gen.2.13.seID.00046" n="13" />And the name of the second river
+<transChange type="added">is</transChange> Gihon: the same
+<transChange type="added">is</transChange> it that compasseth the whole land of Ethiopia.
+<verse eID="Gen.2.13.seID.00046" /><verse osisID="Gen.2.14" sID="Gen.2.14.seID.00047" n="14" />And the name of the third river
+<transChange type="added">is</transChange> Hiddekel: that
+<transChange type="added">is
+</transChange> it which goeth toward the east of Assyria. And the fourth river
+<transChange type="added">is</transChange> Euphrates.
+<verse eID="Gen.2.14.seID.00047" /><verse osisID="Gen.2.15" sID="Gen.2.15.seID.00048" n="15" />And the LORD God took the man, and put him into the garden of Eden to dress it and to keep it.
+<verse eID="Gen.2.15.seID.00048" /><verse osisID="Gen.2.16" sID="Gen.2.16.seID.00049" n="16" />And the LORD God commanded the man, saying, Of every tree of the garden thou mayest freely eat:
+<verse eID="Gen.2.16.seID.00049" /><verse osisID="Gen.2.17" sID="Gen.2.17.seID.00050" n="17" />But of the tree of the knowledge of good and evil, thou shalt not eat of it: for in the day that thou eatest thereof thou shalt surely die.
+<verse eID="Gen.2.17.seID.00050" /></p>        <p>          <verse osisID="Gen.2.18" sID="Gen.2.18.seID.00051" n="18" />And the LORD God said,
+<transChange type="added">It is</transChange> not good that the man should be alone; I will make him an help meet for him.
+<verse eID="Gen.2.18.seID.00051" /><verse osisID="Gen.2.19" sID="Gen.2.19.seID.00052" n="19" />And out of the ground the LORD God formed every beast of the field, and every fowl of the air; and brought
+<transChange type="added">them</transChange> unto Adam to see what he would call them: and whatsoever Adam called every living creature, that
+<transChange type="added">was</transChange> the name thereof.
+<verse eID="Gen.2.19.seID.00052" /><verse osisID="Gen.2.20" sID="Gen.2.20.seID.00053" n="20" />And Adam gave names to all cattle, and to the fowl of the air, and to every beast of the field; but for Adam there was not found an help meet for him.
+<verse eID="Gen.2.20.seID.00053" /><verse osisID="Gen.2.21" sID="Gen.2.21.seID.00054" n="21" />And the LORD God caused a deep sleep to fall upon Adam and he slept: and he took one of his ribs, and closed up the flesh instead thereof;
+<verse eID="Gen.2.21.seID.00054" /><verse osisID="Gen.2.22" sID="Gen.2.22.seID.00055" n="22" />And the rib, which the LORD God had taken from man, made he a woman, and brought her unto the man.
+<verse eID="Gen.2.22.seID.00055" /><verse osisID="Gen.2.23" sID="Gen.2.23.seID.00056" n="23" />And Adam said, This
+<transChange type="added">is</transChange> now bone of my bones, and flesh of my flesh: she shall be called Woman, because she was taken out of Man.
+<verse eID="Gen.2.23.seID.00056" /><verse osisID="Gen.2.24" sID="Gen.2.24.seID.00057" n="24" />Therefore shall a man leave his father and his mother, and shall cleave unto his wife: and they shall be one flesh.
+<verse eID="Gen.2.24.seID.00057" /><verse osisID="Gen.2.25" sID="Gen.2.25.seID.00058" n="25" />And they were both naked, the man and his wife, and were not ashamed.
+<verse eID="Gen.2.25.seID.00058" /></p>        <chapter eID="Gen.2.seID.00033" />
+</div>
+<div type="book" osisID="Ps" canonical="true"><title type="main" short="Psalms">The Book of Psalms</title>
+<chapter osisRef="Ps.23" sID="Ps.23.seID.14737" n="23" />        <title type="psalm" canonical="true">A Psalm of David.
+</title>        <p>          <verse osisID="Ps.23.1" sID="Ps.23.1.seID.14738" n="1" />The LORD
+<transChange type="added">is</transChange> my shepherd; I shall not want.
+<verse eID="Ps.23.1.seID.14738" /></p>        <lg>          <l level="1">            <verse osisID="Ps.23.2" sID="Ps.23.2.seID.14739" n="2" />He maketh me to lie down in green pastures: he leadeth me beside the still waters.
+<verse eID="Ps.23.2.seID.14739" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.23.3" sID="Ps.23.3.seID.14740" n="3" />He restoreth my soul: he leadeth me in the paths of righteousness for his name’s sake.
+<verse eID="Ps.23.3.seID.14740" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.23.4" sID="Ps.23.4.seID.14741" n="4" />Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou
+<transChange type="added">art</transChange> with me; thy rod and thy staff they comfort me.
+<verse eID="Ps.23.4.seID.14741" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.23.5" sID="Ps.23.5.seID.14742" n="5" />Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.
+<verse eID="Ps.23.5.seID.14742" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.23.6" sID="Ps.23.6.seID.14743" n="6" />Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever.
+<verse eID="Ps.23.6.seID.14743" /></l>        </lg>        <chapter eID="Ps.23.seID.14737" />
+<chapter osisRef="Ps.91" sID="Ps.91.seID.15965" n="91" />        <p>          <verse osisID="Ps.91.1" sID="Ps.91.1.seID.15966" n="1" />He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.
+<verse eID="Ps.91.1.seID.15966" /></p>        <lg>          <l level="1">            <verse osisID="Ps.91.2" sID="Ps.91.2.seID.15967" n="2" />I will say of the LORD,
+<transChange type="added">He is</transChange> my refuge and my fortress: my God; in him will I trust.
+<verse eID="Ps.91.2.seID.15967" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.3" sID="Ps.91.3.seID.15968" n="3" />Surely he shall deliver thee from the snare of the fowler,
+<transChange type="added">and
+</transChange> from the noisome pestilence.
+<verse eID="Ps.91.3.seID.15968" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.4" sID="Ps.91.4.seID.15969" n="4" />He shall cover thee with his feathers, and under his wings shalt thou trust: his truth
+<transChange type="added">shall be thy</transChange> shield and buckler.
+<verse eID="Ps.91.4.seID.15969" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.5" sID="Ps.91.5.seID.15970" n="5" />Thou shalt not be afraid for the terror by night;
+<transChange type="added">nor</transChange> for the arrow
+<transChange type="added">that</transChange> flieth by day;
+<verse eID="Ps.91.5.seID.15970" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.6" sID="Ps.91.6.seID.15971" n="6" />            <transChange type="added">Nor</transChange> for the pestilence
+<transChange type="added">that</transChange> walketh in darkness;
+<transChange type="added">nor</transChange> for the destruction
+<transChange type="added">that</transChange> wasteth at noonday.
+<verse eID="Ps.91.6.seID.15971" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.7" sID="Ps.91.7.seID.15972" n="7" />A thousand shall fall at thy side, and ten thousand at thy right hand;
+<transChange type="added">but</transChange> it shall not come nigh thee.
+<verse eID="Ps.91.7.seID.15972" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.8" sID="Ps.91.8.seID.15973" n="8" />Only with thine eyes shalt thou behold and see the reward of the wicked.
+<verse eID="Ps.91.8.seID.15973" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.9" sID="Ps.91.9.seID.15974" n="9" />Because thou hast made the LORD,
+<transChange type="added">which is</transChange> my refuge,
+<transChange type="added">even</transChange> the most High, thy habitation;
+<verse eID="Ps.91.9.seID.15974" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.10" sID="Ps.91.10.seID.15975" n="10" />There shall no evil befall thee, neither shall any plague come nigh thy dwelling.
+<verse eID="Ps.91.10.seID.15975" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.11" sID="Ps.91.11.seID.15976" n="11" />For he shall give his angels charge over thee, to keep thee in all thy ways.
+<verse eID="Ps.91.11.seID.15976" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.12" sID="Ps.91.12.seID.15977" n="12" />They shall bear thee up in
+<transChange type="added">their</transChange> hands, lest thou dash thy foot against a stone.
+<verse eID="Ps.91.12.seID.15977" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.13" sID="Ps.91.13.seID.15978" n="13" />Thou shalt tread upon the lion and adder: the young lion and the dragon shalt thou trample under feet.
+<verse eID="Ps.91.13.seID.15978" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.14" sID="Ps.91.14.seID.15979" n="14" />Because he hath set his love upon me, therefore will I deliver him: I will set him on high, because he hath known my name.
+<verse eID="Ps.91.14.seID.15979" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.15" sID="Ps.91.15.seID.15980" n="15" />He shall call upon me, and I will answer him: I
+<transChange type="added">will be</transChange> with him in trouble; I will deliver him, and honour him.
+<verse eID="Ps.91.15.seID.15980" /></l>        </lg>        <lg>          <l level="1">            <verse osisID="Ps.91.16" sID="Ps.91.16.seID.15981" n="16" />With long life will I satisfy him, and shew him my salvation.
+<verse eID="Ps.91.16.seID.15981" /></l>        </lg>        <chapter eID="Ps.91.seID.15965" />
+</div>
+<div type="book" osisID="John" canonical="true"><title type="main" short="John">The Gospel According to St. John</title>
+<chapter osisRef="John.3" sID="John.3.seID.34569" n="3" />        <p>          <verse osisID="John.3.1" sID="John.3.1.seID.34570" n="1" />There was a man of the Pharisees, named Nicodemus, a ruler of the Jews:
+<verse eID="John.3.1.seID.34570" /><verse osisID="John.3.2" sID="John.3.2.seID.34571" n="2" />The same came to Jesus by night, and said unto him, Rabbi, we know that thou art a teacher come from God: for no man can do these miracles that thou doest, except God be with him.
+<verse eID="John.3.2.seID.34571" /><verse osisID="John.3.3" sID="John.3.3.seID.34572" n="3" />Jesus answered and said unto him,
+<q who="Jesus" sID="John.3.3.seID.34573" marker="" />Verily, verily, I say unto thee, Except a man be born again, he cannot see the kingdom of God.
+<q eID="John.3.3.seID.34573" /><verse eID="John.3.3.seID.34572" /><verse osisID="John.3.4" sID="John.3.4.seID.34574" n="4" />Nicodemus saith unto him, How can a man be born when he is old? can he enter the second time into his mother’s womb, and be born?
+<verse eID="John.3.4.seID.34574" /><verse osisID="John.3.5" sID="John.3.5.seID.34575" n="5" />Jesus answered,
+<q who="Jesus" sID="John.3.5.seID.34576" marker="" />Verily, verily, I say unto thee, Except a man be born of water and
+<transChange type="added">of</transChange> the Spirit, he cannot enter into the kingdom of God.
+<q eID="John.3.5.seID.34576" /><verse eID="John.3.5.seID.34575" /><verse osisID="John.3.6" sID="John.3.6.seID.34577" n="6" /><q who="Jesus" sID="John.3.6.seID.34578" marker="" />That which is born of the flesh is flesh; and that which is born of the Spirit is spirit.
+<q eID="John.3.6.seID.34578" /><verse eID="John.3.6.seID.34577" /><verse osisID="John.3.7" sID="John.3.7.seID.34579" n="7" /><q who="Jesus" sID="John.3.7.seID.34580" marker="" />Marvel not that I said unto thee, Ye must be born again.
+<q eID="John.3.7.seID.34580" /><verse eID="John.3.7.seID.34579" /><verse osisID="John.3.8" sID="John.3.8.seID.34581" n="8" /><q who="Jesus" sID="John.3.8.seID.34582" marker="" />The wind bloweth where it listeth, and thou hearest the sound thereof, but canst not tell whence it cometh, and whither it goeth: so is every one that is born of the Spirit.
+<q eID="John.3.8.seID.34582" /><verse eID="John.3.8.seID.34581" /><verse osisID="John.3.9" sID="John.3.9.seID.34583" n="9" />Nicodemus answered and said unto him, How can these things be?
+<verse eID="John.3.9.seID.34583" /><verse osisID="John.3.10" sID="John.3.10.seID.34584" n="10" />Jesus answered and said unto him,
+<q who="Jesus" sID="John.3.10.seID.34585" marker="" />Art thou a master of Israel, and knowest not these things?
+<q eID="John.3.10.seID.34585" /><verse eID="John.3.10.seID.34584" /><verse osisID="John.3.11" sID="John.3.11.seID.34586" n="11" /><q who="Jesus" sID="John.3.11.seID.34587" marker="" />Verily, verily, I say unto thee, We speak that we do know, and testify that we have seen; and ye receive not our witness.
+<q eID="John.3.11.seID.34587" /><verse eID="John.3.11.seID.34586" /><verse osisID="John.3.12" sID="John.3.12.seID.34588" n="12" /><q who="Jesus" sID="John.3.12.seID.34589" marker="" />If I have told you earthly things, and ye believe not, how shall ye believe, if I tell you
+<transChange type="added">of</transChange> heavenly things?
+<q eID="John.3.12.seID.34589" /><verse eID="John.3.12.seID.34588" /><verse osisID="John.3.13" sID="John.3.13.seID.34590" n="13" /><q who="Jesus" sID="John.3.13.seID.34591" marker="" />And no man hath ascended up to heaven, but he that came down from heaven,
+<transChange type="added">even</transChange> the Son of man which is in heaven.<q eID="John.3.13.seID.34591" /><verse eID="John.3.13.seID.34590" /></p>        <p>          <verse osisID="John.3.14" sID="John.3.14.seID.34592" n="14" />          <q who="Jesus" sID="John.3.14.seID.34593" marker="" />And as Moses lifted up the serpent in the wilderness, even so must the Son of man be lifted up:
+<q eID="John.3.14.seID.34593" /><verse eID="John.3.14.seID.34592" /><verse osisID="John.3.15" sID="John.3.15.seID.34594" n="15" /><q who="Jesus" sID="John.3.15.seID.34595" marker="" />That whosoever believeth in him should not perish, but have eternal life.<q eID="John.3.15.seID.34595" /><verse eID="John.3.15.seID.34594" /></p>        <p>          <verse osisID="John.3.16" sID="John.3.16.seID.34596" n="16" />          <q who="Jesus" sID="John.3.16.seID.34597" marker="" />For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.
+<q eID="John.3.16.seID.34597" /><verse eID="John.3.16.seID.34596" /><verse osisID="John.3.17" sID="John.3.17.seID.34598" n="17" /><q who="Jesus" sID="John.3.17.seID.34599" marker="" />For God sent not his Son into the world to condemn the world; but that the world through him might be saved.<q eID="John.3.17.seID.34599" /><verse eID="John.3.17.seID.34598" /></p>        <p>          <verse osisID="John.3.18" sID="John.3.18.seID.34600" n="18" />          <q who="Jesus" sID="John.3.18.seID.34601" marker="" />He that believeth on him is not condemned: but he that believeth not is condemned already, because he hath not believed in the name of the only begotten Son of God.
+<q eID="John.3.18.seID.34601" /><verse eID="John.3.18.seID.34600" /><verse osisID="John.3.19" sID="John.3.19.seID.34602" n="19" /><q who="Jesus" sID="John.3.19.seID.34603" marker="" />And this is the condemnation, that light is come into the world, and men loved darkness rather than light, because their deeds were evil.
+<q eID="John.3.19.seID.34603" /><verse eID="John.3.19.seID.34602" /><verse osisID="John.3.20" sID="John.3.20.seID.34604" n="20" /><q who="Jesus" sID="John.3.20.seID.34605" marker="" />For every one that doeth evil hateth the light, neither cometh to the light, lest his deeds should be reproved.
+<q eID="John.3.20.seID.34605" /><verse eID="John.3.20.seID.34604" /><verse osisID="John.3.21" sID="John.3.21.seID.34606" n="21" /><q who="Jesus" sID="John.3.21.seID.34607" marker="" />But he that doeth truth cometh to the light, that his deeds may be made manifest, that they are wrought in God.<q eID="John.3.21.seID.34607" /><verse eID="John.3.21.seID.34606" /></p>        <p>          <verse osisID="John.3.22" sID="John.3.22.seID.34608" n="22" />After these things came Jesus and his disciples into the land of Judaea; and there he tarried with them, and baptized.
+<verse eID="John.3.22.seID.34608" /></p>        <p>          <verse osisID="John.3.23" sID="John.3.23.seID.34609" n="23" />And John also was baptizing in Aenon near to Salim, because there was much water there: and they came, and were baptized.
+<verse eID="John.3.23.seID.34609" /><verse osisID="John.3.24" sID="John.3.24.seID.34610" n="24" />For John was not yet cast into prison.
+<verse eID="John.3.24.seID.34610" /></p>        <p>          <verse osisID="John.3.25" sID="John.3.25.seID.34611" n="25" />Then there arose a question between
+<transChange type="added">some</transChange> of John’s disciples and the Jews about purifying.
+<verse eID="John.3.25.seID.34611" /><verse osisID="John.3.26" sID="John.3.26.seID.34612" n="26" />And they came unto John, and said unto him, Rabbi, he that was with thee beyond Jordan, to whom thou barest witness, behold, the same baptizeth, and all
+<transChange type="added">men</transChange> come to him.
+<verse eID="John.3.26.seID.34612" /><verse osisID="John.3.27" sID="John.3.27.seID.34613" n="27" />John answered and said, A man can receive nothing, except it be given him from heaven.
+<verse eID="John.3.27.seID.34613" /><verse osisID="John.3.28" sID="John.3.28.seID.34614" n="28" />Ye yourselves bear me witness, that I said, I am not the Christ, but that I am sent before him.
+<verse eID="John.3.28.seID.34614" /><verse osisID="John.3.29" sID="John.3.29.seID.34615" n="29" />He that hath the bride is the bridegroom: but the friend of the bridegroom, which standeth and heareth him, rejoiceth greatly because of the bridegroom’s voice: this my joy therefore is fulfilled.
+<verse eID="John.3.29.seID.34615" /><verse osisID="John.3.30" sID="John.3.30.seID.34616" n="30" />He must increase, but I
+<transChange type="added">must</transChange> decrease.
+<verse eID="John.3.30.seID.34616" /><verse osisID="John.3.31" sID="John.3.31.seID.34617" n="31" />He that cometh from above is above all: he that is of the earth is earthly, and speaketh of the earth: he that cometh from heaven is above all.
+<verse eID="John.3.31.seID.34617" /><verse osisID="John.3.32" sID="John.3.32.seID.34618" n="32" />And what he hath seen and heard, that he testifieth; and no man receiveth his testimony.
+<verse eID="John.3.32.seID.34618" /><verse osisID="John.3.33" sID="John.3.33.seID.34619" n="33" />He that hath received his testimony hath set to his seal that God is true.
+<verse eID="John.3.33.seID.34619" /><verse osisID="John.3.34" sID="John.3.34.seID.34620" n="34" />For he whom God hath sent speaketh the words of God: for God giveth not the Spirit by measure
+<transChange type="added">unto him.
+</transChange><verse eID="John.3.34.seID.34620" /><verse osisID="John.3.35" sID="John.3.35.seID.34621" n="35" />The Father loveth the Son, and hath given all things into his hand.
+<verse eID="John.3.35.seID.34621" /><verse osisID="John.3.36" sID="John.3.36.seID.34622" n="36" />He that believeth on the Son hath everlasting life: and he that believeth not the Son shall not see life; but the wrath of God abideth on him.
+<verse eID="John.3.36.seID.34622" /></p>        <chapter eID="John.3.seID.34569" />
+</div>
+<div type="book" osisID="Jude" canonical="true"><title type="main" short="Jude">The General Epistle of Jude</title>
+<chapter osisRef="Jude.1" sID="Jude.1.seID.39747" n="1" />        <p>          <verse osisID="Jude.1.1" sID="Jude.1.1.seID.39748" n="1" />Jude, the servant of Jesus Christ, and brother of James, to them that are sanctified by God the Father, and preserved in Jesus Christ,
+<transChange type="added">and
+</transChange> called:
+<verse eID="Jude.1.1.seID.39748" /><verse osisID="Jude.1.2" sID="Jude.1.2.seID.39749" n="2" />Mercy unto you, and peace, and love, be multiplied.
+<verse eID="Jude.1.2.seID.39749" /></p>        <p>          <verse osisID="Jude.1.3" sID="Jude.1.3.seID.39750" n="3" />Beloved, when I gave all diligence to write unto you of the common salvation, it was needful for me to write unto you, and exhort
+<transChange type="added">you
+</transChange> that ye should earnestly contend for the faith which was once delivered unto the saints.
+<verse eID="Jude.1.3.seID.39750" /><verse osisID="Jude.1.4" sID="Jude.1.4.seID.39751" n="4" />For there are certain men crept in unawares, who were before of old ordained to this condemnation, ungodly men, turning the grace of our God into lasciviousness, and denying the only Lord God, and our Lord Jesus Christ.
+<verse eID="Jude.1.4.seID.39751" /><verse osisID="Jude.1.5" sID="Jude.1.5.seID.39752" n="5" />I will therefore put you in remembrance, though ye once knew this, how that the Lord, having saved the people out of the land of Egypt, afterward destroyed them that believed not.
+<verse eID="Jude.1.5.seID.39752" /><verse osisID="Jude.1.6" sID="Jude.1.6.seID.39753" n="6" />And the angels which kept not their first estate, but left their own habitation, he hath reserved in everlasting chains under darkness unto the judgment of the great day.
+<verse eID="Jude.1.6.seID.39753" /><verse osisID="Jude.1.7" sID="Jude.1.7.seID.39754" n="7" />Even as Sodom and Gomorrha, and the cities about them in like manner, giving themselves over to fornication, and going after strange flesh, are set forth for an example, suffering the vengeance of eternal fire.
+<verse eID="Jude.1.7.seID.39754" /><verse osisID="Jude.1.8" sID="Jude.1.8.seID.39755" n="8" />Likewise also these
+<transChange type="added">filthy</transChange> dreamers defile the flesh, despise dominion, and speak evil of dignities.
+<verse eID="Jude.1.8.seID.39755" /><verse osisID="Jude.1.9" sID="Jude.1.9.seID.39756" n="9" />Yet Michael the archangel, when contending with the devil he disputed about the body of Moses, durst not bring against him a railing accusation, but said, The Lord rebuke thee.
+<verse eID="Jude.1.9.seID.39756" /><verse osisID="Jude.1.10" sID="Jude.1.10.seID.39757" n="10" />But these speak evil of those things which they know not: but what they know naturally, as brute beasts, in those things they corrupt themselves.
+<verse eID="Jude.1.10.seID.39757" /><verse osisID="Jude.1.11" sID="Jude.1.11.seID.39758" n="11" />Woe unto them! for they have gone in the way of Cain, and ran greedily after the error of Balaam for reward, and perished in the gainsaying of Core.
+<verse eID="Jude.1.11.seID.39758" /><verse osisID="Jude.1.12" sID="Jude.1.12.seID.39759" n="12" />These are spots in your feasts of charity, when they feast with you, feeding themselves without fear: clouds
+<transChange type="added">they are</transChange> without water, carried about of winds; trees whose fruit withereth, without fruit, twice dead, plucked up by the roots;
+<verse eID="Jude.1.12.seID.39759" /><verse osisID="Jude.1.13" sID="Jude.1.13.seID.39760" n="13" />Raging waves of the sea, foaming out their own shame; wandering stars, to whom is reserved the blackness of darkness for ever.
+<verse eID="Jude.1.13.seID.39760" /><verse osisID="Jude.1.14" sID="Jude.1.14.seID.39761" n="14" />And Enoch also, the seventh from Adam, prophesied of these, saying, Behold, the Lord cometh with ten thousands of his saints,
+<verse eID="Jude.1.14.seID.39761" /><verse osisID="Jude.1.15" sID="Jude.1.15.seID.39762" n="15" />To execute judgment upon all, and to convince all that are ungodly among them of all their ungodly deeds which they have ungodly committed, and of all their hard
+<transChange type="added">speeches</transChange> which ungodly sinners have spoken against him.
+<verse eID="Jude.1.15.seID.39762" /><verse osisID="Jude.1.16" sID="Jude.1.16.seID.39763" n="16" />These are murmurers, complainers, walking after their own lusts; and their mouth speaketh great swelling
+<transChange type="added">words,</transChange> having men’s persons in admiration because of advantage.
+<verse eID="Jude.1.16.seID.39763" /></p>        <p>          <verse osisID="Jude.1.17" sID="Jude.1.17.seID.39764" n="17" />But, beloved, remember ye the words which were spoken before of the apostles of our Lord Jesus Christ;
+<verse eID="Jude.1.17.seID.39764" /><verse osisID="Jude.1.18" sID="Jude.1.18.seID.39765" n="18" />How that they told you there should be mockers in the last time, who should walk after their own ungodly lusts.
+<verse eID="Jude.1.18.seID.39765" /><verse osisID="Jude.1.19" sID="Jude.1.19.seID.39766" n="19" />These be they who separate themselves, sensual, having not the Spirit.
+<verse eID="Jude.1.19.seID.39766" /><verse osisID="Jude.1.20" sID="Jude.1.20.seID.39767" n="20" />But ye, beloved, building up yourselves on your most holy faith, praying in the Holy Ghost,
+<verse eID="Jude.1.20.seID.39767" /><verse osisID="Jude.1.21" sID="Jude.1.21.seID.39768" n="21" />Keep yourselves in the love of God, looking for the mercy of our Lord Jesus Christ unto eternal life.
+<verse eID="Jude.1.21.seID.39768" /><verse osisID="Jude.1.22" sID="Jude.1.22.seID.39769" n="22" />And of some have compassion, making a difference:
+<verse eID="Jude.1.22.seID.39769" /><verse osisID="Jude.1.23" sID="Jude.1.23.seID.39770" n="23" />And others save with fear, pulling
+<transChange type="added">them</transChange> out of the fire; hating even the garment spotted by the flesh.
+<verse eID="Jude.1.23.seID.39770" /></p>        <p>          <verse osisID="Jude.1.24" sID="Jude.1.24.seID.39771" n="24" />Now unto him that is able to keep you from falling, and to present
+<transChange type="added">you</transChange> faultless before the presence of his glory with exceeding joy,
+<verse eID="Jude.1.24.seID.39771" /><verse osisID="Jude.1.25" sID="Jude.1.25.seID.39772" n="25" />To the only wise God our Saviour,
+<transChange type="added">be</transChange> glory and majesty, dominion and power, both now and ever. Amen.
+<verse eID="Jude.1.25.seID.39772" /></p>        <chapter eID="Jude.1.seID.39747" />
+</div>
+<div type="book" osisID="Tob"><chapter osisID="Tob.1"><verse osisID="Tob.1.1">Synthetic verse.</verse></chapter></div>
+</osisText>
+</osis>

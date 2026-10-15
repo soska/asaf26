@@ -1,6 +1,7 @@
-//! Song storage: SQLite with an FTS5 index over title, alternate title,
-//! authors and lyrics.
+//! Song and Bible storage: SQLite with FTS5 indexes over songs (title,
+//! alternate title, authors, lyrics) and Bible verse text.
 
+mod bible;
 mod import;
 mod migrations;
 
@@ -10,6 +11,7 @@ use std::time::Duration;
 use asaf_core::{Song, format_lyrics, parse_lyrics};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
+pub use bible::{BibleImport, VerseHit};
 pub use import::ImportReport;
 pub use rusqlite::Error;
 pub type Result<T> = rusqlite::Result<T>;
@@ -217,7 +219,7 @@ fn song_from_row(r: &Row) -> Result<Song> {
 }
 
 /// User text → FTS5 query: each word becomes a quoted prefix term, all required.
-fn fts_query(query: &str) -> Option<String> {
+pub(crate) fn fts_query(query: &str) -> Option<String> {
     let terms: Vec<String> = query
         .split(|c: char| !c.is_alphanumeric())
         .filter(|w| !w.is_empty())
