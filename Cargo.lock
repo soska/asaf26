@@ -278,9 +278,14 @@ dependencies = [
  "asaf-library",
  "asaf-openlyrics",
  "asaf-projector",
+ "asaf-server",
+ "futures",
  "gpui-kit",
  "rusqlite",
+ "serde_json",
  "tempfile",
+ "tokio",
+ "tokio-tungstenite 0.28.0",
 ]
 
 [[package]]

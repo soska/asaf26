@@ -3,7 +3,7 @@
 A fast lyrics and Bible-verse projector: a Rust app with a GPUI operator
 console and a web-based display. See `Rust Lyrics Projector — PRD.md`.
 
-**Status: Phase 4 (themes and migration).** A song library in SQLite
+**Status: Phase 5 (remote and extra outputs).** A song library in SQLite
 with full-text search as you type, a lyrics editor with live slide preview,
 OpenLyrics import and export, and Bibles (OSIS and Zefania) looked up by
 reference in English or Spanish. Songs and passages go into a service list
@@ -18,6 +18,11 @@ stored in the library; output uses fonts bundled into the app, so it looks
 the same on every machine. An OpenLP data folder (songs and Bibles) imports
 in one step. Settings (projector display, port, default theme, English or
 Spanish console) are saved; `packaging/macos/package.sh` builds `Asaf.app`.
+A phone can run the service from the same server's remote page (service
+list, slides, next/previous/blank, verse lookup; optional PIN; LAN access is
+opt-in), and two more outputs render from the same state: a stage view for
+the worship team (current and next slide, clock) and an OBS lower-thirds
+page with a transparent background.
 
 Licensed GPL-3.0-or-later. Provided as-is, with no support.
 
@@ -33,6 +38,7 @@ cargo run -- remove-bible RV1909       # remove one (by abbreviation or name)
 cargo run -- import-openlp ~/Library/Application\ Support/openlp/Data   # migrate from OpenLP
 cargo run -- themes                    # list themes (the default is marked)
 cargo test --workspace                 # all tests, including headless console UI tests
+cargo run -p asaf-server --example remote_demo -- 4611 [pin]   # remote/stage/OBS pages with a sample service, no GUI
 packaging/macos/package.sh [--zip]     # release build of Asaf.app (see "Packaging")
 ```
 
@@ -46,6 +52,10 @@ packaging/macos/package.sh [--zip]     # release build of Asaf.app (see "Packagi
 - Display page: <http://127.0.0.1:4510/display> (add `?debug` for an overlay
   with socket state, revision and change-to-paint latency). Works as an OBS
   browser source.
+- Stage view: <http://127.0.0.1:4510/stage>. OBS lower thirds:
+  <http://127.0.0.1:4510/obs>. Remote: <http://127.0.0.1:4510/remote> (from
+  a phone, the LAN address the console shows; see "Remote, stage view and
+  OBS").
 - The port comes from Settings (default 4510); `ASAF_PORT=5000 cargo run`
   overrides it.
 - `ASAF_PROJECTOR_ON_MAIN=1 cargo run` puts the fullscreen projector on the
@@ -66,7 +76,8 @@ Four columns, left to right:
 3. **Preview**: the cued service item's slides (or the source panel's choice
    while you're in it), with its notes and, for passages, the layout options.
 4. **Live**: what's on the projector, slide by slide, its theme, the blank
-   state, the projector display picker, and Themes… / Settings….
+   state, the projector display picker, Themes… / Settings…, and (with LAN
+   access on) the address phones open for the remote.
 
 | Keys | Where | Does |
 | --- | --- | --- |
@@ -152,7 +163,69 @@ the library as soon as they change:
   display's UUID across restarts, and the projector returns to it when it's
   plugged back in.
 - **Display server port**: used from the next start (`ASAF_PORT` overrides it).
+- **Remote control**: "Allow phones and tablets on this network" (LAN
+  access, from the next start) and the remote's **PIN** (4 to 8 digits, or
+  empty for none; applies at once, and remotes that used the old PIN must
+  enter the new one). With LAN access on and no PIN, the window warns that
+  anyone on the network can control the projector.
 - **Migrate from OpenLP**: "Import from OpenLP…" (also in the Asaf menu).
+
+### Remote, stage view and OBS
+
+All three are pages served by the app's own server (no install, no build
+step) and follow the same state as the projector.
+
+- **Remote** (`/remote`), for a phone. The live item's slides (tap one to
+  show it); the service (live item ●, the next one outlined; tap an item,
+  then "Go live", or "Next item ▶"); Bible lookup (translation, reference,
+  "Look up" previews it on the phone, "Go live" puts it on screen, ad hoc,
+  like ⌘⏎ in the console); and always at the bottom ◀ / ▶ and Hide, Logo,
+  Black (pressed again: show the text). With a PIN set, it asks for it
+  once and remembers it on that phone. Everything it does goes through the
+  same store as the console's keys, so the console, every display and other
+  remotes follow; it never moves the operator's focus or preview.
+- **Stage view** (`/stage`), for the worship team's monitor: the current
+  slide large, the next one under it (at the end of an item, the next
+  service item's title, or "End"), the slide label and a clock. It's plain
+  white on black whatever the theme, and keeps showing the text while the
+  projector is blanked, with a BLACK / TEXT HIDDEN / LOGO badge.
+- **OBS** (`/obs`), as a browser source over the camera: the text as lower
+  thirds in the theme's font, colours, outline and shadow, on a transparent
+  page with a soft shade behind it; no background, and any blank simply
+  hides the text. Set the source to the stream's size (e.g. 1920×1080).
+
+**LAN access is off by default**: the server listens on 127.0.0.1 only, so
+nothing on the network can reach it. Settings → "Allow phones and tablets on
+this network" makes it listen on every interface (0.0.0.0) from the next
+start; the live pane then shows the address to open on a phone
+("Remote for phones: http://192.168.1.8:4510/remote") and so does the
+terminal. All the pages (display, stage, OBS, theme images) are then
+visible on the network; only the remote's socket can change anything, and
+that is what the PIN guards.
+
+Protocol, for other clients: the remote talks to `/remote/ws`, separate
+from the displays' `/ws`.
+
+```text
+server: {"type":"hello","pin":true}                 pin: whether one is needed
+client: {"type":"auth","pin":"2468"}
+server: {"type":"auth","ok":true}                   or ok:false + error, then the socket closes
+server: {"type":"state","state":{…}}                on connect (once in) and on every change
+client: {"type":"cmd","id":7,"cmd":"next"}
+server: {"type":"result","id":7,"ok":true,"outcome":"done"}
+```
+
+Commands: `next`, `previous`, `goto` (`slide`), `blank` (`mode`: `None`,
+`Black`, `Background`, `Logo`), `toggle_blank` (`mode`), `item` (`item`,
+optional `slide`, 0-based), `verse` (`reference`, optional `translation`
+abbreviation and `live`); a `verse` result carries `"outcome":"passage"`,
+`title` and `slides`. A failed command answers `"ok":false` with an
+`error` and the socket stays open. The state is the live item (`title`,
+`slides`, `current`, `blank`) and the console's view (`service`, `items`
+with `title` and `kind`, `cued`, `live`, `bibles`, `bible`), with a
+`revision` that only grows. The display state (`/ws`) also carries `next`
+(the next slide) and `up_next` (the next service item's title), for the
+stage view.
 
 ### Migrating from OpenLP
 
@@ -296,16 +369,16 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 
 | Crate | Role |
 | --- | --- |
-| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the `Store` (single source of truth, default and per-item theme, change listeners). No UI or IO deps (serde/serde_json only). |
+| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the command API and the remote's view (`remote.rs`: `Command`, `Outcome`, `RemoteView`, `RemoteState`), the `Store` (single source of truth, default and per-item theme, commands and their operator, change listeners for displays and remotes). No UI or IO deps (serde/serde_json only). |
 | `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Themes and settings (`themes.rs`), theme images in the media folder (`media.rs`), the OpenLP importer (`openlp.rs`). Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
 | `crates/fonts` (`asaf-fonts`) | The bundled OFL fonts (Source Sans 3, Montserrat, Oswald, Lora; Google Fonts' variable TTFs) and their licenses, embedded with `include_bytes!`, plus their `@font-face` CSS. |
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
-| `crates/server` (`asaf-server`) | axum on 127.0.0.1: display page, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change. `examples/display_demo.rs` serves one slide in a theme from a JSON file, for checking output in a browser. |
-| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder). No build step; embedded into the binary with `include_str!`. |
+| `crates/server` (`asaf-server`) | axum on 127.0.0.1 (or 0.0.0.0 with LAN access): display, OBS, stage and remote pages, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change, and the remote's PIN-protected command socket `/remote/ws` (`remote.rs`). `examples/display_demo.rs` serves one slide in a theme from a JSON file, `examples/remote_demo.rs` the remote, stage and OBS pages with a sample service (and a stand-in console), for checking output in a browser. |
+| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the English/Spanish string table (`i18n.rs`), import/export and OpenLP migration (`transfer.rs`). Never draws projected output. |
-| `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port and media folder from the settings), projector (remembered display) and console; `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the English/Spanish string table (`i18n.rs`), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
+| `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port, LAN access, PIN and media folder from the settings; a new PIN reaches it at once), projector (remembered display) and console (the LAN address of the remote); `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
 | `packaging/macos` | `package.sh` (builds `Asaf.app`), `Info.plist.in`, the placeholder icon. |
 
 ## Decisions and deviations from the PRD
@@ -341,8 +414,8 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
   whatever the preview shows live. After a service item goes live the cue
   moves to the next item, so ⏎ always means "next thing in the service";
   once the last item is live, ⏎ does nothing rather than restart it. The
-  service lives in the console (not the core store): only what's live is
-  shared state; the remote (Phase 5) can move it into the store.
+  service lives in the console (not the core store); the console publishes
+  a summary of it to the store for the remote (see "Commands" below).
   Editing the live song updates the projector in place and keeps the current
   slide; renaming a song updates its title in the service.
 - **Service files are our own JSON**, not SQLite: one small human-readable
@@ -421,7 +494,67 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
   already laid out (`Store::load_passage`); the snapshot carries the live
   `Passage` so the preview can highlight the slide on air.
 
+- **Commands** (`asaf_core::Command`) are the one way front ends change
+  what's live: the console's live-control keys and buttons and the remote
+  both call `Store::command`. Slide and blank commands only touch what is
+  live, so the store applies them itself (from whichever thread, the
+  server's included). A service item or a verse needs the library and the
+  service, which live in the console, so the store hands those to its
+  *operator*: the console registers one at start, and it forwards each
+  command over a channel to a task on the console's thread, which puts the
+  result live through the store like ⏎ would (without moving the
+  operator's focus or preview) and sends the answer back. No operator (the
+  console closed) is an error, not a hang; the server also gives up after
+  5 s. The console publishes a `RemoteView` (service name and items, cue,
+  live item, translations) whenever any of it may have changed, and redraws
+  on every store change it didn't make (coalesced, one redraw per burst).
+- **The remote has its own socket** (`/remote/ws`), never the displays'
+  (`/ws`, which stays read-only), as the PRD's protocol says. Its state is a
+  separate `RemoteState` with its own listener list, so service changes
+  don't wake the displays, except when the stage view's "up next" changes
+  (then the display revision bumps too, as a separate revision after the
+  slide: the slide and its theme still arrive together).
+- **The PIN** is checked on the remote socket only: the first message must
+  be `auth` with the right PIN, or the socket is told why and closed. Wrong
+  PINs are answered after 1 s, one at a time across all connections, so a
+  4-digit PIN takes hours to guess. A changed PIN disconnects remotes that
+  used the old one at their next command or state update. The socket also
+  refuses browser connections whose `Origin` isn't the page's own host, or
+  whose host is a public name rather than an IP, a bare name (`localhost`)
+  or a `.local` name, so another web site open in the operator's browser
+  can't drive the projector through 127.0.0.1, even by DNS rebinding.
+  Remotes remember the PIN in the phone's `localStorage`.
+- **Each remote's commands run one at a time, in order**: a command waits
+  for the one before it to finish, so "Go live" followed quickly by "Next"
+  moves within the new item, not the old one. Commands from different
+  remotes and the console aren't ordered against each other.
+- **LAN access is opt-in and applies at start** (the PRD's "localhost only
+  by default"): the bind address is chosen once. The address shown is the
+  one the OS would use to reach the internet (a UDP socket "connected" to a
+  TEST-NET address; nothing is sent), so with several networks it shows one.
+- **The stage view ignores the theme**: it's for reading, white on black,
+  and fits text with the display's algorithm in its own boxes. **The OBS
+  page keeps the theme's look but not its size range** (3–6.5% of the
+  height, lower-third band, theme margins left and right) and ignores
+  vertical alignment and the background; the band and the shade are in
+  `obs.css`.
+- **The remote shows the live item's slides from the store** and the
+  service as titles only; it can't preview a service item before it goes
+  live (tap → "Go live" is the safety step instead).
+
 ## Known gaps
+
+- **OpenLP remote API (the PRD's stretch goal) is not done**: mimicking it
+  so OpenLP's remote apps can connect needs a license and documentation
+  review of that API first.
+- The remote page is English only (the console's language setting doesn't
+  reach it), and it can't edit the service (add, reorder, notes, themes) or
+  search Bible text by words: references only.
+- The remote is plain HTTP/websocket: on the LAN, the PIN and commands are
+  not encrypted. The PIN is stored in the library as plain text. Use it on a
+  trusted network.
+- The stage clock is the clock of the device showing the page, in its
+  locale's format.
 
 - Removing a service item can't be undone (re-add it; the autosave doesn't
   help because it follows the change).

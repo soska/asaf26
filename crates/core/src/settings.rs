@@ -1,5 +1,5 @@
 //! App settings: which display the projector uses, the server port, the
-//! default theme and the console's language. Stored by the library as
+//! default theme, the console's language and remote access. Stored by the library as
 //! key/value rows; see [`Settings::to_pairs`].
 
 use serde::{Deserialize, Serialize};
@@ -49,6 +49,17 @@ pub struct Settings {
     /// Name of the theme used when an item has none of its own.
     pub default_theme: String,
     pub language: Language,
+    /// Serve on every network interface (0.0.0.0) instead of 127.0.0.1 only,
+    /// so phones on the LAN can use the remote. Applies at the next start.
+    pub lan: bool,
+    /// The remote page asks for this before it can control anything; empty: no PIN.
+    pub remote_pin: String,
+}
+
+/// Whether `pin` can be a remote PIN: 4 to 8 digits (easy on a phone keypad).
+/// An empty PIN turns the check off.
+pub fn valid_pin(pin: &str) -> bool {
+    pin.is_empty() || (4..=8).contains(&pin.len()) && pin.chars().all(|c| c.is_ascii_digit())
 }
 
 impl Default for Settings {
@@ -58,6 +69,8 @@ impl Default for Settings {
             port: DEFAULT_PORT,
             default_theme: DEFAULT_THEME_NAME.into(),
             language: Language::English,
+            lan: false,
+            remote_pin: String::new(),
         }
     }
 }
@@ -70,6 +83,8 @@ impl Settings {
             ("port", self.port.to_string()),
             ("default_theme", self.default_theme.clone()),
             ("language", self.language.code().into()),
+            ("remote_lan", if self.lan { "1" } else { "0" }.into()),
+            ("remote_pin", self.remote_pin.clone()),
         ]
     }
 
@@ -91,6 +106,8 @@ impl Settings {
                 }
                 "default_theme" if !value.is_empty() => s.default_theme = value.to_string(),
                 "language" => s.language = Language::from_code(value).unwrap_or_default(),
+                "remote_lan" => s.lan = value == "1",
+                "remote_pin" => s.remote_pin = value.to_string(),
                 _ => {}
             }
         }
@@ -109,6 +126,8 @@ mod tests {
             port: 5000,
             default_theme: "Scripture".into(),
             language: Language::Spanish,
+            lan: true,
+            remote_pin: "2468".into(),
         };
         let pairs = s.to_pairs();
         assert_eq!(Settings::from_pairs(pairs.iter().map(|(k, v)| (*k, v.as_str()))), s);
@@ -126,9 +145,27 @@ mod tests {
             ("default_theme", "  "),
             ("display_uuid", ""),
             ("unknown", "x"),
+            ("remote_lan", "yes"),
+            ("remote_pin", "  "),
         ] {
             assert_eq!(Settings::from_pairs([(key, value)]), Settings::default(), "{key}={value}");
         }
         assert_eq!(Settings::from_pairs([("language", "ES")]).language, Language::Spanish);
+    }
+
+    #[test]
+    fn pins_are_four_to_eight_digits() {
+        for (pin, ok) in [
+            ("", true),
+            ("1234", true),
+            ("00000000", true),
+            ("123", false),
+            ("123456789", false),
+            ("12a4", false),
+            ("12 34", false),
+            ("١٢٣٤", false),
+        ] {
+            assert_eq!(valid_pin(pin), ok, "{pin:?}");
+        }
     }
 }

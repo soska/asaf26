@@ -1,15 +1,19 @@
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{Blank, DisplayState, Passage, Slide, Song, Theme, Transition};
+use crate::{Blank, Command, DisplayState, Outcome, Passage, RemoteState, RemoteView, Reply, Slide, Song, Theme, Transition};
 
 type Listener = Box<dyn Fn(&DisplayState) + Send + Sync>;
+type RemoteListener = Box<dyn Fn(&RemoteState) + Send + Sync>;
+type SharedOperator = Arc<dyn Fn(Command, Reply) + Send + Sync>;
 
-/// The single source of truth. Front ends mutate it; observers (the server)
-/// are told about every change.
+/// The single source of truth. Front ends mutate it, directly or with
+/// [`Command`]s; observers (the server) are told about every change.
 pub struct Store {
     live: Mutex<Live>,
     listeners: Mutex<Vec<Listener>>,
+    remote_listeners: Mutex<Vec<RemoteListener>>,
+    operator: Mutex<Option<SharedOperator>>,
 }
 
 struct Live {
@@ -23,6 +27,10 @@ struct Live {
     item_theme: Option<Theme>,
     revision: u64,
     changed_at_ms: u64,
+    /// The service and translations as the console last published them.
+    view: RemoteView,
+    /// Increments on every change to `view`.
+    view_revision: u64,
 }
 
 /// What is live: a song, or a Bible passage laid out by the console.
@@ -59,8 +67,12 @@ impl Store {
                 item_theme: None,
                 revision: 1,
                 changed_at_ms: now_ms(),
+                view: RemoteView::default(),
+                view_revision: 0,
             }),
             listeners: Mutex::new(Vec::new()),
+            remote_listeners: Mutex::new(Vec::new()),
+            operator: Mutex::new(None),
         })
     }
 
@@ -69,8 +81,78 @@ impl Store {
         self.listeners.lock().unwrap().push(Box::new(f));
     }
 
+    /// Calls `f` after every change to what the remote shows (what is live,
+    /// or the console's [`RemoteView`]).
+    pub fn subscribe_remote(&self, f: impl Fn(&RemoteState) + Send + Sync + 'static) {
+        self.remote_listeners.lock().unwrap().push(Box::new(f));
+    }
+
     pub fn display_state(&self) -> DisplayState {
         self.live.lock().unwrap().display_state()
+    }
+
+    pub fn remote_state(&self) -> RemoteState {
+        self.live.lock().unwrap().remote_state()
+    }
+
+    /// The console publishes its service and translations for the remote.
+    /// The stage view's "up next" follows.
+    pub fn set_remote_view(&self, view: RemoteView) {
+        let (display, remote) = {
+            let mut live = self.live.lock().unwrap();
+            if live.view == view {
+                return;
+            }
+            let up_next_changed = live.view.up_next() != view.up_next();
+            live.view = view;
+            live.view_revision += 1;
+            if up_next_changed {
+                live.revision += 1;
+                live.changed_at_ms = now_ms();
+            }
+            (up_next_changed.then(|| live.display_state()), live.remote_state())
+        };
+        if let Some(display) = display {
+            for listener in self.listeners.lock().unwrap().iter() {
+                listener(&display);
+            }
+        }
+        for listener in self.remote_listeners.lock().unwrap().iter() {
+            listener(&remote);
+        }
+    }
+
+    /// Sets who runs the commands the store can't run alone (service items,
+    /// verses): the console. Replaces any earlier operator.
+    pub fn set_operator(&self, operator: impl Fn(Command, Reply) + Send + Sync + 'static) {
+        *self.operator.lock().unwrap() = Some(Arc::new(operator));
+    }
+
+    /// Runs `cmd` and calls `reply` with the result once: straight away for
+    /// slide and blank commands, later (maybe from another thread) for those
+    /// the operator runs. Fails if there is no operator.
+    pub fn command(&self, cmd: Command, reply: impl FnOnce(Result<Outcome, String>) + Send + 'static) {
+        match cmd {
+            Command::Next => self.next(),
+            Command::Previous => self.previous(),
+            Command::Goto { slide } => {
+                let len = self.live.lock().unwrap().slides.len();
+                if slide >= len {
+                    return reply(Err(format!("There is no slide {} (the live item has {len}).", slide + 1)));
+                }
+                self.go_to(slide);
+            }
+            Command::Blank { mode } => self.set_blank(mode),
+            Command::ToggleBlank { mode } => self.toggle_blank(mode),
+            Command::Item { .. } | Command::Verse { .. } => {
+                let operator = self.operator.lock().unwrap().clone();
+                return match operator {
+                    Some(operator) => operator(cmd, Box::new(reply)),
+                    None => reply(Err("The console isn't running.".into())),
+                };
+            }
+        }
+        reply(Ok(Outcome::Done));
     }
 
     pub fn snapshot(&self) -> LiveSnapshot {
@@ -220,17 +302,20 @@ impl Store {
     /// Applies `change`, which returns whether it changed anything; if so,
     /// bumps the revision and notifies listeners.
     fn update(&self, change: impl FnOnce(&mut Live) -> bool) {
-        let state = {
+        let (state, remote) = {
             let mut live = self.live.lock().unwrap();
             if !change(&mut live) {
                 return;
             }
             live.revision += 1;
             live.changed_at_ms = now_ms();
-            live.display_state()
+            (live.display_state(), live.remote_state())
         };
         for listener in self.listeners.lock().unwrap().iter() {
             listener(&state);
+        }
+        for listener in self.remote_listeners.lock().unwrap().iter() {
+            listener(&remote);
         }
     }
 }
@@ -244,12 +329,30 @@ impl Live {
         let theme = self.theme();
         DisplayState {
             slide: self.slides.get(self.current).cloned(),
+            next: self.slides.get(self.current + 1).cloned(),
+            up_next: self.view.up_next(),
             blank: self.blank,
             theme: theme.clone(),
             css_vars: theme.css_vars(),
             transition: Transition::of(theme),
             revision: self.revision,
             changed_at_ms: self.changed_at_ms,
+        }
+    }
+
+    fn remote_state(&self) -> RemoteState {
+        let title = match &self.item {
+            LiveItem::Song(song) => song.title.clone(),
+            LiveItem::Passage { title, .. } => title.clone(),
+        };
+        RemoteState {
+            // Both counters only grow, so their sum does too.
+            revision: self.revision + self.view_revision,
+            title,
+            slides: self.slides.clone(),
+            current: self.current,
+            blank: self.blank,
+            view: self.view.clone(),
         }
     }
 }
@@ -397,5 +500,111 @@ mod tests {
         assert_eq!(revisions.load(Ordering::SeqCst), 4);
         s.set_item_theme(None);
         assert_eq!(s.theme().name, "Default");
+    }
+
+    /// Runs `cmd` on `s` and returns its result (the reply comes straight back
+    /// for store commands and for the synchronous test operators below).
+    fn run(s: &Store, cmd: Command) -> Result<Outcome, String> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        s.command(cmd, move |r| tx.send(r).unwrap());
+        rx.recv_timeout(std::time::Duration::from_secs(1)).expect("exactly one reply")
+    }
+
+    #[test]
+    fn store_commands_move_slides_and_blank() {
+        let s = store();
+        // (command, expected result, current slide after, blank after)
+        let table: Vec<(Command, Result<Outcome, String>, usize, Blank)> = vec![
+            (Command::Next, Ok(Outcome::Done), 1, Blank::None),
+            (Command::Next, Ok(Outcome::Done), 2, Blank::None),
+            (Command::Previous, Ok(Outcome::Done), 1, Blank::None),
+            (Command::Goto { slide: 4 }, Ok(Outcome::Done), 4, Blank::None),
+            (Command::Goto { slide: 99 }, Err("There is no slide 100 (the live item has 7).".into()), 4, Blank::None),
+            (Command::Blank { mode: Blank::Black }, Ok(Outcome::Done), 4, Blank::Black),
+            (Command::Blank { mode: Blank::Black }, Ok(Outcome::Done), 4, Blank::Black),
+            (Command::ToggleBlank { mode: Blank::Black }, Ok(Outcome::Done), 4, Blank::None),
+            (Command::ToggleBlank { mode: Blank::Logo }, Ok(Outcome::Done), 4, Blank::Logo),
+            (Command::Blank { mode: Blank::None }, Ok(Outcome::Done), 4, Blank::None),
+            (Command::Goto { slide: 0 }, Ok(Outcome::Done), 0, Blank::None),
+            (Command::Previous, Ok(Outcome::Done), 0, Blank::None),
+        ];
+        assert_eq!(s.snapshot().slides.len(), 7);
+        for (cmd, result, current, blank) in table {
+            let label = format!("{cmd:?}");
+            assert_eq!(run(&s, cmd), result, "{label}");
+            let snap = s.snapshot();
+            assert_eq!((snap.current, snap.blank), (current, blank), "{label}");
+        }
+    }
+
+    #[test]
+    fn operator_commands_need_an_operator() {
+        let s = store();
+        let cmd = Command::Item { item: 0, slide: 0 };
+        assert_eq!(run(&s, cmd.clone()), Err("The console isn't running.".into()));
+
+        // The operator gets the command and puts things live through the store.
+        let store2 = s.clone();
+        s.set_operator(move |cmd, reply| match cmd {
+            Command::Item { item: 0, slide } => {
+                store2.load_song(crate::sample_song(), slide);
+                reply(Ok(Outcome::Done));
+            }
+            Command::Verse { reference, .. } => reply(Ok(Outcome::Passage { title: reference, slides: Vec::new() })),
+            _ => reply(Err("no such item".into())),
+        });
+        let rev = s.snapshot().revision;
+        assert_eq!(run(&s, Command::Item { item: 0, slide: 2 }), Ok(Outcome::Done));
+        assert_eq!((s.snapshot().current, s.snapshot().revision), (2, rev + 1));
+        assert_eq!(run(&s, Command::Item { item: 5, slide: 0 }), Err("no such item".into()));
+        let verse = Command::Verse { reference: "Jn 3:16".into(), translation: None, live: false };
+        assert_eq!(run(&s, verse), Ok(Outcome::Passage { title: "Jn 3:16".into(), slides: Vec::new() }));
+        // Store commands never reach the operator.
+        assert_eq!(run(&s, Command::Next), Ok(Outcome::Done));
+        assert_eq!(s.snapshot().current, 3);
+    }
+
+    #[test]
+    fn remote_listeners_see_live_and_view_changes() {
+        let s = store();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let displays = Arc::new(AtomicU64::new(0));
+        {
+            let seen = seen.clone();
+            s.subscribe_remote(move |st| seen.lock().unwrap().push((st.revision, st.current, st.view.items.len())));
+            let displays = displays.clone();
+            s.subscribe(move |_| {
+                displays.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+        s.next();
+        let entry = |t: &str| crate::ServiceEntry { title: t.into(), kind: "song" };
+        let view = RemoteView { service: "Sunday".into(), items: vec![entry("A"), entry("B")], cued: Some(0), ..Default::default() };
+        s.set_remote_view(view.clone());
+        s.set_remote_view(view.clone()); // unchanged: nothing
+        assert_eq!(displays.load(Ordering::SeqCst), 2, "up next changed, so the stage view hears of it");
+        assert_eq!(s.display_state().up_next.as_deref(), Some("A"));
+        // A view change that leaves "up next" alone isn't a display change.
+        s.set_remote_view(RemoteView { service: "Sunday 10am".into(), ..view });
+        assert_eq!(displays.load(Ordering::SeqCst), 2);
+
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen.len(), 3);
+        assert!(seen.windows(2).all(|w| w[0].0 < w[1].0), "revisions only grow: {seen:?}");
+        assert_eq!((seen[0].1, seen[1].2), (1, 2));
+        let st = s.remote_state();
+        assert_eq!((st.title.as_str(), st.view.service.as_str(), st.revision), ("Blessed Assurance", "Sunday 10am", seen[2].0));
+        let json = serde_json::to_value(&st).unwrap();
+        assert_eq!(json["items"][1]["title"], "B");
+        assert_eq!(json["slides"][1]["label"], "C1");
+    }
+
+    #[test]
+    fn display_state_carries_the_next_slide() {
+        let s = store();
+        let st = s.display_state();
+        assert_eq!((st.slide.unwrap().label, st.next.unwrap().label), ("V1".into(), "C1".into()));
+        s.go_to(s.snapshot().slides.len() - 1);
+        assert_eq!(s.display_state().next, None);
     }
 }

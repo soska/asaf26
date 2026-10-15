@@ -1,0 +1,197 @@
+/* Asaf remote (/remote): a phone-sized control surface. */
+:root {
+  color-scheme: dark;
+  --bg: #14141c;
+  --panel: #1e1e28;
+  --line: #2e2e3a;
+  --fg: #f2f2f5;
+  --dim: #9a9aa8;
+  --primary: #4d8dff;
+  --danger: #ff5a5a;
+  --ok: #3ddc84;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.4; }
+button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+input, select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  min-width: 0;
+}
+
+/* ---- PIN ---------------------------------------------------------------- */
+
+#pin {
+  max-width: 320px;
+  margin: 18vh auto 0;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#pin h1 { font-size: 22px; margin: 0 0 8px; }
+#pin input { font-size: 24px; letter-spacing: 0.3em; text-align: center; }
+
+.error { color: var(--danger); min-height: 1.4em; margin: 0; }
+.muted { color: var(--dim); }
+.empty { color: var(--dim); text-align: center; padding: 24px 0; margin: 0; }
+
+/* ---- layout ------------------------------------------------------------- */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.live-line, .sub-line, .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-line { font-weight: 600; }
+.sub-line { color: var(--dim); font-size: 14px; margin-top: 2px; justify-content: space-between; }
+
+#dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+#dot.on { background: var(--ok); }
+.tag { flex: none; color: var(--danger); font-size: 12px; font-weight: 700; }
+#title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#blank-state.on { color: var(--danger); font-weight: 600; }
+
+nav {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+}
+nav button { flex: 1; min-height: 38px; }
+nav button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+main {
+  flex: 1;
+  padding: 0 16px 96px;
+}
+
+h2 { flex: 1; font-size: 17px; margin: 8px 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+ol { list-style: none; margin: 0; padding: 0; }
+
+/* Slide cards: the live item's slides, or a looked-up passage. */
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.cards li {
+  /* Scrolled to clear of the sticky header and the fixed controls. */
+  scroll-margin: 96px 0 100px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+}
+.cards li.on { border-color: var(--danger); }
+.cards .label { font-size: 12px; font-weight: 700; color: var(--dim); margin-bottom: 2px; }
+.cards li.on .label { color: var(--danger); }
+.cards .lines { white-space: pre-line; }
+#verse-slides li { cursor: default; }
+
+/* Service items: tap to choose, then "Go live". */
+#items { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+#items li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+}
+#items .n { flex: none; width: 1.6em; color: var(--dim); text-align: right; font-size: 14px; }
+#items li.live .n { color: var(--danger); }
+#items .what { flex: 1; min-width: 0; }
+#items .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#items .k { font-size: 13px; color: var(--dim); }
+#items li.cued { border-color: var(--primary); }
+#items li .go { display: none; flex: none; }
+#items li.chosen .go { display: block; }
+
+#tab-bible .row { margin-top: 8px; }
+#bible { flex: none; max-width: 40%; }
+#reference { flex: 1; }
+#verse .row button { flex: 1; }
+#verse-title { margin: 12px 0 8px; }
+
+/* Always-there controls, thumb-sized. */
+footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1.4fr;
+  gap: 6px;
+  padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+footer button { min-height: 56px; padding: 0 4px; font-weight: 600; }
+footer #prev, footer #next { font-size: 22px; }
+footer button.on { background: var(--danger); border-color: var(--danger); color: #000; }
+
+#toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  z-index: 3;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--danger);
+  color: #000;
+  font-weight: 600;
+}
+
+@media (min-width: 720px) {
+  main, header, nav { max-width: 720px; width: 100%; margin: 0 auto; }
+  footer { max-width: 720px; margin: 0 auto; }
+}

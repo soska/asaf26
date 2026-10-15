@@ -8,6 +8,7 @@ mod console;
 mod editor;
 mod i18n;
 mod preview;
+mod remote;
 mod service;
 mod settings;
 mod slides;

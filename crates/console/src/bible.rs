@@ -118,6 +118,7 @@ impl Console {
         if !is_reference(&self.bible.input.read(cx).value()) {
             self.bible_text_changed(cx);
         }
+        self.publish_remote_view();
         cx.notify();
     }
 

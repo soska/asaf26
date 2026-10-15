@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
-use asaf_console::{Console, ImportOpenLp, OpenSettings, OpenThemes, ServiceSession};
+use asaf_console::{Console, ImportOpenLp, OpenSettings, OpenThemes, ServiceSession, SettingsChanged};
 use asaf_core::{Song, Store, sample_song};
 use asaf_library::Library;
 use asaf_library::service::{AUTOSAVE_FILE, restore_autosave};
@@ -206,17 +206,36 @@ fn run_app(library: Library) -> ExitCode {
 
     // Nothing is live until the operator picks a song; then it shows in the default theme.
     let store = Store::new(Song::default(), library.default_theme().unwrap_or_default());
-    let media = library.media_dir().map(|d| d.to_path_buf());
-    let server = match asaf_server::start(store.clone(), port, media) {
-        Ok(server) => server,
+    let config = asaf_server::Config {
+        port,
+        lan: settings.lan,
+        media_dir: library.media_dir().map(|d| d.to_path_buf()),
+        pin: settings.remote_pin.clone(),
+    };
+    let server = match asaf_server::start_with(store.clone(), config) {
+        Ok(server) => Arc::new(server),
         Err(err) => {
-            eprintln!("asaf: cannot listen on 127.0.0.1:{port}: {err}");
+            let host = if settings.lan { "0.0.0.0" } else { "127.0.0.1" };
+            eprintln!("asaf: cannot listen on {host}:{port}: {err}");
             return ExitCode::FAILURE;
         }
     };
     let url = server.display_url();
     println!("asaf: library at {}", data_dir().join("asaf.sqlite").display());
     println!("asaf: display page at {url} (add ?debug for latency overlay)");
+    println!(
+        "asaf: stage view at {}, OBS lower thirds at {}, remote at {}",
+        server.local_url("/stage"),
+        server.local_url("/obs"),
+        server.local_url("/remote")
+    );
+    // Phones need the LAN address; without LAN access only this machine can connect.
+    let remote_url = server.lan_url("/remote");
+    match &remote_url {
+        Some(lan) => println!("asaf: remote for phones on this network at {lan}"),
+        None if server.is_lan() => eprintln!("asaf: LAN access is on, but this machine has no network address"),
+        None => {}
+    }
     let library = Arc::new(Mutex::new(library));
     let session = restore_service();
 
@@ -236,8 +255,13 @@ fn run_app(library: Library) -> ExitCode {
 
         Projector::init(url.clone(), projector_on_main, settings.display_uuid.clone(), cx);
         match Console::open(store, library, url, session, cx) {
-            // Closing the console ends the app; the projector can't be operated without it.
-            Ok(console) => cx.observe_release(&console, |_, cx| cx.quit()).detach(),
+            Ok(console) => {
+                // Closing the console ends the app; the projector can't be operated without it.
+                cx.observe_release(&console, |_, cx| cx.quit()).detach();
+                console.update(cx, |c, cx| c.set_remote_url(remote_url, cx));
+                // A new PIN applies at once; LAN access from the next start.
+                cx.subscribe(&console, move |_, SettingsChanged(s), _| server.set_pin(&s.remote_pin)).detach();
+            }
             Err(err) => {
                 eprintln!("asaf: could not open console: {err:#}");
                 cx.quit();

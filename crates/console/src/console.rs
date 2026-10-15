@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use asaf_core::{Blank, LiveSnapshot, ServiceItem, Song, Store, Theme};
+use asaf_core::{Blank, Command, LiveSnapshot, ServiceItem, Song, Store, Theme};
 use asaf_library::SongSummary;
 use asaf_projector::Projector;
 use gpui::component::button::{Button, ButtonVariants as _};
@@ -10,9 +10,9 @@ use gpui::component::{ActiveTheme as _, Disableable as _, Selectable as _, Sizab
 use gpui::component::notification::Notification;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, FocusHandle, Focusable, FontWeight,
+    AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
     InteractiveElement, IntoElement, ParentElement, Render, ScrollHandle, ScrollStrategy, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, TestSupportExt as _, TitlebarOptions, UniformListScrollHandle, Window,
+    StatefulInteractiveElement, Styled, Subscription, Task, TestSupportExt as _, TitlebarOptions, UniformListScrollHandle, Window,
     WindowBounds,
     WindowOptions, div, px, size, uniform_list,
 };
@@ -72,7 +72,11 @@ pub struct Console {
     live_scroll: ScrollHandle,
     /// The live item and slide the live pane last scrolled to.
     live_scrolled_to: Option<(String, usize)>,
-    _subscriptions: Vec<Subscription>,
+    /// Where phones reach the remote page, when it's open to the LAN.
+    pub(crate) remote_url: Option<SharedString>,
+    pub(crate) _subscriptions: Vec<Subscription>,
+    /// Running remote commands, and redrawing when the store changes elsewhere.
+    pub(crate) _tasks: Vec<Task<()>>,
 }
 
 impl Console {
@@ -181,8 +185,11 @@ impl Console {
             settings_window: None,
             live_scroll: ScrollHandle::new(),
             live_scrolled_to: None,
+            remote_url: None,
             _subscriptions: subscriptions,
+            _tasks: Vec::new(),
         };
+        console.serve_remote(cx);
         console.refresh_themes(cx);
         console.refresh_search(cx);
         console.refresh_bibles(None, cx);
@@ -258,8 +265,9 @@ impl Console {
         match SettingsWindow::open(self.library.clone(), cx) {
             Ok((handle, view)) => {
                 self.settings_window = Some(handle);
-                self._subscriptions.push(cx.subscribe(&view, |this, _, _: &SettingsChanged, cx| {
-                    this.themes_changed(&ThemesChanged::default(), cx)
+                self._subscriptions.push(cx.subscribe(&view, |this, _, change: &SettingsChanged, cx| {
+                    this.themes_changed(&ThemesChanged::default(), cx);
+                    cx.emit(change.clone()); // the app applies the remote's PIN
                 }));
                 self._subscriptions.push(cx.subscribe(&view, |this, _, _: &LibraryChanged, cx| this.library_changed(cx)));
             }
@@ -370,8 +378,9 @@ impl Console {
         }
     }
 
-    fn act(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&Store)) {
-        f(&self.store);
+    /// Runs a slide or blank command through the store, as the remote does.
+    fn command(&mut self, cmd: Command, cx: &mut Context<Self>) {
+        self.store.command(cmd, |_| {});
         cx.notify();
     }
 
@@ -423,6 +432,9 @@ impl Console {
     }
 }
 
+/// Settings changed in the settings window, passed on for the app.
+impl EventEmitter<SettingsChanged> for Console {}
+
 impl Focusable for Console {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
@@ -438,14 +450,12 @@ impl Render for Console {
         div()
             .key_context("Console")
             .track_focus(&self.focus)
-            .on_action(cx.listener(|this, _: &Next, _, cx| this.act(cx, Store::next)))
-            .on_action(cx.listener(|this, _: &Previous, _, cx| this.act(cx, Store::previous)))
-            .on_action(cx.listener(|this, _: &BlankBlack, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Black))))
-            .on_action(cx.listener(|this, _: &BlankBackground, _, cx| {
-                this.act(cx, |s| s.toggle_blank(Blank::Background))
-            }))
-            .on_action(cx.listener(|this, _: &BlankLogo, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Logo))))
-            .on_action(cx.listener(|this, _: &Unblank, _, cx| this.act(cx, |s| s.set_blank(Blank::None))))
+            .on_action(cx.listener(|this, _: &Next, _, cx| this.command(Command::Next, cx)))
+            .on_action(cx.listener(|this, _: &Previous, _, cx| this.command(Command::Previous, cx)))
+            .on_action(cx.listener(|this, _: &BlankBlack, _, cx| this.command(Command::ToggleBlank { mode: Blank::Black }, cx)))
+            .on_action(cx.listener(|this, _: &BlankBackground, _, cx| this.command(Command::ToggleBlank { mode: Blank::Background }, cx)))
+            .on_action(cx.listener(|this, _: &BlankLogo, _, cx| this.command(Command::ToggleBlank { mode: Blank::Logo }, cx)))
+            .on_action(cx.listener(|this, _: &Unblank, _, cx| this.command(Command::Blank { mode: Blank::None }, cx)))
             .on_action(cx.listener(|this, _: &GoLive, window, cx| this.go_live_previewed(window, cx)))
             .on_action(cx.listener(|this, _: &NextItem, _, cx| this.move_cue(1, cx)))
             .on_action(cx.listener(|this, _: &PreviousItem, _, cx| this.move_cue(-1, cx)))
@@ -823,7 +833,7 @@ impl Console {
                     .gap_2()
                     .children(live.slides.iter().enumerate().map(|(i, slide)| {
                         slide_card(("live-slide", i), slide, i == live.current, &look, cx)
-                            .on_click(cx.listener(move |this, _, _, cx| this.act(cx, |s| s.go_to(i))))
+                            .on_click(cx.listener(move |this, _, _, cx| this.command(Command::Goto { slide: i }, cx)))
                     })),
             )
             .child(
@@ -856,6 +866,9 @@ impl Console {
                             .child(l.t("→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live"))
                             .child(l.t("B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text"))
                             .child(l.t("⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save"))
+                            .when_some(self.remote_url.clone(), |d, url| {
+                                d.child(div().id("remote-url").truncate().child(format!("{} {url}", l.t("Remote for phones:"))).test_support())
+                            })
                             .child(
                                 h_flex()
                                     .gap_1()
@@ -896,32 +909,32 @@ impl Console {
                 Button::new("prev")
                     .label(l.t("◀  Previous"))
                     .disabled(at_start)
-                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, Store::previous))),
+                    .on_click(cx.listener(|this, _, _, cx| this.command(Command::Previous, cx))),
             )
             .child(
                 Button::new("next")
                     .label(l.t("Next  ▶"))
                     .disabled(at_end)
-                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, Store::next))),
+                    .on_click(cx.listener(|this, _, _, cx| this.command(Command::Next, cx))),
             )
             .child(div().flex_1())
             .child(
                 Button::new("hide-text")
                     .label(l.t("Hide text"))
                     .when(live.blank == Blank::Background, |b| b.danger())
-                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Background)))),
+                    .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Background }, cx))),
             )
             .child(
                 Button::new("logo")
                     .label(l.t("Logo"))
                     .when(live.blank == Blank::Logo, |b| b.danger())
-                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Logo)))),
+                    .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Logo }, cx))),
             )
             .child(
                 Button::new("blank")
                     .label(l.t("Blank"))
                     .when(live.blank == Blank::Black, |b| b.danger())
-                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Black)))),
+                    .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Black }, cx))),
             )
     }
 }
@@ -1441,10 +1454,17 @@ pub(crate) mod tests {
         };
         with_window(cx, h, |w, cx| w.press("enter", cx));
         assert_eq!(shown(&store), ("Default".into(), "#ffffff".into(), Some("Blessed assurance, Jesus is mine!".into())));
-        let rev = store.snapshot().revision;
+        // Every state the displays get: the new slide never shows in the old theme.
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let sink = sent.clone();
+        store.subscribe(move |st| sink.lock().unwrap().push((st.theme.name.clone(), st.slide.as_ref().map(|s| s.lines[0].clone()))));
         with_window(cx, h, |w, cx| w.press("enter", cx));
         assert_eq!(shown(&store), ("Scripture".into(), "#ffee00".into(), Some("Señor mi Dios".into())));
-        assert_eq!(store.snapshot().revision, rev + 1, "the slide and its theme change in one revision");
+        let sent = sent.lock().unwrap().clone();
+        assert!(!sent.is_empty());
+        for (theme, line) in sent {
+            assert_eq!((theme.as_str(), line.as_deref()), ("Scripture", Some("Señor mi Dios")), "the slide and its theme change in one revision");
+        }
         assert_eq!(store.snapshot().theme_name, "Scripture");
         with_window(cx, h, |w, cx| w.press("enter", cx));
         assert_eq!(shown(&store).0, "Default");

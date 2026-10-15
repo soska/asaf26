@@ -13,8 +13,13 @@ asaf-projector.workspace = true
 asaf-fonts.workspace = true
 gpui.workspace = true
 anyhow = "1"
+futures = "0.3"
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 tempfile = "3"
 rusqlite = "0.40.2"
+asaf-server.workspace = true
+tokio.workspace = true
+tokio-tungstenite = "0.28"
+serde_json.workspace = true

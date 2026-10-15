@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{Slide, Theme};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Blank {
     #[default]
     None,
@@ -37,6 +37,10 @@ impl Transition {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct DisplayState {
     pub slide: Option<Slide>,
+    /// The slide after it in the live item, for the stage view.
+    pub next: Option<Slide>,
+    /// The title of the service item after the live one, for the stage view.
+    pub up_next: Option<String>,
     pub blank: Blank,
     pub theme: Theme,
     /// The theme as CSS custom properties (`[name, value]` pairs) for the page to set.

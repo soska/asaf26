@@ -69,6 +69,8 @@ fn themes_and_settings_survive_restart() {
         port: 4600,
         default_theme: "Night".into(),
         language: Language::Spanish,
+        lan: true,
+        remote_pin: "2468".into(),
     };
     {
         let mut lib = Library::open(&path).unwrap();

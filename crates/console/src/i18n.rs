@@ -49,6 +49,21 @@ impl Lang {
 
 /// English → Spanish.
 const SPANISH: &[(&str, &str)] = &[
+    ("Remote for phones:", "Control remoto para móviles:"),
+    ("Remote control", "Control remoto"),
+    ("Allow phones and tablets on this network", "Permitir móviles y tabletas de esta red"),
+    (
+        "Takes effect the next time Asaf starts; the live pane then shows the address to open on a phone. Off: only this computer can reach the display and remote pages.",
+        "Se aplica la próxima vez que Asaf se inicie; el panel en vivo muestra entonces la dirección para abrir en un móvil. Desactivado: solo esta computadora puede abrir las páginas de pantalla y control remoto.",
+    ),
+    ("PIN", "PIN"),
+    ("No PIN", "Sin PIN"),
+    ("Use 4 to 8 digits, or leave it empty for no PIN.", "Usa de 4 a 8 dígitos, o déjalo vacío para no usar PIN."),
+    (
+        "The remote asks for it before it can control anything. Changing it applies at once.",
+        "El control remoto lo pide antes de poder controlar nada. Cambiarlo se aplica al instante.",
+    ),
+    ("Without a PIN, anyone on the network can control the projector.", "Sin PIN, cualquiera en la red puede controlar el proyector."),
     ("Search title, lyrics or author", "Buscar título, letra o autor"),
     ("Restored from the last session:", "Restaurado de la sesión anterior:"),
     ("Songs", "Canciones"),

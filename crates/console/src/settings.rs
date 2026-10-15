@@ -1,11 +1,12 @@
 //! Settings window: the console's language, the default theme, the server
-//! port and migration from OpenLP. Every change is saved to the library at
+//! port, remote access (LAN and PIN) and migration from OpenLP. Every change is saved to the library at
 //! once and announced with [`SettingsChanged`].
 
 use anyhow::Result;
-use asaf_core::{Language, Settings};
+use asaf_core::{Language, Settings, valid_pin};
 use asaf_projector::Projector;
 use gpui::component::button::Button;
+use gpui::component::checkbox::Checkbox;
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
 use gpui::component::{ActiveTheme as _, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
@@ -32,6 +33,8 @@ pub struct SettingsWindow {
     theme_names: Vec<String>,
     pub(crate) port: Entity<InputState>,
     port_problem: Option<&'static str>,
+    pub(crate) pin: Entity<InputState>,
+    pin_problem: Option<&'static str>,
     focus: FocusHandle,
     _subscriptions: Vec<Subscription>,
 }
@@ -63,7 +66,17 @@ impl SettingsWindow {
         };
         let port_text = settings.port.to_string();
         let port = cx.new(|cx| InputState::new(window, cx).default_value(port_text));
+        let pin_text = settings.remote_pin.clone();
+        let pin = cx.new(|cx| InputState::new(window, cx).placeholder(lang(cx).t("No PIN")).default_value(pin_text));
         let subscriptions = vec![
+            cx.subscribe_in(&pin, window, |this, _, event: &InputEvent, window, cx| match event {
+                InputEvent::PressEnter { .. } | InputEvent::Blur => this.save_pin(window, cx),
+                InputEvent::Change => {
+                    this.pin_problem = None;
+                    cx.notify();
+                }
+                _ => {}
+            }),
             cx.subscribe_in(&port, window, |this, _, event: &InputEvent, window, cx| match event {
                 InputEvent::PressEnter { .. } | InputEvent::Blur => this.save_port(window, cx),
                 InputEvent::Change => {
@@ -75,7 +88,17 @@ impl SettingsWindow {
             cx.observe_global::<UiLanguage>(|_, cx| cx.notify()),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
         ];
-        Self { library, settings, theme_names, port, port_problem: None, focus: cx.focus_handle(), _subscriptions: subscriptions }
+        Self {
+            library,
+            settings,
+            theme_names,
+            port,
+            port_problem: None,
+            pin,
+            pin_problem: None,
+            focus: cx.focus_handle(),
+            _subscriptions: subscriptions,
+        }
     }
 
     /// Saves `change` applied to the settings, and announces it.
@@ -110,6 +133,20 @@ impl SettingsWindow {
                 self.port_problem = Some(en("Use a number from 1024 to 65535."));
                 cx.notify();
             }
+        }
+    }
+}
+
+impl SettingsWindow {
+    /// Saves the remote's PIN: 4 to 8 digits, or empty for none. It applies
+    /// at once (remotes using the old one must enter the new one).
+    pub(crate) fn save_pin(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let pin = self.pin.read(cx).value().trim().to_string();
+        if !valid_pin(&pin) {
+            self.pin_problem = Some(en("Use 4 to 8 digits, or leave it empty for no PIN."));
+            cx.notify();
+        } else if pin != self.settings.remote_pin {
+            self.change(window, cx, |s| s.remote_pin = pin);
         }
     }
 }
@@ -194,6 +231,33 @@ impl Render for SettingsWindow {
                     .child(note(en("Takes effect the next time Asaf starts. ASAF_PORT overrides it."))),
             )
             .child(
+                section(en("Remote control"))
+                    .child(
+                        Checkbox::new("remote-lan")
+                            .label(l.t("Allow phones and tablets on this network"))
+                            .checked(self.settings.lan)
+                            .on_click(cx.listener(|this, checked: &bool, window, cx| {
+                                let lan = *checked;
+                                this.change(window, cx, |s| s.lan = lan)
+                            })),
+                    )
+                    .child(note(en("Takes effect the next time Asaf starts; the live pane then shows the address to open on a phone. Off: only this computer can reach the display and remote pages.")))
+                    .child(
+                        h_flex()
+                            .gap_2()
+                            .child(div().child(l.t("PIN")))
+                            .child(div().w(px(120.)).child(Input::new(&self.pin).small()))
+                            .children(self.pin_problem.map(|p| div().text_xs().text_color(theme.danger).child(l.t(p)))),
+                    )
+                    .child(note(en("The remote asks for it before it can control anything. Changing it applies at once.")))
+                    .children((self.settings.lan && self.settings.remote_pin.is_empty()).then(|| {
+                        div()
+                            .text_xs()
+                            .text_color(theme.danger)
+                            .child(l.t("Without a PIN, anyone on the network can control the projector."))
+                    })),
+            )
+            .child(
                 section(en("Migrate from OpenLP"))
                     .child(note(en("Imports every song and Bible from an OpenLP data folder in one step. OpenLP's files aren't changed; songs and Bibles already here are skipped.")))
                     .child(h_flex().child(Button::new("openlp-import").small().label(l.t("Import from OpenLP…")).on_click(cx.listener(|this, _, window, cx| {
@@ -267,5 +331,51 @@ mod tests {
         assert_eq!(events.len(), 4);
         assert_eq!(events[2].port, 5050);
         assert_eq!((events[2].language, events[2].default_theme.as_str()), (Language::Spanish, "Night"));
+    }
+
+    #[gpui::test]
+    fn remote_access_lan_and_pin(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui::init(cx);
+            crate::init(cx);
+        });
+        let library: SharedLibrary = Arc::new(Mutex::new(Library::open_in_memory().unwrap()));
+        let (h, view) = cx.update(|cx| SettingsWindow::open(library.clone(), cx).unwrap());
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let sink = events.clone();
+        cx.update(|cx| cx.subscribe(&view, move |_, e: &SettingsChanged, _| sink.borrow_mut().push(e.0.clone())).detach());
+        let with = |cx: &mut TestAppContext, f: &dyn Fn(&mut Window, &mut App)| cx.update(|cx| h.update(cx, |_, w, cx| f(w, cx)).unwrap());
+        let saved = || library.lock().unwrap().settings().unwrap();
+
+        // LAN access is off until switched on (it applies at the next start).
+        assert!(!saved().lan);
+        with(cx, &|w, cx| {
+            w.render_frame(cx);
+            w.click("remote-lan", cx);
+        });
+        assert!(saved().lan);
+
+        // PINs: 4 to 8 digits, or empty for none; bad ones aren't saved.
+        let pin = cx.update(|cx| view.read(cx).pin.clone());
+        for (text, stored, problem) in [("12", "", true), ("12ab", "", true), ("2468", "2468", false), ("123456789", "2468", true), ("", "", false)] {
+            with(cx, &|w, cx| {
+                pin.update(cx, |s, cx| s.focus(w, cx));
+                w.press("cmd-a", cx);
+                w.press("backspace", cx);
+                w.input(text, cx);
+                w.press("enter", cx);
+            });
+            assert_eq!(saved().remote_pin, stored, "{text:?}");
+            assert_eq!(cx.update(|cx| view.read(cx).pin_problem.is_some()), problem, "{text:?}");
+        }
+        with(cx, &|w, cx| {
+            w.render_frame(cx);
+            w.click("remote-lan", cx);
+        });
+        assert!(!saved().lan);
+        // Each change was announced (the app applies a new PIN at once).
+        let events = events.borrow();
+        let pins: Vec<_> = events.iter().map(|e| (e.lan, e.remote_pin.as_str())).collect();
+        assert_eq!(pins, [(true, ""), (true, "2468"), (true, ""), (false, "")]);
     }
 }

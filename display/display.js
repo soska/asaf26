@@ -1,5 +1,6 @@
 // Asaf display page: renders whatever DisplayState the server pushes.
-// No build step, no framework. Never sends commands (protocol v0).
+// No build step, no framework. Never sends commands (the remote has its own
+// endpoint). Also drives the OBS variant (/obs, <html class="obs">).
 (() => {
   "use strict";
 
@@ -9,6 +10,9 @@
   const logo = document.getElementById("logo");
   const debugEl = document.getElementById("debug");
   const debug = new URLSearchParams(location.search).has("debug");
+  // Lower thirds: smaller text, in the band obs.css sets, whatever the theme's size range.
+  const obs = root.classList.contains("obs");
+  const OBS_SIZE_VH = { min: 3, max: 6.5 };
   debugEl.hidden = !debug;
 
   let state = null;
@@ -41,8 +45,8 @@
     const safe = layer.querySelector(".safe");
     if (!text.firstChild) return;
     const vh = window.innerHeight / 100;
-    const min = state.theme.size_min_vh * vh;
-    const max = state.theme.size_max_vh * vh;
+    const min = (obs ? OBS_SIZE_VH.min : state.theme.size_min_vh) * vh;
+    const max = (obs ? OBS_SIZE_VH.max : state.theme.size_max_vh) * vh;
     const w = safe.clientWidth;
     const h = safe.clientHeight;
     const fits = (px) => {

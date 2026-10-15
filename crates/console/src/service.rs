@@ -366,6 +366,7 @@ impl Console {
     /// Looks the cued item up in the library and lays it out for the preview.
     pub(crate) fn resolve_cue(&mut self, cx: &mut Context<Self>) {
         self.service.resolved = self.service.cued().cloned().map(|item| self.resolve(&item));
+        self.publish_remote_view();
         cx.notify();
     }
 
@@ -416,19 +417,30 @@ impl Console {
     }
 
     /// Puts the cued item live at slide `index`, in its theme, and cues the
-    /// next item.
+    /// next item. Returns focus to live control.
     pub(crate) fn go_live_cued(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(r) = &self.service.resolved else { return };
+        match self.put_cued_live(index, cx) {
+            Ok(()) => {
+                self.preview_source = PreviewSource::Service;
+                self.focus.focus(window, cx);
+                cx.notify();
+            }
+            Err(why) => window.push_notification(Notification::error(why), cx),
+        }
+    }
+
+    /// Puts the cued item live at slide `index`, in its theme, and cues the
+    /// next item; or says why it can't. Focus and the preview stay as they
+    /// are (the remote uses this too).
+    pub(crate) fn put_cued_live(&mut self, index: usize, cx: &mut Context<Self>) -> Result<(), String> {
+        let Some(r) = &self.service.resolved else { return Err("Nothing is cued.".into()) };
         let theme = self.service.service.items.iter().find(|i| i.key == r.key).and_then(|i| self.item_theme(i));
         match &r.target {
             Target::Song(song) => self.store.load_song_themed((**song).clone(), index, theme),
             Target::Passage(passage) => {
                 self.store.load_passage_themed(passage.clone(), r.title.clone(), r.slides.clone(), index, theme)
             }
-            Target::Missing(why) => {
-                window.push_notification(Notification::error(why.clone()), cx);
-                return;
-            }
+            Target::Missing(why) => return Err(why.clone()),
         }
         self.service.live_key = Some(r.key);
         if let Some(i) = self.service.cursor
@@ -436,9 +448,8 @@ impl Console {
         {
             self.service.cursor = Some(i + 1);
         }
-        self.preview_source = PreviewSource::Service;
-        self.focus.focus(window, cx);
         self.cue_changed(cx);
+        Ok(())
     }
 
     /// ⏎ in live control. After the last item has gone live the cue stays
@@ -459,6 +470,7 @@ impl Console {
         if !self.service.service.items.is_empty() {
             self.preview_source = PreviewSource::Service;
         }
+        self.publish_remote_view();
         cx.notify();
     }
 

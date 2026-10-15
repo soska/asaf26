@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14141c">
+  <title>Asaf remote</title>
+  <link rel="stylesheet" href="/assets/remote.css">
+</head>
+<body>
+  <form id="pin" hidden>
+    <h1>Asaf remote</h1>
+    <label for="pin-input">PIN</label>
+    <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="8" required>
+    <button type="submit">Connect</button>
+    <p id="pin-error" class="error" role="alert"></p>
+  </form>
+
+  <div id="app" hidden>
+    <header>
+      <div class="live-line">
+        <span id="dot" title="Connection"></span>
+        <span class="tag">LIVE</span>
+        <span id="title">Nothing live yet.</span>
+      </div>
+      <div class="sub-line">
+        <span id="position"></span>
+        <span id="blank-state"></span>
+      </div>
+    </header>
+
+    <nav>
+      <button data-tab="slides" class="on">Slides</button>
+      <button data-tab="service">Service</button>
+      <button data-tab="bible">Bible</button>
+    </nav>
+
+    <main>
+      <section id="tab-slides">
+        <ol id="slides" class="cards"></ol>
+        <p id="no-slides" class="empty">Nothing is live yet.</p>
+      </section>
+
+      <section id="tab-service" hidden>
+        <div class="row">
+          <h2 id="service-name">Service</h2>
+          <button id="next-item" class="primary">Next item ▶</button>
+        </div>
+        <ol id="items"></ol>
+        <p id="no-items" class="empty">The service is empty.</p>
+      </section>
+
+      <section id="tab-bible" hidden>
+        <form id="verse">
+          <div class="row">
+            <select id="bible" aria-label="Translation"></select>
+            <input id="reference" type="search" placeholder="Jn 3:16-18" autocomplete="off" autocapitalize="off" enterkeyhint="search" aria-label="Reference">
+          </div>
+          <div class="row">
+            <button type="submit">Look up</button>
+            <button type="button" id="verse-live" class="primary" disabled>Go live</button>
+          </div>
+        </form>
+        <p id="verse-title" class="muted"></p>
+        <ol id="verse-slides" class="cards"></ol>
+      </section>
+    </main>
+
+    <footer>
+      <button id="prev" aria-label="Previous slide">◀</button>
+      <button data-blank="Background" aria-label="Hide text">Hide</button>
+      <button data-blank="Logo" aria-label="Logo">Logo</button>
+      <button data-blank="Black" aria-label="Blank to black">Black</button>
+      <button id="next" aria-label="Next slide">▶</button>
+    </footer>
+  </div>
+
+  <div id="toast" role="status" hidden></div>
+  <script src="/assets/remote.js"></script>
+</body>
+</html>
