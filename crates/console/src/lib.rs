@@ -1,10 +1,12 @@
-//! The operator console: song library, Bible lookup, slide preview, live
-//! control and the song editor. It drives the core store and never draws
-//! projected output.
+//! The operator console: song library and Bible lookup (the sources), the
+//! service list, preview and live panes, and the song editor. It drives the
+//! core store and never draws projected output.
 
 mod bible;
 mod console;
 mod editor;
+mod service;
+mod slides;
 mod transfer;
 
 use std::sync::{Arc, Mutex};
@@ -14,6 +16,7 @@ use gpui::{App, KeyBinding, actions};
 
 pub use console::Console;
 pub use editor::{SongEditor, SongSaved};
+pub use service::{AUTOSAVE_DELAY, ServiceSession};
 
 pub type SharedLibrary = Arc<Mutex<Library>>;
 
@@ -24,7 +27,19 @@ actions!(
         Previous,
         BlankBlack,
         BlankBackground,
+        BlankLogo,
         Unblank,
+        GoLive,
+        NextItem,
+        PreviousItem,
+        MoveItemUp,
+        MoveItemDown,
+        RemoveItem,
+        EditNotes,
+        NewService,
+        OpenService,
+        SaveService,
+        SaveServiceAs,
         FocusSearch,
         ShowSongs,
         ShowBible,
@@ -50,7 +65,20 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("pageup", Previous, live),
         KeyBinding::new("b", BlankBlack, live),
         KeyBinding::new("shift-b", BlankBackground, live),
+        KeyBinding::new("l", BlankLogo, live),
         KeyBinding::new("escape", Unblank, live),
+        // The service: ⏎ puts the cued item live and cues the next one.
+        KeyBinding::new("enter", GoLive, live),
+        KeyBinding::new("cmd-down", NextItem, live),
+        KeyBinding::new("cmd-up", PreviousItem, live),
+        KeyBinding::new("alt-down", MoveItemDown, live),
+        KeyBinding::new("alt-up", MoveItemUp, live),
+        KeyBinding::new("cmd-backspace", RemoveItem, live),
+        KeyBinding::new("cmd-i", EditNotes, Some("Console")),
+        KeyBinding::new("cmd-shift-n", NewService, Some("Console")),
+        KeyBinding::new("cmd-o", OpenService, Some("Console")),
+        KeyBinding::new("cmd-s", SaveService, Some("Console")),
+        KeyBinding::new("cmd-shift-s", SaveServiceAs, Some("Console")),
         KeyBinding::new("cmd-f", FocusSearch, Some("Console")),
         KeyBinding::new("cmd-l", FocusSearch, Some("Console")),
         KeyBinding::new("cmd-n", NewSong, Some("Console")),
@@ -64,6 +92,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("down", SelectNext, Some("BibleSearch > Input")),
         KeyBinding::new("up", SelectPrevious, Some("BibleSearch > Input")),
         KeyBinding::new("escape", LeaveSearch, Some("BibleSearch > Input")),
+        KeyBinding::new("escape", LeaveSearch, Some("ServiceItem > Input")),
         KeyBinding::new("cmd-s", SaveSong, Some("SongEditor")),
     ]);
 }

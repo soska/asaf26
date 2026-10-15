@@ -10,6 +10,8 @@ pub enum Blank {
     Black,
     /// Hide the text, keep the theme background.
     Background,
+    /// Hide the text and show the theme's logo over the background.
+    Logo,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

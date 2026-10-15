@@ -4,6 +4,7 @@
 mod bible;
 mod import;
 mod migrations;
+pub mod service;
 
 use std::path::Path;
 use std::time::Duration;

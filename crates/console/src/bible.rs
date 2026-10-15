@@ -4,7 +4,7 @@
 use asaf_core::bible::passage_slides;
 use asaf_core::{
     Bible, BibleLayout, BibleVerse, BookNames, LiveSnapshot, Passage, RefError, RefRange, ReferencePlacement,
-    Slide, Theme, VerseRef, VersesPerSlide, format_reference, parse_reference,
+    ServiceItem, Slide, Theme, VerseRef, VersesPerSlide, format_reference, parse_reference,
 };
 use asaf_library::VerseHit;
 use gpui::component::button::{Button, ButtonVariants as _};
@@ -18,6 +18,7 @@ use gpui::{
 };
 
 use crate::console::Console;
+use crate::slides::slide_card;
 use crate::transfer;
 
 const HIT_LIMIT: usize = 500;
@@ -102,6 +103,8 @@ impl Console {
             .and_then(|id| self.bible.bibles.iter().position(|b| b.id == Some(id)))
             .or((!self.bible.bibles.is_empty()).then_some(0));
         self.choose_bible(index, cx);
+        // A service passage may have been waiting for this translation.
+        self.resolve_cue(cx);
     }
 
     /// Switches translation. The previewed passage and the search follow.
@@ -189,39 +192,68 @@ impl Console {
     /// Fetches `ranges` from the current translation into the preview.
     fn preview_ranges(&mut self, ranges: Vec<RefRange>, cx: &mut Context<Self>) -> bool {
         let Some(bible) = self.bible.bible().cloned() else { return false };
-        let Some(names) = &self.bible.names else { return false };
-        let bible_id = bible.id.unwrap_or_default();
-        let verses = match self.library.lock().unwrap().passage_verses(bible_id, &ranges) {
-            Ok(v) => v,
-            Err(e) => {
-                self.bible.status = Status::Error(format!("Can't read the Bible: {e}"));
-                return false;
+        match self.lay_out_passage(&bible, ranges) {
+            Ok(preview) => {
+                let (verses, slides) = (preview.verses.len(), preview.slides.len());
+                self.bible.status = Status::Hint(format!(
+                    "{verses} verse{} on {slides} slide{} · ⏎ again to go live, ⇧⏎ to add to the service",
+                    if verses == 1 { "" } else { "s" },
+                    if slides == 1 { "" } else { "s" },
+                ));
+                self.bible.preview = Some(preview);
+                cx.notify();
+                true
             }
-        };
-        let reference = format_reference(&ranges, names, |b, c| asaf_core::bible::last_verse(&verses, b, c));
-        if verses.is_empty() {
-            self.bible.status = Status::Error(format!("{reference} isn't in {}.", bible.abbreviation));
-            self.bible.preview = None;
-            cx.notify();
-            return false;
+            Err(e) => {
+                self.bible.status = Status::Error(e);
+                self.bible.preview = None;
+                cx.notify();
+                false
+            }
         }
-        let slides = passage_slides(&verses, &ranges, names, &bible.abbreviation, &self.bible.layout, &Theme::default());
-        self.bible.status = Status::Hint(format!(
-            "{} verse{} on {} slide{} · ⏎ again to go live",
-            verses.len(),
-            if verses.len() == 1 { "" } else { "s" },
-            slides.len(),
-            if slides.len() == 1 { "" } else { "s" },
-        ));
-        self.bible.preview = Some(PassagePreview {
+    }
+
+    /// Fetches `ranges` from `bible` and lays them out with the current
+    /// layout. Errors are worded for the operator.
+    pub(crate) fn lay_out_passage(&self, bible: &Bible, ranges: Vec<RefRange>) -> Result<PassagePreview, String> {
+        let names = bible.names();
+        let bible_id = bible.id.unwrap_or_default();
+        let verses = self
+            .library
+            .lock()
+            .unwrap()
+            .passage_verses(bible_id, &ranges)
+            .map_err(|e| format!("Can't read the Bible: {e}"))?;
+        let reference = format_reference(&ranges, &names, |b, c| asaf_core::bible::last_verse(&verses, b, c));
+        if verses.is_empty() {
+            return Err(format!("{reference} isn't in {}.", bible.abbreviation));
+        }
+        let slides = passage_slides(&verses, &ranges, &names, &bible.abbreviation, &self.bible.layout, &Theme::default());
+        Ok(PassagePreview {
             passage: Passage { bible_id, ranges },
             reference,
             translation: bible.abbreviation.clone(),
             verses,
             slides,
-        });
-        cx.notify();
-        true
+        })
+    }
+
+    /// ⇧⏎ in the Bible box: adds the typed reference (or the chosen search
+    /// hit) to the service without showing it.
+    pub(crate) fn add_bible_to_service(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let text = self.bible.input.read(cx).value().trim().to_string();
+        let ok = if is_reference(&text) {
+            self.show_reference(&text, cx)
+        } else {
+            self.bible.selected_hit.is_some() && self.bible.preview.is_some()
+        };
+        if !ok {
+            return;
+        }
+        if let Some(p) = &self.bible.preview {
+            let item = ServiceItem::passage(p.passage.bible_id, p.translation.clone(), p.reference.clone(), p.passage.ranges.clone());
+            self.add_to_service(item, window, cx);
+        }
     }
 
     pub(crate) fn select_hit(&mut self, index: Option<usize>, cx: &mut Context<Self>) {
@@ -245,22 +277,26 @@ impl Console {
         self.select_hit(Some(i.clamp(0, self.bible.hits.len() as isize - 1) as usize), cx);
     }
 
-    /// Changes how passages are laid out. A live passage that is also in the
-    /// preview is updated in place, keeping its position.
+    /// Changes how passages are laid out: the preview, the cued service item
+    /// and a live passage all follow. A live passage keeps the verse that was
+    /// on screen.
     pub(crate) fn set_bible_layout(&mut self, layout: BibleLayout, cx: &mut Context<Self>) {
         self.bible.layout = layout;
-        let live = self.store.snapshot();
         if let (Some(p), Some(names)) = (&mut self.bible.preview, &self.bible.names) {
             p.slides = passage_slides(&p.verses, &p.passage.ranges, names, &p.translation, &layout, &Theme::default());
-            if live.passage.as_ref() == Some(&p.passage) {
-                // Keep the verse that was on screen on screen.
-                let index = live
-                    .slides
-                    .get(live.current)
-                    .and_then(|s| slide_with_verse_of(&p.slides, &s.label))
-                    .unwrap_or(0);
-                self.store.load_passage(p.passage.clone(), p.title(), p.slides.clone(), index);
-            }
+        }
+        self.resolve_cue(cx);
+
+        let live = self.store.snapshot();
+        let Some(passage) = live.passage.clone() else { return };
+        let Some(bible) = self.bible.bibles.iter().find(|b| b.id == Some(passage.bible_id)).cloned() else { return };
+        if let Ok(p) = self.lay_out_passage(&bible, passage.ranges) {
+            let index = live
+                .slides
+                .get(live.current)
+                .and_then(|s| slide_with_verse_of(&p.slides, &s.label))
+                .unwrap_or(0);
+            self.store.load_passage(p.passage, live.title, p.slides, index);
         }
         cx.notify();
     }
@@ -269,7 +305,7 @@ impl Console {
         if let Some(p) = &self.bible.preview {
             self.store.load_passage(p.passage.clone(), p.title(), p.slides.clone(), index);
             self.focus.focus(window, cx);
-            cx.notify();
+            self.went_live_ad_hoc(cx);
         }
     }
 
@@ -381,34 +417,24 @@ impl Console {
                     .border_color(theme.border)
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child("⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  Esc back"),
+                    .child("⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  ⇧⏎ add to service  ·  Esc back"),
             )
     }
 
     pub(crate) fn passage_preview_column(&self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
-        let layout = self.bible.layout;
         let Some(p) = &self.bible.preview else {
             return v_flex()
                 .flex_1()
+                .min_w_0()
                 .items_center()
                 .justify_center()
                 .text_color(theme.muted_foreground)
-                .child("Type a reference and press ⏎.");
+                .child("Type a reference and press ⏎.")
+                .into_any_element();
         };
         let is_live = live.passage.as_ref() == Some(&p.passage);
         let name = self.bible.bible().map(|b| b.name.clone()).unwrap_or_default();
-
-        let per_slide = |label: &'static str, value: VersesPerSlide, cx: &Context<Self>| {
-            Button::new(label)
-                .xsmall()
-                .label(label)
-                .selected(layout.verses_per_slide == value)
-                .when(layout.verses_per_slide == value, |b| b.primary())
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.set_bible_layout(BibleLayout { verses_per_slide: value, ..this.bible.layout }, cx)
-                }))
-        };
 
         v_flex()
             .flex_1()
@@ -425,8 +451,32 @@ impl Console {
                         v_flex()
                             .flex_1()
                             .min_w_0()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(theme.muted_foreground)
+                                    .child("PREVIEW · BIBLE"),
+                            )
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(p.reference.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(name)),
+                    )
+                    .child(
+                        Button::new("add-passage")
+                            .small()
+                            .label("Add")
+                            .tooltip("Add to the service (⇧⏎)")
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                if let Some(p) = &this.bible.preview {
+                                    let item = ServiceItem::passage(
+                                        p.passage.bible_id,
+                                        p.translation.clone(),
+                                        p.reference.clone(),
+                                        p.passage.ranges.clone(),
+                                    );
+                                    this.add_to_service(item, window, cx);
+                                }
+                            })),
                     )
                     .child(
                         Button::new("go-live")
@@ -437,42 +487,7 @@ impl Console {
                             .on_click(cx.listener(|this, _, window, cx| this.bible_go_live(0, window, cx))),
                     ),
             )
-            .child(
-                h_flex()
-                    .flex_wrap()
-                    .gap_3()
-                    .px_4()
-                    .py_2()
-                    .border_b_1()
-                    .border_color(theme.border)
-                    .text_xs()
-                    .child(
-                        h_flex()
-                            .gap_1()
-                            .child(div().text_color(theme.muted_foreground).child("Verses per slide"))
-                            .child(per_slide("1", VersesPerSlide::Count(1), cx))
-                            .child(per_slide("2", VersesPerSlide::Count(2), cx))
-                            .child(per_slide("3", VersesPerSlide::Count(3), cx))
-                            .child(per_slide("Fit", VersesPerSlide::Fit, cx)),
-                    )
-                    .child(
-                        Checkbox::new("verse-numbers").label("Verse numbers").checked(layout.verse_numbers).on_click(
-                            cx.listener(|this, checked: &bool, _, cx| {
-                                this.set_bible_layout(BibleLayout { verse_numbers: *checked, ..this.bible.layout }, cx)
-                            }),
-                        ),
-                    )
-                    .child(
-                        Checkbox::new("reference-last")
-                            .label("Reference on last slide")
-                            .checked(layout.reference == ReferencePlacement::LastSlide)
-                            .on_click(cx.listener(|this, checked: &bool, _, cx| {
-                                let reference =
-                                    if *checked { ReferencePlacement::LastSlide } else { ReferencePlacement::Footer };
-                                this.set_bible_layout(BibleLayout { reference, ..this.bible.layout }, cx)
-                            })),
-                    ),
-            )
+            .child(self.layout_controls(cx))
             .child(
                 v_flex()
                     .id("passage-slides")
@@ -481,31 +496,61 @@ impl Console {
                     .p_3()
                     .gap_2()
                     .children(p.slides.iter().enumerate().map(|(i, slide)| {
-                        let on_air = is_live && i == live.current;
-                        v_flex()
-                            .id(("passage-slide", i))
-                            .gap_1()
-                            .p_3()
-                            .rounded_md()
-                            .border_1()
-                            .border_color(if on_air { theme.primary } else { theme.border })
-                            .bg(if on_air { theme.primary.opacity(0.15) } else { theme.secondary })
-                            .cursor_pointer()
-                            .hover(|s| s.border_color(theme.primary))
+                        slide_card(("passage-slide", i), slide, is_live && i == live.current, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.bible_go_live(i, window, cx)))
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(if on_air { theme.foreground } else { theme.muted_foreground })
-                                    .child(slide.label.clone()),
-                            )
-                            .children(slide.lines.iter().map(|l| div().child(l.clone())))
-                            .when_some(slide.footer.clone(), |d, f| {
-                                d.child(div().text_xs().text_color(theme.muted_foreground).child(f))
-                            })
                     })),
             )
+            .into_any_element()
+    }
+
+    /// Verses per slide, verse numbers and reference placement.
+    pub(crate) fn layout_controls(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let theme = cx.theme();
+        let layout = self.bible.layout;
+        let per_slide = |label: &'static str, value: VersesPerSlide, cx: &Context<Self>| {
+            Button::new(label)
+                .xsmall()
+                .label(label)
+                .selected(layout.verses_per_slide == value)
+                .when(layout.verses_per_slide == value, |b| b.primary())
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.set_bible_layout(BibleLayout { verses_per_slide: value, ..this.bible.layout }, cx)
+                }))
+        };
+        h_flex()
+            .flex_wrap()
+            .gap_3()
+            .px_4()
+            .py_2()
+            .border_b_1()
+            .border_color(theme.border)
+            .text_xs()
+            .child(
+                h_flex()
+                    .gap_1()
+                    .child(div().text_color(theme.muted_foreground).child("Verses per slide"))
+                    .child(per_slide("1", VersesPerSlide::Count(1), cx))
+                    .child(per_slide("2", VersesPerSlide::Count(2), cx))
+                    .child(per_slide("3", VersesPerSlide::Count(3), cx))
+                    .child(per_slide("Fit", VersesPerSlide::Fit, cx)),
+            )
+            .child(
+                Checkbox::new("verse-numbers").label("Verse numbers").checked(layout.verse_numbers).on_click(
+                    cx.listener(|this, checked: &bool, _, cx| {
+                        this.set_bible_layout(BibleLayout { verse_numbers: *checked, ..this.bible.layout }, cx)
+                    }),
+                ),
+            )
+            .child(
+                Checkbox::new("reference-last")
+                    .label("Reference on last slide")
+                    .checked(layout.reference == ReferencePlacement::LastSlide)
+                    .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                        let reference = if *checked { ReferencePlacement::LastSlide } else { ReferencePlacement::Footer };
+                        this.set_bible_layout(BibleLayout { reference, ..this.bible.layout }, cx)
+                    })),
+            )
+            .into_any_element()
     }
 }
 

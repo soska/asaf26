@@ -39,6 +39,7 @@ pub fn import(window: &mut Window, cx: &mut Context<Console>) {
             };
             window.push_notification(note, cx);
             this.refresh_search(cx);
+            this.resolve_cue(cx);
         });
     })
     .detach();
@@ -112,7 +113,7 @@ pub fn export_all(window: &mut Window, cx: &mut Context<Console>) {
 }
 
 pub fn export_song(song: Song, window: &mut Window, cx: &mut App) {
-    let start = dirs_documents();
+    let start = documents_dir();
     let name = format!("{}.xml", asaf_openlyrics::file_stem(&song.title));
     let path = cx.prompt_for_new_path(&start, Some(&name));
     window
@@ -130,7 +131,8 @@ pub fn export_song(song: Song, window: &mut Window, cx: &mut App) {
         .detach();
 }
 
-fn dirs_documents() -> PathBuf {
+/// `~/Documents` if it exists: where save dialogs start.
+pub(crate) fn documents_dir() -> PathBuf {
     std::env::var_os("HOME")
         .map(|h| PathBuf::from(h).join("Documents"))
         .filter(|p| p.is_dir())

@@ -12,6 +12,7 @@
   --my: 8vh;
   --bg-color: #101018;
   --bg-image: none;
+  --logo: none;
 }
 
 html, body {
@@ -22,7 +23,7 @@ html, body {
   cursor: none;
 }
 
-#bg, .layer, #black {
+#bg, .layer, #logo, #black {
   position: absolute;
   inset: 0;
 }
@@ -79,6 +80,17 @@ html, body {
   text-overflow: ellipsis;
   opacity: 0.9;
 }
+
+/* Blank to logo: the theme's logo over its background. */
+#logo {
+  background: var(--logo) center / auto 40vh no-repeat;
+  /* Same lift off a busy background as the text gets. */
+  filter: drop-shadow(0 0.4vh 1.2vh rgba(0, 0, 0, 0.85));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fade) ease-in-out;
+}
+#logo.on { opacity: 1; }
 
 #black {
   background: #000;

@@ -19,6 +19,8 @@ pub struct Theme {
     pub margin_y_pct: f32,
     pub background_color: String,
     pub background_image: Option<String>,
+    /// Shown centred over the background when blanked to the logo.
+    pub logo: Option<String>,
 }
 
 impl Default for Theme {
@@ -39,6 +41,7 @@ impl Default for Theme {
             margin_y_pct: 8.0,
             background_color: "#101018".into(),
             background_image: Some("/assets/background.svg".into()),
+            logo: Some("/assets/logo.svg".into()),
         }
     }
 }

@@ -7,6 +7,7 @@ pub mod bible;
 mod lyrics;
 pub mod reference;
 mod sample;
+mod service;
 mod song;
 mod state;
 mod store;
@@ -16,6 +17,10 @@ pub use bible::{Bible, BibleLayout, BibleVerse, BookNames, Passage, ReferencePla
 pub use lyrics::{format_lyrics, parse_lyrics};
 pub use reference::{RefError, RefRange, VerseRef, format_reference, parse_reference};
 pub use sample::sample_song;
+pub use service::{
+    AutosaveInfo, ItemContent, SERVICE_EXTENSION, SERVICE_FORMAT, SERVICE_VERSION, Service, ServiceFileError,
+    ServiceItem, service_from_json, service_to_json,
+};
 pub use song::{SPLIT_MARKER, Slide, Song, Verse};
 pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};

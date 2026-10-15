@@ -20,12 +20,14 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::bible::{BookError, BookNames, book};
 
 /// End of chapter, for whole chapters and open ranges ("Jn 3:16-").
 pub const VERSE_END: u16 = u16::MAX;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct VerseRef {
     pub chapter: u16,
     /// [`VERSE_END`] means the last verse of the chapter.
@@ -34,7 +36,7 @@ pub struct VerseRef {
 
 /// A contiguous run of verses in one book, inclusive. A whole chapter is
 /// `c:1` to `c:VERSE_END`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RefRange {
     pub book: u8,
     pub start: VerseRef,

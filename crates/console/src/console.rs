@@ -10,26 +10,38 @@ use gpui::component::{ActiveTheme as _, Disableable as _, Selectable as _, Sizab
 use gpui::component::notification::Notification;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, FocusHandle, Focusable,
-    FontWeight, InteractiveElement, IntoElement, ParentElement, Render, ScrollStrategy,
-    SharedString, StatefulInteractiveElement, Styled, Subscription, TitlebarOptions,
-    UniformListScrollHandle, Window, WindowBounds, WindowOptions, div, px, size, uniform_list,
+    AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, FocusHandle, Focusable, FontWeight,
+    InteractiveElement, IntoElement, ParentElement, Render, ScrollHandle, ScrollStrategy, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, TestSupportExt as _, TitlebarOptions, UniformListScrollHandle, Window,
+    WindowBounds,
+    WindowOptions, div, px, size, uniform_list,
 };
 
 use crate::bible::BibleState;
 use crate::editor::{SongEditor, SongSaved};
+use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState};
+use crate::slides::slide_card;
 use crate::{
-    BlankBackground, BlankBlack, EditSong, FocusSearch, LeaveSearch, NewSong, Next, Previous, SelectNext,
-    SelectPrevious, SharedLibrary, ShowBible, ShowSongs, Unblank, transfer,
+    BlankBackground, BlankBlack, BlankLogo, EditNotes, EditSong, FocusSearch, GoLive, LeaveSearch, MoveItemDown,
+    MoveItemUp, NewService, NewSong, Next, NextItem, OpenService, Previous, PreviousItem, RemoveItem, SaveService,
+    SaveServiceAs, SelectNext, SelectPrevious, SharedLibrary, ShowBible, ShowSongs, Unblank, transfer,
 };
 
 const RESULT_LIMIT: usize = 1000;
 
-/// What the left column shows.
+/// What the source panel (left column) shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Songs,
     Bible,
+}
+
+/// What the preview pane shows: the cued service item, or whatever is
+/// chosen in the source panel while you're browsing it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PreviewSource {
+    Service,
+    Library,
 }
 
 pub struct Console {
@@ -39,14 +51,19 @@ pub struct Console {
     pub(crate) focus: FocusHandle,
     pub(crate) mode: Mode,
     pub(crate) bible: BibleState,
+    pub(crate) service: ServiceState,
+    pub(crate) preview_source: PreviewSource,
     search: Entity<InputState>,
-    results: Vec<SongSummary>,
+    pub(crate) results: Vec<SongSummary>,
     results_scroll: UniformListScrollHandle,
     selected: Option<usize>,
-    /// The selected song, loaded in full: its slides fill the middle column.
-    preview: Option<Song>,
+    /// The song chosen in the library, loaded in full.
+    pub(crate) preview: Option<Song>,
     /// Open editor windows, by song id (`None` for new songs).
     editors: Vec<(Option<i64>, AnyWindowHandle)>,
+    live_scroll: ScrollHandle,
+    /// The live item and slide the live pane last scrolled to.
+    live_scrolled_to: Option<(String, usize)>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -55,20 +72,17 @@ impl Console {
         store: Arc<Store>,
         library: SharedLibrary,
         display_url: String,
+        session: ServiceSession,
         cx: &mut App,
     ) -> Result<Entity<Self>> {
         let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
-                None,
-                size(px(1240.), px(780.)),
-                cx,
-            ))),
+            window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(1360.), px(820.)), cx))),
             titlebar: Some(TitlebarOptions { title: Some("Asaf".into()), ..Default::default() }),
-            window_min_size: Some(size(px(900.), px(520.))),
+            window_min_size: Some(size(px(1080.), px(560.))),
             ..Default::default()
         };
         let (handle, console) = gpui::open_window(options, cx, |window, cx| {
-            cx.new(|cx| Console::new(store, library, display_url, window, cx))
+            cx.new(|cx| Console::new(store, library, display_url, session, window, cx))
         })?;
         handle.update(cx, |_, window, cx| {
             window.activate_window();
@@ -77,28 +91,58 @@ impl Console {
         Ok(console)
     }
 
-    fn new(
+    pub(crate) fn new(
         store: Arc<Store>,
         library: SharedLibrary,
         display_url: String,
+        mut session: ServiceSession,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let search = cx.new(|cx| InputState::new(window, cx).placeholder("Search title, lyrics or author"));
         let bible = BibleState::new(window, cx);
-        let subscriptions = vec![
+        let service = ServiceState::new(&mut session, window, cx);
+        let mut subscriptions = vec![
             cx.subscribe_in(&bible.input, window, |this, _, event: &InputEvent, window, cx| match event {
-                InputEvent::Change => this.bible_text_changed(cx),
+                InputEvent::Change => {
+                    this.preview_source = PreviewSource::Library;
+                    this.bible_text_changed(cx)
+                }
+                InputEvent::PressEnter { shift: true, .. } => this.add_bible_to_service(window, cx),
                 InputEvent::PressEnter { secondary, .. } => this.bible_enter(*secondary, window, cx),
                 _ => {}
             }),
             cx.subscribe_in(&search, window, |this, _, event: &InputEvent, window, cx| match event {
-                InputEvent::Change => this.refresh_search(cx),
+                InputEvent::Change => {
+                    this.preview_source = PreviewSource::Library;
+                    this.refresh_search(cx)
+                }
+                InputEvent::PressEnter { shift: true, .. } => this.add_song_to_service(window, cx),
                 InputEvent::PressEnter { .. } => this.go_live(0, window, cx),
                 _ => {}
             }),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
+            // Don't lose the last half second of changes on ⌘Q.
+            cx.on_app_quit(|this, _| {
+                this.service.flush_autosave();
+                async {}
+            }),
         ];
+        subscriptions.extend(service.subscriptions(window, cx));
+        // Notifications need the window's root, which exists once this view does.
+        let note = match session.notice.take() {
+            Some(notice) => Some(Notification::warning(notice)),
+            None if !service.service.items.is_empty() => Some(Notification::info(format!(
+                "Restored “{}” from the last session",
+                service.service.display_name()
+            ))),
+            None => None,
+        };
+        if let Some(note) = note {
+            cx.defer_in(window, move |_, window, cx| window.push_notification(note, cx));
+        }
+        let preview_source =
+            if service.service.items.is_empty() { PreviewSource::Library } else { PreviewSource::Service };
         let mut console = Self {
             store,
             library,
@@ -106,12 +150,16 @@ impl Console {
             focus: cx.focus_handle(),
             mode: Mode::Songs,
             bible,
+            service,
+            preview_source,
             search,
             results: Vec::new(),
             results_scroll: UniformListScrollHandle::new(),
             selected: None,
             preview: None,
             editors: Vec::new(),
+            live_scroll: ScrollHandle::new(),
+            live_scrolled_to: None,
             _subscriptions: subscriptions,
         };
         console.refresh_search(cx);
@@ -119,14 +167,24 @@ impl Console {
         console
     }
 
-    /// Switches the left column and puts the cursor in its search box.
+    /// Switches the source panel and puts the cursor in its search box.
     pub(crate) fn show_mode(&mut self, mode: Mode, window: &mut Window, cx: &mut Context<Self>) {
         self.mode = mode;
+        self.preview_source = PreviewSource::Library;
         let input = match mode {
             Mode::Songs => &self.search,
             Mode::Bible => &self.bible.input,
         };
         input.update(cx, |s, cx| s.focus(window, cx));
+        cx.notify();
+    }
+
+    /// Esc in a text field: back to live control, the preview back to the cue.
+    fn leave_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.focus.focus(window, cx);
+        if !self.service.service.items.is_empty() {
+            self.preview_source = PreviewSource::Service;
+        }
         cx.notify();
     }
 
@@ -171,12 +229,22 @@ impl Console {
         self.select(Some(i.clamp(0, self.results.len() as isize - 1) as usize), cx);
     }
 
-    /// Puts the previewed song live at `index`, and returns focus to live control.
+    /// Puts the song chosen in the library live at `index` (ad hoc, outside
+    /// the service), and returns focus to live control.
     fn go_live(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(song) = &self.preview {
             self.store.load_song(song.clone(), index);
             self.focus.focus(window, cx);
-            cx.notify();
+            self.went_live_ad_hoc(cx);
+        }
+    }
+
+    /// ⏎ in live control: puts whatever the preview shows live.
+    fn go_live_previewed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match (self.preview_source, self.mode) {
+            (PreviewSource::Service, _) => self.go_live_next(window, cx),
+            (PreviewSource::Library, Mode::Songs) => self.go_live(0, window, cx),
+            (PreviewSource::Library, Mode::Bible) => self.bible_go_live(0, window, cx),
         }
     }
 
@@ -202,8 +270,25 @@ impl Console {
         }
     }
 
-    fn song_saved(&mut self, song: Song, cx: &mut Context<Self>) {
+    /// The song being edited: the cued service song when the preview shows
+    /// it, else the one chosen in the library.
+    fn song_to_edit(&self) -> Option<Song> {
+        if self.preview_source == PreviewSource::Service
+            && let Some(crate::service::Target::Song(song)) = self.service.resolved.as_ref().map(|r| &r.target)
+        {
+            return Some((**song).clone());
+        }
+        self.preview.clone()
+    }
+
+    pub(crate) fn song_saved(&mut self, song: Song, cx: &mut Context<Self>) {
         self.store.song_edited(&song);
+        if let Some(id) = song.id
+            && self.service.service.song_renamed(id, &song.title)
+        {
+            self.service_changed(cx);
+        }
+        self.resolve_cue(cx);
         // Select the saved song (new songs too), then refresh the list.
         if let Some(id) = song.id {
             let query = self.search.read(cx).value();
@@ -224,6 +309,7 @@ impl Focusable for Console {
 
 impl Render for Console {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_item_fields(window, cx);
         let live = self.store.snapshot();
         let theme = cx.theme();
 
@@ -236,22 +322,40 @@ impl Render for Console {
             .on_action(cx.listener(|this, _: &BlankBackground, _, cx| {
                 this.act(cx, |s| s.toggle_blank(Blank::Background))
             }))
+            .on_action(cx.listener(|this, _: &BlankLogo, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Logo))))
             .on_action(cx.listener(|this, _: &Unblank, _, cx| this.act(cx, |s| s.set_blank(Blank::None))))
+            .on_action(cx.listener(|this, _: &GoLive, window, cx| this.go_live_previewed(window, cx)))
+            .on_action(cx.listener(|this, _: &NextItem, _, cx| this.move_cue(1, cx)))
+            .on_action(cx.listener(|this, _: &PreviousItem, _, cx| this.move_cue(-1, cx)))
+            .on_action(cx.listener(|this, _: &MoveItemDown, _, cx| this.move_cued_item(1, cx)))
+            .on_action(cx.listener(|this, _: &MoveItemUp, _, cx| this.move_cued_item(-1, cx)))
+            .on_action(cx.listener(|this, _: &RemoveItem, _, cx| this.remove_cued_item(cx)))
+            .on_action(cx.listener(|this, _: &EditNotes, window, cx| this.edit_notes(window, cx)))
+            .on_action(cx.listener(|this, _: &NewService, window, cx| this.new_service(window, cx)))
+            .on_action(cx.listener(|this, _: &OpenService, window, cx| this.open_service(window, cx)))
+            .on_action(cx.listener(|this, _: &SaveService, window, cx| this.save_service(false, window, cx)))
+            .on_action(cx.listener(|this, _: &SaveServiceAs, window, cx| this.save_service(true, window, cx)))
             .on_action(cx.listener(|this, _: &FocusSearch, window, cx| this.show_mode(this.mode, window, cx)))
             .on_action(cx.listener(|this, _: &ShowSongs, window, cx| this.show_mode(Mode::Songs, window, cx)))
             .on_action(cx.listener(|this, _: &ShowBible, window, cx| this.show_mode(Mode::Bible, window, cx)))
-            .on_action(cx.listener(|this, _: &SelectNext, _, cx| match this.mode {
-                Mode::Songs => this.move_selection(1, cx),
-                Mode::Bible => this.move_hit(1, cx),
+            .on_action(cx.listener(|this, _: &SelectNext, _, cx| {
+                this.preview_source = PreviewSource::Library;
+                match this.mode {
+                    Mode::Songs => this.move_selection(1, cx),
+                    Mode::Bible => this.move_hit(1, cx),
+                }
             }))
-            .on_action(cx.listener(|this, _: &SelectPrevious, _, cx| match this.mode {
-                Mode::Songs => this.move_selection(-1, cx),
-                Mode::Bible => this.move_hit(-1, cx),
+            .on_action(cx.listener(|this, _: &SelectPrevious, _, cx| {
+                this.preview_source = PreviewSource::Library;
+                match this.mode {
+                    Mode::Songs => this.move_selection(-1, cx),
+                    Mode::Bible => this.move_hit(-1, cx),
+                }
             }))
-            .on_action(cx.listener(|this, _: &LeaveSearch, window, cx| this.focus.focus(window, cx)))
+            .on_action(cx.listener(|this, _: &LeaveSearch, window, cx| this.leave_search(window, cx)))
             .on_action(cx.listener(|this, _: &NewSong, window, cx| this.edit(Song::default(), window, cx)))
             .on_action(cx.listener(|this, _: &EditSong, window, cx| {
-                if let Some(song) = this.preview.clone() {
+                if let Some(song) = this.song_to_edit() {
                     this.edit(song, window, cx);
                 }
             }))
@@ -266,9 +370,13 @@ impl Render for Console {
                     .flex_1()
                     .min_h_0()
                     .child(self.left_column(window, cx))
-                    .child(match self.mode {
-                        Mode::Songs => self.preview_column(&live, cx).into_any_element(),
-                        Mode::Bible => self.passage_preview_column(&live, cx).into_any_element(),
+                    .child(self.service_column(cx))
+                    .child(match (self.preview_source, self.mode) {
+                        (PreviewSource::Service, _) => self.cue_preview_column(cx).into_any_element(),
+                        (PreviewSource::Library, Mode::Songs) => self.preview_column(&live, cx).into_any_element(),
+                        (PreviewSource::Library, Mode::Bible) => {
+                            self.passage_preview_column(&live, cx).into_any_element()
+                        }
                     })
                     .child(self.live_column(&live, cx)),
             )
@@ -289,7 +397,7 @@ impl Console {
                 .on_click(cx.listener(move |this, _, window, cx| this.show_mode(mode, window, cx)))
         };
         v_flex()
-            .w(px(340.))
+            .w(px(300.))
             .flex_none()
             .h_full()
             .border_r_1()
@@ -361,6 +469,7 @@ impl Console {
                                 } else {
                                     format!("{} · {}", r.authors, r.excerpt)
                                 };
+                                let dragged = DraggedSong { id: r.id, title: r.title.clone().into() };
                                 v_flex()
                                     .id(("result", i))
                                     .px_3()
@@ -371,6 +480,7 @@ impl Console {
                                     .when(selected, |d| d.bg(theme.list_active))
                                     .when(!selected, |d| d.hover(|s| s.bg(theme.list_hover)))
                                     .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, window, cx| {
+                                        this.preview_source = PreviewSource::Library;
                                         this.select(Some(i), cx);
                                         if ev.click_count() >= 2
                                             && let Some(song) = this.preview.clone()
@@ -378,6 +488,7 @@ impl Console {
                                             this.edit(song, window, cx);
                                         }
                                     }))
+                                    .on_drag(dragged, |d, _, _, cx| cx.new(|_| DragGhost(d.title.clone())))
                                     .child(div().truncate().font_weight(FontWeight::SEMIBOLD).child(r.title.clone()))
                                     .child(
                                         div()
@@ -386,6 +497,8 @@ impl Console {
                                             .text_color(theme.muted_foreground)
                                             .child(excerpt),
                                     )
+                                    .test_support()
+                                    .into_any_element()
                             })
                             .collect()
                     }),
@@ -402,7 +515,7 @@ impl Console {
                     .text_xs()
                     .text_color(theme.muted_foreground)
                     .child(format!(
-                        "{count} song{}{}  ·  ↑↓ choose, ⏎ go live, Esc back",
+                        "{count} song{}{}  ·  ⏎ go live, ⇧⏎ add to service",
                         if count == 1 { "" } else { "s" },
                         if count == RESULT_LIMIT { "+" } else { "" }
                     )),
@@ -414,10 +527,12 @@ impl Console {
         let Some(song) = &self.preview else {
             return v_flex()
                 .flex_1()
+                .min_w_0()
                 .items_center()
                 .justify_center()
                 .text_color(theme.muted_foreground)
-                .child(if self.results.is_empty() { "No songs found." } else { "Select a song." });
+                .child(if self.results.is_empty() { "No songs found." } else { "Select a song." })
+                .into_any_element();
         };
         let slides = song.slides();
         let is_live_song = song.id.is_some() && live.song_id == song.id;
@@ -438,6 +553,13 @@ impl Console {
                         v_flex()
                             .flex_1()
                             .min_w_0()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(theme.muted_foreground)
+                                    .child("PREVIEW · LIBRARY"),
+                            )
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(song.title.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(subtitle)),
                     )
@@ -448,13 +570,20 @@ impl Console {
                             }
                         },
                     )))
-                    .child(Button::new("edit-song").small().label("Edit").tooltip("Edit song (⌘E)").on_click(
+                    .child(Button::new("edit-song").small().ghost().label("Edit").tooltip("Edit song (⌘E)").on_click(
                         cx.listener(|this, _, window, cx| {
                             if let Some(song) = this.preview.clone() {
                                 this.edit(song, window, cx);
                             }
                         }),
                     ))
+                    .child(
+                        Button::new("add-song")
+                            .small()
+                            .label("Add")
+                            .tooltip("Add to the service (⇧⏎ in search)")
+                            .on_click(cx.listener(|this, _, window, cx| this.add_song_to_service(window, cx))),
+                    )
                     .child(
                         Button::new("go-live")
                             .small()
@@ -475,98 +604,117 @@ impl Console {
                         d.child(div().text_color(theme.muted_foreground).child("This song has no slides. Check its verse order."))
                     })
                     .children(slides.iter().enumerate().map(|(i, slide)| {
-                        let on_air = is_live_song && i == live.current;
-                        h_flex()
-                            .id(("slide", i))
-                            .items_start()
-                            .gap_3()
-                            .p_3()
-                            .rounded_md()
-                            .border_1()
-                            .border_color(if on_air { theme.primary } else { theme.border })
-                            .bg(if on_air { theme.primary.opacity(0.15) } else { theme.secondary })
-                            .cursor_pointer()
-                            .hover(|s| s.border_color(theme.primary))
+                        slide_card(("slide", i), slide, is_live_song && i == live.current, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.go_live(i, window, cx)))
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .w(px(44.))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(if on_air { theme.foreground } else { theme.muted_foreground })
-                                    .child(slide.label.clone()),
-                            )
-                            .child(v_flex().flex_1().children(slide.lines.iter().map(|l| div().child(l.clone()))))
                     })),
             )
+            .into_any_element()
     }
 
-    fn live_column(&self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+    fn live_column(&mut self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+        // Keep the slide on screen in view as the operator steps through.
+        let at = (live.title.clone(), live.current);
+        if self.live_scrolled_to.as_ref() != Some(&at) {
+            self.live_scroll.scroll_to_item(live.current);
+            self.live_scrolled_to = Some(at);
+        }
         let theme = cx.theme();
         let (blank_text, blank_color) = match live.blank {
-            Blank::None => ("Showing text", theme.muted_foreground),
-            Blank::Black => ("Blanked to black", theme.danger),
-            Blank::Background => ("Text hidden (background only)", theme.danger),
+            Blank::None => ("Showing text", theme.success),
+            Blank::Black => ("Blanked to black (B)", theme.danger),
+            Blank::Background => ("Text hidden, background only (⇧B)", theme.danger),
+            Blank::Logo => ("Showing the logo (L)", theme.danger),
         };
-        let current = live.slides.get(live.current);
+        let from_service = self
+            .service
+            .live_key
+            .and_then(|k| self.service.service.position(k))
+            .map(|i| format!("Item {} of {} · ", i + 1, self.service.service.items.len()))
+            .unwrap_or_else(|| if live.slides.is_empty() { String::new() } else { "Not in the service · ".into() });
 
         v_flex()
-            .w(px(300.))
-            .flex_none()
+            .flex_1()
+            .min_w_0()
             .h_full()
-            .gap_4()
-            .p_4()
             .border_l_1()
             .border_color(theme.border)
             .child(
-                section("Live", cx).child(match current {
-                    None => div().text_color(theme.muted_foreground).child("Nothing live yet."),
-                    Some(slide) => v_flex()
-                        .gap_1()
-                        .child(div().font_weight(FontWeight::BOLD).truncate().child(live.title.clone()))
-                        .child(format!("{} · {} of {}", slide.label, live.current + 1, live.slides.len()))
-                        .child(
-                            v_flex()
-                                .mt_1()
-                                .p_2()
-                                .rounded_md()
-                                .bg(theme.secondary)
-                                .text_xs()
-                                .children(slide.lines.iter().map(|l| div().child(l.clone()))),
-                        ),
-                })
-                .child(div().text_color(blank_color).child(blank_text)),
+                v_flex()
+                    .gap_0p5()
+                    .px_4()
+                    .py_3()
+                    .border_b_1()
+                    .border_color(theme.border)
+                    .child(
+                        h_flex()
+                            .gap_2()
+                            .text_xs()
+                            .font_weight(FontWeight::BOLD)
+                            .child(div().text_color(theme.danger).child("● LIVE"))
+                            .child(div().flex_1())
+                            .child(div().text_color(blank_color).child(blank_text)),
+                    )
+                    .child(
+                        div()
+                            .truncate()
+                            .text_base()
+                            .font_weight(FontWeight::BOLD)
+                            .child(if live.slides.is_empty() { "Nothing live yet.".to_string() } else { live.title.clone() }),
+                    )
+                    .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(
+                        match live.slides.get(live.current) {
+                            Some(slide) => {
+                                format!("{from_service}{} · {} of {}", slide.label, live.current + 1, live.slides.len())
+                            }
+                            None => String::new(),
+                        },
+                    )),
             )
-            .child(section("Projector display", cx).children(Projector::displays(cx).into_iter().enumerate().map(|(i, d)| {
-                let id = d.id;
-                h_flex()
-                    .id(("display", i))
-                    .gap_2()
-                    .px_3()
-                    .py_2()
-                    .rounded_md()
-                    .border_1()
-                    .border_color(if d.is_projector { theme.primary } else { theme.border })
-                    .cursor_pointer()
-                    .hover(|s| s.border_color(theme.primary))
-                    .on_click(cx.listener(move |_, _, _, cx| {
-                        Projector::choose(id, cx);
-                        cx.notify();
-                    }))
-                    .child(div().w(px(14.)).child(if d.is_projector { "●" } else { "" }))
-                    .child(d.label)
-            })))
-            .child(div().flex_1())
             .child(
                 v_flex()
-                    .gap_1()
-                    .text_xs()
-                    .text_color(theme.muted_foreground)
-                    .child("→ ↓ Space  next   ·   ← ↑  previous")
-                    .child("B  black   ·   ⇧B  hide text   ·   Esc  unblank")
-                    .child("⌘1  songs   ·   ⌘2  Bible   ·   ⌘F  search")
-                    .child("⌘E  edit song   ·   ⌘N  new song")
-                    .child(div().mt_1().truncate().child(self.display_url.clone())),
+                    .id("live-slides")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.live_scroll)
+                    .p_3()
+                    .gap_2()
+                    .children(live.slides.iter().enumerate().map(|(i, slide)| {
+                        slide_card(("live-slide", i), slide, i == live.current, cx)
+                            .on_click(cx.listener(move |this, _, _, cx| this.act(cx, |s| s.go_to(i))))
+                    })),
+            )
+            .child(
+                v_flex()
+                    .gap_2()
+                    .px_4()
+                    .py_3()
+                    .border_t_1()
+                    .border_color(theme.border)
+                    .child(section("Projector display", cx).child(h_flex().flex_wrap().gap_1().children(
+                        Projector::displays(cx).into_iter().enumerate().map(|(i, d)| {
+                            let id = d.id;
+                            Button::new(("display", i))
+                                .xsmall()
+                                .label(d.label)
+                                .selected(d.is_projector)
+                                .when(d.is_projector, |b| b.primary())
+                                .on_click(cx.listener(move |_, _, _, cx| {
+                                    Projector::choose(id, cx);
+                                    cx.notify();
+                                }))
+                        }),
+                    )))
+                    .child(
+                        v_flex()
+                            .gap_0p5()
+                            .text_xs()
+                            .text_color(theme.muted_foreground)
+                            .child("→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live")
+                            .child("B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text")
+                            .child("⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save")
+                            .child(div().truncate().child(self.display_url.clone())),
+                    ),
             )
     }
 
@@ -600,6 +748,12 @@ impl Console {
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Background)))),
             )
             .child(
+                Button::new("logo")
+                    .label("Logo")
+                    .when(live.blank == Blank::Logo, |b| b.danger())
+                    .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Logo)))),
+            )
+            .child(
                 Button::new("blank")
                     .label("Blank")
                     .when(live.blank == Blank::Black, |b| b.danger())
@@ -619,7 +773,7 @@ fn section(title: &'static str, cx: &App) -> gpui::Div {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::Mutex;
 
     use asaf_core::{Theme, Verse, sample_song};
@@ -629,14 +783,25 @@ mod tests {
 
     use super::*;
 
-    fn setup(cx: &mut TestAppContext) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
+    pub(crate) fn setup(cx: &mut TestAppContext) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
         setup_with(cx, |_| {})
     }
 
-    fn setup_with(
+    pub(crate) fn setup_with(
         cx: &mut TestAppContext,
         prepare: impl FnOnce(&mut Library),
     ) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
+        let (store, console, h, _) = setup_session(cx, prepare, ServiceSession::default());
+        (store, console, h)
+    }
+
+    /// A console on an in-memory library holding "Blessed Assurance", "Cuán
+    /// Grande Es Él" and whatever `prepare` adds, starting with `session`.
+    pub(crate) fn setup_session(
+        cx: &mut TestAppContext,
+        prepare: impl FnOnce(&mut Library),
+        session: ServiceSession,
+    ) -> (Arc<Store>, Entity<Console>, AnyWindowHandle, SharedLibrary) {
         cx.update(|cx| {
             gpui::init(cx);
             crate::init(cx);
@@ -651,11 +816,24 @@ mod tests {
         })
         .unwrap();
         let library = Arc::new(Mutex::new(lib));
+        let (store, console, handle) = open_console(cx, library.clone(), session);
+        (store, console, handle, library)
+    }
+
+    pub(crate) fn open_console(
+        cx: &mut TestAppContext,
+        library: SharedLibrary,
+        session: ServiceSession,
+    ) -> (Arc<Store>, Entity<Console>, AnyWindowHandle) {
         let store = Store::new(Song::default(), Theme::default());
         let (handle, console) = cx.update(|cx| {
             let store = store.clone();
-            gpui::open_window(WindowOptions::default(), cx, move |window, cx| {
-                cx.new(|cx| Console::new(store, library, "http://test/display".into(), window, cx))
+            let options = WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(1360.), px(820.)), cx))),
+                ..Default::default()
+            };
+            gpui::open_window(options, cx, move |window, cx| {
+                cx.new(|cx| Console::new(store, library, "http://test/display".into(), session, window, cx))
             })
             .unwrap()
         });
@@ -667,7 +845,7 @@ mod tests {
         (store, console, handle)
     }
 
-    fn with_window<R>(cx: &mut TestAppContext, h: AnyWindowHandle, f: impl FnOnce(&mut Window, &mut App) -> R) -> R {
+    pub(crate) fn with_window<R>(cx: &mut TestAppContext, h: AnyWindowHandle, f: impl FnOnce(&mut Window, &mut App) -> R) -> R {
         cx.update(|cx| h.update(cx, |_, window, cx| f(window, cx)).unwrap())
     }
 
@@ -769,7 +947,7 @@ mod tests {
     }
 
     /// Public-domain excerpts: KJV (English, OSIS) and RV1909 (Spanish, Zefania).
-    fn with_bibles(lib: &mut Library) {
+    pub(crate) fn with_bibles(lib: &mut Library) {
         lib.import_bible(&fixture("kjv-excerpt.osis.xml")).unwrap();
         lib.import_bible(&fixture("rv1909-excerpt.zefania.xml")).unwrap();
     }

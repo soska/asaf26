@@ -278,6 +278,7 @@ dependencies = [
  "asaf-openlyrics",
  "asaf-projector",
  "gpui-kit",
+ "tempfile",
 ]
 
 [[package]]

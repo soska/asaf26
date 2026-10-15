@@ -10,7 +10,8 @@
 //! ```
 //!
 //! Environment:
-//! - `ASAF_DATA_DIR`: where `asaf.sqlite` lives (default: the OS data dir + `Asaf`).
+//! - `ASAF_DATA_DIR`: where `asaf.sqlite` and the service autosave live
+//!   (default: the OS data dir + `Asaf`).
 //! - `ASAF_PORT`: server port (default 4510).
 //! - `ASAF_PROJECTOR_ON_MAIN=1`: allow a fullscreen projector on the main
 //!   display (for testing with a single screen).
@@ -19,9 +20,10 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
-use asaf_console::Console;
+use asaf_console::{Console, ServiceSession};
 use asaf_core::{Song, Store, Theme, sample_song};
 use asaf_library::Library;
+use asaf_library::service::{AUTOSAVE_FILE, restore_autosave};
 use asaf_projector::Projector;
 use gpui::component::theme::{Theme as UiTheme, ThemeMode};
 use gpui::{App, Menu, MenuItem, actions};
@@ -180,6 +182,7 @@ fn run_app(library: Library) -> ExitCode {
     println!("asaf: library at {}", data_dir().join("asaf.sqlite").display());
     println!("asaf: display page at {url} (add ?debug for latency overlay)");
     let library = Arc::new(Mutex::new(library));
+    let session = restore_service();
 
     gpui::application().with_assets(gpui::assets::Assets).run(move |cx: &mut App| {
         gpui::init(cx);
@@ -190,7 +193,7 @@ fn run_app(library: Library) -> ExitCode {
         asaf_console::init(cx);
 
         Projector::init(url.clone(), projector_on_main, cx);
-        match Console::open(store, library, url, cx) {
+        match Console::open(store, library, url, session, cx) {
             // Closing the console ends the app; the projector can't be operated without it.
             Ok(console) => cx.observe_release(&console, |_, cx| cx.quit()).detach(),
             Err(err) => {
@@ -200,4 +203,22 @@ fn run_app(library: Library) -> ExitCode {
         }
     });
     ExitCode::SUCCESS
+}
+
+/// The service from the last run (crash or not), and where to keep autosaving it.
+fn restore_service() -> ServiceSession {
+    let autosave = data_dir().join(AUTOSAVE_FILE);
+    let restored = restore_autosave(&autosave);
+    if let Some(problem) = &restored.problem {
+        eprintln!("asaf: couldn't restore the last service: {problem}");
+    } else if !restored.service.items.is_empty() {
+        println!("asaf: restored \"{}\" ({} items) from {}", restored.service.display_name(), restored.service.items.len(), autosave.display());
+    }
+    ServiceSession {
+        service: restored.service,
+        path: restored.info.path,
+        dirty: restored.info.dirty,
+        autosave: Some(autosave),
+        notice: restored.problem.map(|p| format!("Couldn't restore the last service: {p}")),
+    }
 }

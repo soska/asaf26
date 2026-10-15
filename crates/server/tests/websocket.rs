@@ -47,6 +47,10 @@ async fn clients_get_state_on_connect_and_every_change() {
         }
         worst = worst.max(t0.elapsed());
     }
+    store.toggle_blank(Blank::Logo);
+    let st = next_state(&mut a).await;
+    assert_eq!(st["blank"], "Logo");
+    assert_eq!(st["theme"]["logo"], "/assets/logo.svg");
     store.toggle_blank(Blank::Black);
     assert_eq!(next_state(&mut a).await["blank"], "Black");
     assert!(worst < Duration::from_millis(100), "slowest change took {worst:?}");
@@ -64,7 +68,7 @@ async fn clients_get_state_on_connect_and_every_change() {
 async fn serves_display_page_and_assets() {
     let store = Store::new(sample_song(), Theme::default());
     let port = asaf_server::start(store, 0).unwrap().addr.port();
-    for path in ["/display", "/assets/display.css", "/assets/display.js", "/assets/background.svg"] {
+    for path in ["/display", "/assets/display.css", "/assets/display.js", "/assets/background.svg", "/assets/logo.svg"] {
         let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         stream

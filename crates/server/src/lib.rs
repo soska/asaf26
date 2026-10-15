@@ -21,6 +21,7 @@ const INDEX_HTML: &str = include_str!("../../../display/index.html");
 const DISPLAY_CSS: &str = include_str!("../../../display/display.css");
 const DISPLAY_JS: &str = include_str!("../../../display/display.js");
 const BACKGROUND_SVG: &str = include_str!("../../../display/background.svg");
+const LOGO_SVG: &str = include_str!("../../../display/logo.svg");
 
 /// A running server. It lives on its own thread for the life of the process.
 pub struct ServerHandle {
@@ -78,6 +79,7 @@ fn router(rx: watch::Receiver<DisplayState>) -> Router {
         .route("/assets/display.css", get(|| async { asset("text/css; charset=utf-8", DISPLAY_CSS) }))
         .route("/assets/display.js", get(|| async { asset("text/javascript; charset=utf-8", DISPLAY_JS) }))
         .route("/assets/background.svg", get(|| async { asset("image/svg+xml", BACKGROUND_SVG) }))
+        .route("/assets/logo.svg", get(|| async { asset("image/svg+xml", LOGO_SVG) }))
         .route("/ws", get(ws_handler))
         .with_state(rx)
 }

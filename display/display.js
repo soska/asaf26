@@ -6,6 +6,7 @@
   const root = document.documentElement;
   const layers = [document.getElementById("layer-a"), document.getElementById("layer-b")];
   const black = document.getElementById("black");
+  const logo = document.getElementById("logo");
   const debugEl = document.getElementById("debug");
   const debug = new URLSearchParams(location.search).has("debug");
   debugEl.hidden = !debug;
@@ -34,6 +35,7 @@
       "--my": `${t.margin_y_pct}vh`,
       "--bg-color": t.background_color,
       "--bg-image": t.background_image ? `url("${t.background_image}")` : "none",
+      "--logo": t.logo ? `url("${t.logo}")` : "none",
     };
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   }
@@ -128,6 +130,7 @@
     layers[active].classList.toggle("on", showText);
     layers[1 - active].classList.remove("on");
     black.classList.toggle("on", state.blank === "Black");
+    logo.classList.toggle("on", state.blank === "Logo");
 
     if (!live) {
       updateDebug();

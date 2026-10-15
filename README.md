@@ -3,12 +3,15 @@
 A fast lyrics and Bible-verse projector: a Rust app with a GPUI operator
 console and a web-based display. See `Rust Lyrics Projector — PRD.md`.
 
-**Status: Phase 2 (Bibles).** A song library in SQLite with full-text search
-as you type, a lyrics editor with live slide preview, OpenLyrics import and
-export, and live control of a projector window on the second display. Bibles
-(OSIS and Zefania) live in the same database: type a reference in English or
-Spanish, press ⏎ and the verses are in the preview; ⏎ again puts them live.
-Words without numbers search the translation's text.
+**Status: Phase 3 (service and live operation).** A song library in SQLite
+with full-text search as you type, a lyrics editor with live slide preview,
+OpenLyrics import and export, and Bibles (OSIS and Zefania) looked up by
+reference in English or Spanish. Songs and passages go into a service list
+(reorder by keyboard or drag, notes and a theme name per item) that is saved
+as an `.asaf-service` file and autosaved continuously, so a crash or restart
+brings it back. Separate preview and live panes; a whole service runs from
+the keyboard: ⏎ puts the cued item live and cues the next, arrows step
+through slides, B / ⇧B / L blank to black, background or logo.
 
 Licensed GPL-3.0-or-later. Provided as-is, with no support.
 
@@ -27,6 +30,9 @@ cargo test --workspace                 # all tests, including headless console U
 - The library lives at `~/Library/Application Support/Asaf/asaf.sqlite` on
   macOS (the OS data dir elsewhere). `ASAF_DATA_DIR=/some/dir` uses another
   folder. A new library starts with one public-domain hymn.
+- The current service is autosaved next to it as `autosave.asaf-service` and
+  restored on every start (a damaged one is renamed `….corrupt`, or
+  `….corrupt-2` and so on, and reported, never deleted).
 - Display page: <http://127.0.0.1:4510/display> (add `?debug` for an overlay
   with socket state, revision and change-to-paint latency). Works as an OBS
   browser source.
@@ -37,30 +43,83 @@ cargo test --workspace                 # all tests, including headless console U
 
 ## Console
 
-Three columns: on the left the song library (search, New, Import…, Export…)
-or the Bible (translation picker, Import…, reference/search box, hits), in
-the middle the selected song's or passage's slides, and on the right the live
-panel (what's on screen, blank state, projector display picker).
+Four columns, left to right:
+
+1. **Source**: the song library (search, New, Import…, Export…) or the Bible
+   (translation picker, Import…, reference/search box, hits). Whatever you
+   choose here shows in the preview while you browse; ⇧⏎ adds it to the
+   service, ⏎ still puts it live straight away (ad hoc).
+2. **Service**: the list, with Open… / Save and the cued item's notes and
+   theme fields. The cued item has an outline; the one on screen a red dot.
+   Drag rows to reorder, drag songs in from the library.
+3. **Preview**: the cued service item's slides (or the source panel's choice
+   while you're in it), with its notes and, for passages, the layout options.
+4. **Live**: what's on the projector, slide by slide, the blank state, and the
+   projector display picker.
 
 | Keys | Where | Does |
 | --- | --- | --- |
 | `⌘1` / `⌘2` | anywhere | Songs / Bible, cursor in its search box |
 | `⌘F` / `⌘L` | anywhere | focus the current search box |
 | `↑` `↓` | search | choose a song / a text-search hit |
-| `⏎` | song search | put the chosen song live at slide 1 |
+| `⇧⏎` | song search, Bible box | add the chosen song / the reference or hit to the service |
+| `⏎` | song search | put the chosen song live at slide 1 (ad hoc) |
 | `⏎` | Bible box, reference | show the passage in the preview; `⏎` again puts it live |
 | `⌘⏎` | Bible box, reference | show and put live at once |
 | `⏎` | Bible box, words | put the chosen hit live |
-| `Esc` | search | back to live control |
+| `Esc` | search, notes | back to live control (the preview goes back to the cued item) |
+| `⏎` | live control | put the previewed (cued) item live and cue the next one (after the last item: nothing) |
+| `⌘↓` / `⌘↑` | live control | cue the next / previous service item |
+| `⌥↓` / `⌥↑` | live control | move the cued item down / up |
+| `⌘⌫` | live control | remove the cued item |
 | `→` `↓` `Space` `PgDn` / `←` `↑` `PgUp` | live control | next / previous slide |
-| `B` / `⇧B` / `Esc` | live control | blank to black / hide text / unblank |
-| `⌘E` / `⌘N` | anywhere | edit the chosen song / new song |
+| `B` / `⇧B` / `L` / `Esc` | live control | blank to black / hide text / show logo / show text again |
+| `⌘I` | anywhere | edit the cued item's notes (`⏎` or `Esc` when done) |
+| `⌘S` / `⇧⌘S` / `⌘O` / `⇧⌘N` | anywhere | save / save as / open / new service |
+| `⌘E` / `⌘N` | anywhere | edit the previewed song / new song |
 | `⌘S` | editor | save and close |
 
 Live-control keys never fire while a text field has focus, so typing "b" in
-search doesn't blank the screen. Clicking a slide puts that song or passage
-live at that slide; double-clicking a song opens the editor, double-clicking a
-Bible hit puts it live.
+search doesn't blank the screen and `⌘⌫` in a field deletes text, not a
+service item. Clicking a service item cues it, double-clicking puts it live;
+clicking a slide puts that item live at that slide (in the live pane: jumps
+to it). Double-clicking a song opens the editor, a Bible hit goes live.
+
+Running a service: prepare it with `⇧⏎` from the source panel, `Esc`, then
+`⏎` (first item live), `→`… through its slides, `⏎` (next item), and so on.
+An ad-hoc verse (`⌘2`, type, `⏎ ⏎`) doesn't disturb the cue: the next `⏎`
+carries on with the service.
+
+### Service files
+
+`.asaf-service` files are JSON, versioned, readable in any text editor:
+
+```json
+{
+  "format": "asaf-service",
+  "version": 1,
+  "name": "Sunday 10am",
+  "items": [
+    { "type": "song", "song_id": 12, "title": "Blessed Assurance", "notes": "Slow intro" },
+    { "type": "passage", "bible_id": 2, "translation": "RV1909", "reference": "Juan 3:16-18",
+      "theme": "Scripture",
+      "ranges": [{ "book": 43, "start": { "chapter": 3, "verse": 16 }, "end": { "chapter": 3, "verse": 18 } }] }
+  ]
+}
+```
+
+Items point into the library rather than copying it: a song is found by id
+when its title still matches, else by title (a service made on another
+machine), never by id alone (on another machine that id is some other song);
+renaming a song in the editor updates the open service. A passage is found by
+translation abbreviation, then id, and is laid out with the current passage
+layout when shown. An item
+that can't be found stays in the list and says why in the preview
+("“X” isn't in the song library", "The NVI Bible isn't installed"); ⏎ on it
+does nothing. Unknown fields are ignored, so later versions can add fields;
+a file from a newer format version is refused with a message saying so. The
+autosave is the same format plus an `autosave` field (the file it belongs to
+and whether it had unsaved changes).
 
 ### Bible references
 
@@ -120,15 +179,15 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 
 | Crate | Role |
 | --- | --- |
-| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, `DisplayState`, the `Store` (single source of truth, change listeners). No UI or IO deps. |
-| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. |
+| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), `DisplayState`, the `Store` (single source of truth, change listeners). No UI or IO deps (serde/serde_json only). |
+| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
 | `crates/server` (`asaf-server`) | axum on 127.0.0.1: display page, embedded assets, `/ws` pushing `{"type":"state","state":…}` on connect and on every change. |
-| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`. No build step; embedded into the binary with `include_str!`. |
+| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder). No build step; embedded into the binary with `include_str!`. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library, Bible mode (`bible.rs`), preview, live control, song editor, import/export. Never draws projected output. |
-| `crates/app` (`asaf`) | Binary: opens the library, wires store, server, projector and console; `import`/`export`/`import-bible`/`bibles`/`remove-bible` subcommands. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, import/export. Never draws projected output. |
+| `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server, projector and console; `import`/`export`/`import-bible`/`bibles`/`remove-bible` subcommands. |
 
 ## Decisions and deviations from the PRD
 
@@ -157,10 +216,36 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
   at window level 25 (above the menu bar and Dock) and sized to its screen.
 - **`console` depends on `projector`** (for the display picker) as well as
   `core` and `library`.
-- **Selecting vs. going live.** Phase 3 adds proper preview/live panes; until
-  then the middle column previews the chosen song and nothing goes live until
-  you press ⏎ or click a slide. Editing the live song updates the projector in
-  place and keeps the current slide.
+- **Preview and live.** The preview shows the cued service item, or the
+  source panel's choice while you're browsing it (typing, ↑↓, ⌘1/⌘2); `Esc`
+  or putting anything live brings it back to the cue. ⏎ in live control puts
+  whatever the preview shows live. After a service item goes live the cue
+  moves to the next item, so ⏎ always means "next thing in the service";
+  once the last item is live, ⏎ does nothing rather than restart it. The
+  service lives in the console (not the core store): only what's live is
+  shared state; the remote (Phase 5) can move it into the store.
+  Editing the live song updates the projector in place and keeps the current
+  slide; renaming a song updates its title in the service.
+- **Service files are our own JSON**, not SQLite: one small human-readable
+  file per service that can be emailed or kept in a shared folder. Items refer
+  to the library (see "Service files") rather than embedding lyrics, so an
+  edit made minutes before the service shows up without re-adding the song.
+  The file name names the service.
+- **Autosave**: every change to the service (items, order, notes, theme)
+  schedules a write 500 ms after the last change; the write goes to a
+  temporary file that is fsynced and renamed over `autosave.asaf-service`, so
+  a crash mid-write leaves the previous autosave intact. A pending write is
+  flushed on ⌘Q and when the console window closes. On start the autosave is always restored (crash or clean
+  quit), with the file it belongs to and its unsaved-changes flag; the
+  console says "Restored … from the last session". New/Open ask before
+  discarding unsaved changes.
+- **Blank to logo** is a third blank mode (`Blank::Logo`): the theme's logo
+  centred over its background, with the text's drop shadow. Until themes
+  arrive (Phase 4) the logo is a placeholder (`display/logo.svg`).
+- **Per-item theme** is stored (a theme name, free text) and saved, but not
+  applied until themes exist (Phase 4).
+- **Notes** are for the operator only: shown under the item in the service
+  list and above its slides in the preview, never projected.
 - **Display choice** is remembered by display UUID in memory, so the projector
   returns to the chosen display when it's plugged back in. Without a second
   display the projector is a normal window on the main one.
@@ -191,6 +276,19 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 
 ## Known gaps
 
+- Removing a service item can't be undone (re-add it; the autosave doesn't
+  help because it follows the change).
+- The passage layout (verses per slide etc.) is one setting for all passages,
+  not per service item, and isn't saved in the service file.
+- Only songs can be dragged into the service; passages are added with ⇧⏎ or
+  the Add button. There's no way to edit a passage item's reference in
+  place (remove and re-add).
+- Service items don't embed lyrics: a service opened on a machine without the
+  same songs (by title) or translations (by abbreviation) shows those items as
+  missing. So does a song renamed while a saved service that uses it wasn't
+  open (re-add it).
+- Quitting with unsaved changes doesn't ask; the autosave brings them back on
+  the next start.
 - No delete-song button yet; Bibles are removed from the command line only
   (`asaf remove-bible`).
 - The chosen translation and passage layout settings live in memory and reset
