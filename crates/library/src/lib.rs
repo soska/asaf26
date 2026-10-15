@@ -3,10 +3,13 @@
 
 mod bible;
 mod import;
+pub mod media;
 mod migrations;
+pub mod openlp;
 pub mod service;
+mod themes;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use asaf_core::{Song, format_lyrics, parse_lyrics};
@@ -29,26 +32,30 @@ pub struct SongSummary {
 
 pub struct Library {
     conn: Connection,
+    media_dir: Option<PathBuf>,
 }
 
 impl Library {
     /// Opens (creating if needed) the database at `path` and migrates it.
+    /// Imported images go in `media` next to it.
     pub fn open(path: &Path) -> Result<Self> {
-        Self::init(Connection::open(path)?)
+        let media = path.parent().map(|d| d.join("media"));
+        Self::init(Connection::open(path)?, media)
     }
 
     pub fn open_in_memory() -> Result<Self> {
-        Self::init(Connection::open_in_memory()?)
+        Self::init(Connection::open_in_memory()?, None)
     }
 
-    fn init(conn: Connection) -> Result<Self> {
+    fn init(conn: Connection, media_dir: Option<PathBuf>) -> Result<Self> {
         conn.busy_timeout(Duration::from_secs(5))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         // FULL: a saved edit is on disk before save() returns.
         conn.pragma_update(None, "synchronous", "FULL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        let mut lib = Self { conn };
+        let mut lib = Self { conn, media_dir };
         migrations::run(&mut lib.conn)?;
+        lib.ensure_a_theme()?;
         Ok(lib)
     }
 

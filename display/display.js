@@ -19,25 +19,15 @@
 
   // ---- theme ----------------------------------------------------------------
 
-  function applyTheme(t, transition) {
-    const vars = {
-      "--fade": `${transition.duration_ms}ms`,
-      "--font-family": t.font_family,
-      "--font-weight": t.font_weight,
-      "--line-height": t.line_height,
-      "--color": t.color,
-      "--outline-color": t.outline_color,
-      // Visible outline is half the stroke (the inner half is under the fill).
-      "--outline-width": `${t.outline_vh * 2}vh`,
-      "--shadow": t.shadow,
-      "--align": t.align,
-      "--mx": `${t.margin_x_pct}vw`,
-      "--my": `${t.margin_y_pct}vh`,
-      "--bg-color": t.background_color,
-      "--bg-image": t.background_image ? `url("${t.background_image}")` : "none",
-      "--logo": t.logo ? `url("${t.logo}")` : "none",
-    };
-    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  // The server sends the theme already turned into CSS custom properties
+  // (asaf_core::Theme::css_vars); display.css does the rest.
+  let appliedVars = null;
+  function applyTheme(cssVars) {
+    const key = JSON.stringify(cssVars);
+    if (key === appliedVars) return false;
+    appliedVars = key;
+    for (const [k, v] of cssVars) root.style.setProperty(k, v);
+    return true;
   }
 
   // ---- auto-fit -------------------------------------------------------------
@@ -114,15 +104,23 @@
   // `live` is false for the state sent on connect, which may be old.
   function render(next, live) {
     state = next;
-    applyTheme(state.theme, state.transition);
+    // A new font, size range or margin changes what fits: refit both layers.
+    if (applyTheme(state.css_vars ?? [])) refitSoon();
 
     const slide = state.slide;
     const key = slide ? JSON.stringify(slide) : null;
     if (key !== shownKey) {
-      // Prepare the hidden layer, then cross-fade to it.
+      // Prepare the hidden layer in its waiting place (no animation), then
+      // transition to it while the other leaves.
       active = 1 - active;
-      if (slide) fill(layers[active], slide);
-      else layers[active].querySelector(".text").replaceChildren();
+      const incoming = layers[active];
+      incoming.classList.add("instant");
+      incoming.classList.remove("on", "out");
+      if (slide) fill(incoming, slide);
+      else incoming.querySelector(".text").replaceChildren();
+      void incoming.offsetWidth; // commit the waiting position before animating
+      incoming.classList.remove("instant");
+      layers[1 - active].classList.add("out");
       shownKey = key;
     }
 

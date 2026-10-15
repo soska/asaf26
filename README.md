@@ -3,15 +3,21 @@
 A fast lyrics and Bible-verse projector: a Rust app with a GPUI operator
 console and a web-based display. See `Rust Lyrics Projector — PRD.md`.
 
-**Status: Phase 3 (service and live operation).** A song library in SQLite
+**Status: Phase 4 (themes and migration).** A song library in SQLite
 with full-text search as you type, a lyrics editor with live slide preview,
 OpenLyrics import and export, and Bibles (OSIS and Zefania) looked up by
 reference in English or Spanish. Songs and passages go into a service list
-(reorder by keyboard or drag, notes and a theme name per item) that is saved
+(reorder by keyboard or drag, notes and a theme per item) that is saved
 as an `.asaf-service` file and autosaved continuously, so a crash or restart
 brings it back. Separate preview and live panes; a whole service runs from
 the keyboard: ⏎ puts the cued item live and cues the next, arrows step
-through slides, B / ⇧B / L blank to black, background or logo.
+through slides, B / ⇧B / L blank to black, background or logo. Themes (font,
+size range, weight, colours, outline, shadow, alignment, margins, background
+colour or image, transition) are edited in the console with a preview and
+stored in the library; output uses fonts bundled into the app, so it looks
+the same on every machine. An OpenLP data folder (songs and Bibles) imports
+in one step. Settings (projector display, port, default theme, English or
+Spanish console) are saved; `packaging/macos/package.sh` builds `Asaf.app`.
 
 Licensed GPL-3.0-or-later. Provided as-is, with no support.
 
@@ -24,19 +30,24 @@ cargo run -- export ~/Desktop/songs    # export every song as OpenLyrics
 cargo run -- import-bible kjv.osis.xml rv1909.xml   # import OSIS / Zefania Bibles
 cargo run -- bibles                    # list installed Bibles
 cargo run -- remove-bible RV1909       # remove one (by abbreviation or name)
+cargo run -- import-openlp ~/Library/Application\ Support/openlp/Data   # migrate from OpenLP
+cargo run -- themes                    # list themes (the default is marked)
 cargo test --workspace                 # all tests, including headless console UI tests
+packaging/macos/package.sh [--zip]     # release build of Asaf.app (see "Packaging")
 ```
 
 - The library lives at `~/Library/Application Support/Asaf/asaf.sqlite` on
-  macOS (the OS data dir elsewhere). `ASAF_DATA_DIR=/some/dir` uses another
-  folder. A new library starts with one public-domain hymn.
+  macOS (the OS data dir elsewhere), with imported theme images in `media/`
+  next to it. `ASAF_DATA_DIR=/some/dir` uses another folder. A new library
+  starts with one public-domain hymn and the Default theme.
 - The current service is autosaved next to it as `autosave.asaf-service` and
   restored on every start (a damaged one is renamed `….corrupt`, or
   `….corrupt-2` and so on, and reported, never deleted).
 - Display page: <http://127.0.0.1:4510/display> (add `?debug` for an overlay
   with socket state, revision and change-to-paint latency). Works as an OBS
   browser source.
-- `ASAF_PORT=5000 cargo run` changes the port.
+- The port comes from Settings (default 4510); `ASAF_PORT=5000 cargo run`
+  overrides it.
 - `ASAF_PROJECTOR_ON_MAIN=1 cargo run` puts the fullscreen projector on the
   main display when there is no second one (for testing; it covers the screen,
   quit with ⌘Q).
@@ -54,8 +65,8 @@ Four columns, left to right:
    Drag rows to reorder, drag songs in from the library.
 3. **Preview**: the cued service item's slides (or the source panel's choice
    while you're in it), with its notes and, for passages, the layout options.
-4. **Live**: what's on the projector, slide by slide, the blank state, and the
-   projector display picker.
+4. **Live**: what's on the projector, slide by slide, its theme, the blank
+   state, the projector display picker, and Themes… / Settings….
 
 | Keys | Where | Does |
 | --- | --- | --- |
@@ -77,7 +88,10 @@ Four columns, left to right:
 | `⌘I` | anywhere | edit the cued item's notes (`⏎` or `Esc` when done) |
 | `⌘S` / `⇧⌘S` / `⌘O` / `⇧⌘N` | anywhere | save / save as / open / new service |
 | `⌘E` / `⌘N` | anywhere | edit the previewed song / new song |
-| `⌘S` | editor | save and close |
+| `⌘T` | anywhere | theme editor (on the cued item's theme, if it has one) |
+| `⌘,` | anywhere | settings |
+| `⌘S` | song editor | save and close |
+| `⌘S` | theme editor | save the theme |
 
 Live-control keys never fire while a text field has focus, so typing "b" in
 search doesn't blank the screen and `⌘⌫` in a field deletes text, not a
@@ -89,6 +103,109 @@ Running a service: prepare it with `⇧⏎` from the source panel, `Esc`, then
 `⏎` (first item live), `→`… through its slides, `⏎` (next item), and so on.
 An ad-hoc verse (`⌘2`, type, `⏎ ⏎`) doesn't disturb the cue: the next `⏎`
 carries on with the service.
+
+### Themes
+
+A theme sets the font (one of the bundled ones, Source Sans 3, Montserrat,
+Oswald and Lora, or any font installed on the machine showing the output),
+the weight, the auto-fit size range and line spacing (in % of the screen
+height), text colour, outline colour and width, shadow colour, blur and
+offset, horizontal and vertical alignment, side and top/bottom margins, the
+background colour and image, the logo shown by "blank to logo", and the
+transition between slides (fade, slide up or cut) and its duration. Colours
+are `#rrggbb` or `#rrggbbaa` (alpha).
+
+The theme editor (`⌘T`, or Themes… in the live pane) lists the themes on the
+left (New, Duplicate, Delete…, Make default), the settings in the middle and
+an approximate preview on the right: the sample chorus on the theme's
+background and image in its font, colours, alignment and margins, sized
+roughly like the display's auto-fit, with the outline and shadow drawn as
+offset copies of the text, plus a small "blanked to the logo" view. Fields
+that can't be used turn red and block saving. `⌘S` saves; if the theme is on
+screen the projector changes at once. Switching themes or closing with
+unsaved changes asks first. Background and logo images are copied into the
+data folder's `media/` (named by a hash of their contents, so re-importing
+the same file reuses it) and served by the local server; the original file
+can be moved or deleted afterwards. "Built in" goes back to the bundled
+placeholder images.
+
+The **default theme** (chosen in the editor or in Settings) is used for
+everything without a theme of its own: ad-hoc songs and verses, and service
+items with no theme. A service item's own theme is chosen with the chips
+under its notes (or typed by name); it goes live together with the item's
+first slide, in one display update (changing the theme of the item already
+on screen applies the next time it goes live). Renaming a theme renames it
+in the open service; deleting it puts those items back on the default. A name that
+doesn't match a theme (a service from another machine) shows a warning and
+uses the default. The default theme can't be deleted. The preview, live and
+library slide cards use the theme's background colour, text colour, font
+and alignment.
+
+### Settings
+
+Settings (`⌘,`, Settings… in the live pane, or the Asaf menu), all saved in
+the library as soon as they change:
+
+- **Language**: English or Español for the console. It switches at once.
+- **Default theme**.
+- **Projector display**: chosen in the live pane, remembered by the
+  display's UUID across restarts, and the projector returns to it when it's
+  plugged back in.
+- **Display server port**: used from the next start (`ASAF_PORT` overrides it).
+- **Migrate from OpenLP**: "Import from OpenLP…" (also in the Asaf menu).
+
+### Migrating from OpenLP
+
+Point Asaf at an OpenLP data folder (on macOS
+`~/Library/Application Support/openlp/Data`, on Windows `%APPDATA%\openlp\data`)
+with "Import from OpenLP…" or `asaf import-openlp <dir>`; the folder above it,
+or the `songs` or `bibles` folder alone, works too. Every song in
+`songs/songs.sqlite` and every Bible in `bibles/*.sqlite` is imported in one
+step; OpenLP's files are opened read-only and never changed.
+
+- Songs keep title, alternate title, authors (each once, whatever their
+  role), copyright, CCLI number, verse order and verse tags (`v1`, `c1`,
+  `b1`, `p1`, `i1`, `e1`, `o1`); `[---]` optional splits stay slide splits.
+  OpenLP formatting tags (`{r}…{/r}`, `{br}`) and inline chords (`[G]`,
+  `[D/F#]`) are removed. Temporary songs (copies OpenLP makes from opened
+  service files) are skipped, and so is a song already in the library with
+  the same title and lyrics, so running the import twice is harmless. A song
+  whose lyrics can't be read is reported and the rest still import.
+- Bibles keep their name, copyright and book names (which then also work as
+  typed references, e.g. `San Juan 3:16`); the abbreviation is made from the
+  name (King James Version → KJV, Reina-Valera 1909 → RV1909) since OpenLP
+  doesn't store one, and numbered if another translation already uses it
+  (Reina Valera Antigua → RVA, then Reina Valera Actualizada → RVA2); the language comes from OpenLP's language id or the
+  book names. Deuterocanonical books are skipped and reported, as are web
+  Bibles (OpenLP downloads their text on demand, so it isn't in the file)
+  and translations already installed.
+- Not imported: song books and numbers, topics, comments, OpenLP themes,
+  media files and services.
+
+The importer follows OpenLP's schemas (`openlp/plugins/songs/lib/db.py`,
+`openlp/plugins/bibles/lib/db.py`): the tests build databases from SQL
+mirroring them, for OpenLP 3 and for OpenLP 2.0 song databases (before the
+`temporary` column and author roles), with public-domain hymns and KJV /
+Reina-Valera 1909 verses (`crates/library/tests/fixtures/openlp`).
+
+### Packaging
+
+`packaging/macos/package.sh` builds a release binary and wraps it in
+`target/release/Asaf.app` (Info.plist from `packaging/macos/Info.plist.in`
+with the workspace version, an `.icns` made from the placeholder
+`packaging/macos/icon.png` (its source is `icon.svg`), the fonts' OFL
+licenses in `Contents/Resources/Licenses`), signs it ad hoc so it runs on
+the machine that built it, and with `--zip` also packs
+`target/release/Asaf-<version>-macos.zip`. The bundle identifier is
+`local.asaf.Asaf` unless `ASAF_BUNDLE_ID` says otherwise.
+
+Out of scope: Developer ID signing, notarization and a DMG. Copied to another
+Mac, the ad-hoc signed app is blocked by Gatekeeper until it's allowed under
+System Settings → Privacy & Security (or with `xattr -dr
+com.apple.quarantine Asaf.app`). Signing for distribution needs an Apple
+Developer account: `codesign --options runtime --sign "Developer ID
+Application: …"`, then `xcrun notarytool submit` and `xcrun stapler staple`.
+Other platforms aren't packaged yet.
 
 ### Service files
 
@@ -179,15 +296,17 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 
 | Crate | Role |
 | --- | --- |
-| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), `DisplayState`, the `Store` (single source of truth, change listeners). No UI or IO deps (serde/serde_json only). |
-| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
+| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the `Store` (single source of truth, default and per-item theme, change listeners). No UI or IO deps (serde/serde_json only). |
+| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Themes and settings (`themes.rs`), theme images in the media folder (`media.rs`), the OpenLP importer (`openlp.rs`). Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
+| `crates/fonts` (`asaf-fonts`) | The bundled OFL fonts (Source Sans 3, Montserrat, Oswald, Lora; Google Fonts' variable TTFs) and their licenses, embedded with `include_bytes!`, plus their `@font-face` CSS. |
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
-| `crates/server` (`asaf-server`) | axum on 127.0.0.1: display page, embedded assets, `/ws` pushing `{"type":"state","state":…}` on connect and on every change. |
+| `crates/server` (`asaf-server`) | axum on 127.0.0.1: display page, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change. `examples/display_demo.rs` serves one slide in a theme from a JSON file, for checking output in a browser. |
 | `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder). No build step; embedded into the binary with `include_str!`. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, import/export. Never draws projected output. |
-| `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server, projector and console; `import`/`export`/`import-bible`/`bibles`/`remove-bible` subcommands. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the English/Spanish string table (`i18n.rs`), import/export and OpenLP migration (`transfer.rs`). Never draws projected output. |
+| `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port and media folder from the settings), projector (remembered display) and console; `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
+| `packaging/macos` | `package.sh` (builds `Asaf.app`), `Info.plist.in`, the placeholder icon. |
 
 ## Decisions and deviations from the PRD
 
@@ -240,15 +359,43 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
   console says "Restored … from the last session". New/Open ask before
   discarding unsaved changes.
 - **Blank to logo** is a third blank mode (`Blank::Logo`): the theme's logo
-  centred over its background, with the text's drop shadow. Until themes
-  arrive (Phase 4) the logo is a placeholder (`display/logo.svg`).
-- **Per-item theme** is stored (a theme name, free text) and saved, but not
-  applied until themes exist (Phase 4).
+  centred over its background, with the text's drop shadow. The default
+  logo is a placeholder (`display/logo.svg`); themes can use any image.
+- **Themes are JSON in SQLite** (migration 3: `themes`, keyed by a
+  case-insensitive unique name, and `settings`, key/value rows). A stored
+  theme missing fields (written by an older version) or with values out of
+  range is read with defaults / clamped (`Theme::sanitized`), so a damaged
+  row can't break the output. Service items refer to themes by name, as the
+  service file already did.
+- **The theme reaches the display as CSS variables**: `Theme::css_vars` in
+  `asaf-core` turns it into `--color`, `--shadow`, `--valign`… (table-driven
+  tests), `DisplayState.css_vars` carries them and `display.js` only sets
+  them on `:root`. A cut is a `0ms` transition; "slide up" sets `--shift`,
+  the distance a new slide rises (the old one leaves upward). Fonts are
+  served by the app, never fetched from the internet; theme images must be
+  local URLs (`/media/…` or `/assets/…`).
+- **Default and per-item theme live in the `Store`.** `load_song_themed` /
+  `load_passage_themed` change the slide and the theme in one revision, so
+  the projector never shows the new slide in the old theme; editing the
+  default theme only notifies displays if it's the one on screen.
+- **Bundled fonts**: four families from Google Fonts' OFL set, as variable
+  TTFs (1.8 MB in the binary), chosen for Latin/Spanish coverage and to cover
+  sans, condensed and serif looks. The console registers them with GPUI so
+  its previews use the same fonts.
+- **Settings are applied when they change** and need no Save button; the
+  port is the exception (it applies from the next start).
+- **The console language** is a string table keyed by the English text
+  (`lang(cx).t("Songs")`); a test fails if a string used in the console has
+  no Spanish entry or the table has unused ones.
+- **resvg is optimised in dev builds** (`[profile.dev.package.resvg]` and its
+  rendering crates): unoptimised, the console's SVG background previews took
+  seconds per frame.
 - **Notes** are for the operator only: shown under the item in the service
   list and above its slides in the preview, never projected.
-- **Display choice** is remembered by display UUID in memory, so the projector
-  returns to the chosen display when it's plugged back in. Without a second
-  display the projector is a normal window on the main one.
+- **Display choice** is remembered by display UUID (and saved in the
+  settings), so the projector returns to the chosen display when it's
+  plugged back in or the app restarts. Without a second display the
+  projector is a normal window on the main one.
 - **Bibles share the song database** (migration 2): `bibles` (one row per
   translation; its book names one per line) and `bible_verses`, unique on
   `(bible_id, book, chapter, verse)` with an integer `id` (so VACUUM and
@@ -292,8 +439,21 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 - No delete-song button yet; Bibles are removed from the command line only
   (`asaf remove-bible`).
 - The chosen translation and passage layout settings live in memory and reset
-  on restart (settings arrive in Phase 4). Fit-to-screen estimates from the
-  default theme.
+  on restart (they aren't part of the Phase 4 settings). Fit-to-screen
+  estimates from the default theme, even for a passage with its own theme.
+- The theme preview is an approximation: GPUI has no text stroke or blur, so
+  the outline is drawn as eight offset copies of the text and the shadow as
+  one translucent copy, and the size follows a character-width estimate,
+  not the display's measured auto-fit.
+- Spanish covers the console's labels, buttons, hints and the theme and
+  settings windows; the song editor is still English. Messages built from
+  other parts (Bible reference errors and hints, import reports, file dialogs' questions, notifications such as
+  "Added … to the service") and the Asaf menu are still English; input
+  placeholders switch on the next start.
+- The OpenLP importer doesn't bring song books, topics, comments, media,
+  OpenLP themes or services, and web Bibles can't be imported.
+- Theme images are never removed from `media/`, even when no theme uses them.
+- Packaging is macOS only, signed ad hoc (see "Packaging").
 - One versification (KJV-style chapter counts); a translation that numbers
   Joel or Malachi differently can't be addressed past those counts.
 - References are parsed in English and Spanish only; the console UI is

@@ -18,7 +18,7 @@ use asaf_library::service::{read_service, service_name, with_service_extension, 
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
-use gpui::component::{ActiveTheme as _, Sizable as _, WindowExt as _, h_flex, v_flex};
+use gpui::component::{ActiveTheme as _, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AppContext as _, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, PathPromptOptions,
@@ -27,6 +27,7 @@ use gpui::{
 };
 
 use crate::console::{Console, PreviewSource};
+use crate::i18n::lang;
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -65,7 +66,7 @@ pub(crate) struct ServiceState {
     pub notes: Entity<InputState>,
     pub theme: Entity<InputState>,
     /// Which item the notes and theme fields show.
-    inputs_key: Option<u64>,
+    pub(crate) inputs_key: Option<u64>,
     list_scroll: ScrollHandle,
 }
 
@@ -134,8 +135,8 @@ impl ServiceState {
             autosave_pending: Arc::new(AtomicBool::new(false)),
             live_key: None,
             resolved: None,
-            notes: cx.new(|cx| InputState::new(window, cx).placeholder("Notes for the operator")),
-            theme: cx.new(|cx| InputState::new(window, cx).placeholder("Default theme")),
+            notes: cx.new(|cx| InputState::new(window, cx).placeholder(lang(cx).t("Notes for the operator"))),
+            theme: cx.new(|cx| InputState::new(window, cx).placeholder(lang(cx).t("Default theme"))),
             inputs_key: None,
             list_scroll: ScrollHandle::new(),
         }
@@ -345,6 +346,14 @@ impl Console {
         self.service.theme.update(cx, |s, cx| s.set_value(theme, window, cx));
     }
 
+    /// A theme chip under the cued item's fields was clicked: `None` is the default.
+    pub(crate) fn choose_item_theme(&mut self, name: Option<String>, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_item_fields(window, cx);
+        let value = name.unwrap_or_default();
+        self.service.theme.update(cx, |s, cx| s.set_value(value, window, cx));
+        self.item_fields_changed(cx);
+    }
+
     pub(crate) fn edit_notes(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.service.cued().is_some() {
             self.sync_item_fields(window, cx);
@@ -406,13 +415,15 @@ impl Console {
         by_name.or_else(|| self.bible.bibles.iter().find(|b| b.id == Some(id))).cloned()
     }
 
-    /// Puts the cued item live at slide `index` and cues the next item.
+    /// Puts the cued item live at slide `index`, in its theme, and cues the
+    /// next item.
     pub(crate) fn go_live_cued(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(r) = &self.service.resolved else { return };
+        let theme = self.service.service.items.iter().find(|i| i.key == r.key).and_then(|i| self.item_theme(i));
         match &r.target {
-            Target::Song(song) => self.store.load_song((**song).clone(), index),
+            Target::Song(song) => self.store.load_song_themed((**song).clone(), index, theme),
             Target::Passage(passage) => {
-                self.store.load_passage(passage.clone(), r.title.clone(), r.slides.clone(), index)
+                self.store.load_passage_themed(passage.clone(), r.title.clone(), r.slides.clone(), index, theme)
             }
             Target::Missing(why) => {
                 window.push_notification(Notification::error(why.clone()), cx);
@@ -573,6 +584,8 @@ impl Console {
     // ---- rendering --------------------------------------------------------------
 
     pub(crate) fn service_column(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
+        let chips = if self.service.cued().is_some() { Some(self.item_theme_chips(cx)) } else { None };
         let theme = cx.theme();
         let state = &self.service;
         let items = &state.service.items;
@@ -621,7 +634,7 @@ impl Console {
                         .when(!item.notes.is_empty() || item.theme.is_some(), |d| {
                             let mut extra = item.notes.lines().next().unwrap_or_default().to_string();
                             if let Some(t) = &item.theme {
-                                extra = if extra.is_empty() { format!("Theme: {t}") } else { format!("{extra} · {t}") };
+                                extra = if extra.is_empty() { format!("{}: {t}", l.t("Theme")) } else { format!("{extra} · {t}") };
                             }
                             d.child(div().truncate().text_xs().text_color(theme.muted_foreground).child(extra))
                         }),
@@ -631,7 +644,7 @@ impl Console {
                         .flex_none()
                         .text_xs()
                         .text_color(theme.muted_foreground)
-                        .child(if item.is_song() { "Song" } else { "Bible" }),
+                        .child(if item.is_song() { l.t("Song") } else { l.t("Bible") }),
                 )
                 .test_support()
         });
@@ -657,17 +670,17 @@ impl Console {
                                     .font_weight(FontWeight::BOLD)
                                     .child(state.title()),
                             )
-                            .child(Button::new("service-new").xsmall().ghost().label("New").tooltip("New service (⇧⌘N)").on_click(
+                            .child(Button::new("service-new").xsmall().ghost().label(l.t("New")).tooltip(l.t("New service (⇧⌘N)")).on_click(
                                 cx.listener(|this, _, window, cx| this.new_service(window, cx)),
                             ))
-                            .child(Button::new("service-open").xsmall().ghost().label("Open…").tooltip("Open a service (⌘O)").on_click(
+                            .child(Button::new("service-open").xsmall().ghost().label(l.t("Open…")).tooltip(l.t("Open a service (⌘O)")).on_click(
                                 cx.listener(|this, _, window, cx| this.open_service(window, cx)),
                             ))
                             .child(
                                 Button::new("service-save")
                                     .xsmall()
-                                    .label("Save")
-                                    .tooltip("Save (⌘S), Save As (⇧⌘S)")
+                                    .label(l.t("Save"))
+                                    .tooltip(l.t("Save (⌘S), Save As (⇧⌘S)"))
                                     .on_click(cx.listener(|this, _, window, cx| this.save_service(false, window, cx))),
                             ),
                     ),
@@ -693,8 +706,8 @@ impl Console {
                                 .p_2()
                                 .text_xs()
                                 .text_color(theme.muted_foreground)
-                                .child("The service is empty.")
-                                .child("Choose a song or type a reference on the left and press ⇧⏎ to add it, or drag songs here."),
+                                .child(l.t("The service is empty."))
+                                .child(l.t("Choose a song or type a reference on the left and press ⇧⏎ to add it, or drag songs here.")),
                         )
                     })
                     .children(rows),
@@ -707,10 +720,11 @@ impl Console {
                         .border_t_1()
                         .border_color(theme.border)
                         .text_xs()
-                        .child(div().text_color(theme.muted_foreground).child("Notes (⌘I)"))
+                        .child(div().text_color(theme.muted_foreground).child(l.t("Notes (⌘I)")))
                         .child(div().key_context("ServiceItem").child(Input::new(&state.notes).small()))
-                        .child(div().text_color(theme.muted_foreground).child("Theme"))
-                        .child(div().key_context("ServiceItem").child(Input::new(&state.theme).small())),
+                        .child(div().text_color(theme.muted_foreground).child(l.t("Theme")))
+                        .child(div().key_context("ServiceItem").child(Input::new(&state.theme).small()))
+                        .children(chips),
                 )
             })
             .child(
@@ -721,12 +735,42 @@ impl Console {
                     .border_color(theme.border)
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child("⌘↑↓ cue  ·  ⏎ go live  ·  ⌥↑↓ move  ·  ⌘⌫ remove"),
+                    .child(l.t("⌘↑↓ cue  ·  ⏎ go live  ·  ⌥↑↓ move  ·  ⌘⌫ remove")),
             )
+    }
+
+    /// The themes as chips under the cued item's theme field (the default
+    /// first), and a warning if the field names a theme that doesn't exist.
+    fn item_theme_chips(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let l = lang(cx);
+        let current = self.service.cued().and_then(|i| i.theme.clone());
+        let unknown = current.as_ref().is_some_and(|name| !self.themes.iter().any(|t| t.name.eq_ignore_ascii_case(name.trim())));
+        let chip = |id: (&'static str, usize), label: String, on: bool, name: Option<String>, cx: &mut Context<Self>| {
+            Button::new(id)
+                .xsmall()
+                .ghost()
+                .label(label)
+                .selected(on)
+                .on_click(cx.listener(move |this, _, window, cx| this.choose_item_theme(name.clone(), window, cx)))
+        };
+        // "Default theme", not "Default": the library's default theme is itself usually called Default.
+        let mut chips = vec![chip(("item-theme", 0), l.t("Default theme").to_string(), current.is_none(), None, cx)];
+        for (i, t) in self.themes.iter().enumerate() {
+            let on = current.as_ref().is_some_and(|c| c.trim().eq_ignore_ascii_case(&t.name));
+            chips.push(chip(("item-theme", i + 1), t.name.clone(), on, Some(t.name.clone()), cx));
+        }
+        v_flex()
+            .gap_1()
+            .child(h_flex().flex_wrap().gap_1().children(chips))
+            .when(unknown, |d| {
+                d.child(div().text_color(cx.theme().warning).child(l.t("There's no theme with that name; the default is used.")))
+            })
+            .into_any_element()
     }
 
     /// The preview pane for the cued service item.
     pub(crate) fn cue_preview_column(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let is_passage = matches!(self.service.resolved.as_ref().map(|r| &r.target), Some(Target::Passage(_)));
         let layout_controls = is_passage.then(|| self.layout_controls(cx));
         let theme = cx.theme();
@@ -738,14 +782,17 @@ impl Console {
                 .justify_center()
                 .p_4()
                 .text_color(theme.muted_foreground)
-                .child("Nothing cued. Add songs and passages to the service.")
+                .child(l.t("Nothing cued. Add songs and passages to the service."))
                 .into_any_element();
         };
         let item = self.service.cued();
+        let look = self.look_of(item);
         let live = self.store.snapshot();
         let is_live = self.service.live_key == Some(r.key);
         let notes = item.map(|i| i.notes.clone()).unwrap_or_default();
-        let position = self.service.cursor.map(|i| format!("Item {} of {}", i + 1, self.service.service.items.len()));
+        let position = self.service.cursor.map(|i| {
+            format!("{} {} {} {} · {} {}", l.t("Item"), i + 1, l.t("of"), self.service.service.items.len(), l.t("Theme"), look.name)
+        });
 
         v_flex()
             .flex_1()
@@ -767,7 +814,7 @@ impl Console {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(theme.muted_foreground)
-                                    .child(format!("PREVIEW · {}", position.unwrap_or_default().to_uppercase())),
+                                    .child(format!("{} · {}", l.t("PREVIEW"), position.unwrap_or_default().to_uppercase())),
                             )
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(r.title.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(r.subtitle.clone())),
@@ -776,8 +823,8 @@ impl Console {
                         Button::new("cue-go-live")
                             .small()
                             .primary()
-                            .label("Go live")
-                            .tooltip("Show the first slide and cue the next item (⏎)")
+                            .label(l.t("Go live"))
+                            .tooltip(l.t("Show the first slide and cue the next item (⏎)"))
                             .on_click(cx.listener(|this, _, window, cx| this.go_live_cued(0, window, cx))),
                     ),
             )
@@ -805,13 +852,13 @@ impl Console {
                     .when_some(
                         match &r.target {
                             Target::Missing(why) => Some(why.clone()),
-                            _ if r.slides.is_empty() => Some("This item has no slides.".to_string()),
+                            _ if r.slides.is_empty() => Some(l.t("This item has no slides.").to_string()),
                             _ => None,
                         },
                         |d, why| d.child(div().text_color(theme.danger).child(why)),
                     )
                     .children(r.slides.iter().enumerate().map(|(i, slide)| {
-                        slide_card(("cue-slide", i), slide, is_live && i == live.current, cx)
+                        slide_card(("cue-slide", i), slide, is_live && i == live.current, &look, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.go_live_cued(i, window, cx)))
                     })),
             )

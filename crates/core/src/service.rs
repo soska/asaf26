@@ -38,8 +38,8 @@ pub struct ServiceItem {
     pub key: u64,
     #[serde(flatten)]
     pub content: ItemContent,
-    /// Theme to use instead of the default, by name. Stored now; applied once
-    /// themes exist (Phase 4).
+    /// Theme to use instead of the default, by name (themes live in the
+    /// library). A name the library doesn't have means the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
     /// For the operator only; never projected.
@@ -136,6 +136,19 @@ impl Service {
 
     pub fn position(&self, key: u64) -> Option<usize> {
         self.items.iter().position(|i| i.key == key)
+    }
+
+    /// Items using theme `old` now use `new` (renamed), or the default
+    /// (`None`: deleted). Returns whether anything changed.
+    pub fn theme_renamed(&mut self, old: &str, new: Option<&str>) -> bool {
+        let mut changed = false;
+        for item in &mut self.items {
+            if item.theme.as_deref().is_some_and(|t| t.trim().eq_ignore_ascii_case(old.trim())) {
+                item.theme = new.map(String::from);
+                changed = true;
+            }
+        }
+        changed
     }
 
     /// Updates the cached title of every item showing song `song_id`.
@@ -352,5 +365,17 @@ mod tests {
         assert!(s.remove(5).is_none());
         assert_eq!(s.items.len(), 2);
         assert_eq!(Service::default().display_name(), "Untitled service");
+    }
+
+    #[test]
+    fn theme_renames_follow_into_items() {
+        let mut s = sample();
+        s.items[0].theme = Some("Scripture".into());
+        s.items[1].theme = Some("Other".into());
+        assert!(s.theme_renamed("scripture", Some("Bible")));
+        assert_eq!(s.items[0].theme.as_deref(), Some("Bible"));
+        assert!(!s.theme_renamed("Scripture", Some("x")));
+        assert!(s.theme_renamed("Other", None));
+        assert_eq!(s.items[1].theme, None);
     }
 }

@@ -18,6 +18,11 @@ pub const AUTOSAVE_FILE: &str = "autosave.asaf-service";
 /// old file or the new one, never a mix: write a temporary file next to it,
 /// flush it to disk, then rename it over the target.
 pub fn write_atomic(path: &Path, contents: &str) -> io::Result<()> {
+    write_atomic_bytes(path, contents.as_bytes())
+}
+
+/// [`write_atomic`] for any bytes.
+pub fn write_atomic_bytes(path: &Path, contents: &[u8]) -> io::Result<()> {
     let dir = path.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let name = path.file_name().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no file name"))?;
     // Unique per write: the background autosave and a save or the quit-time
@@ -29,7 +34,7 @@ pub fn write_atomic(path: &Path, contents: &str) -> io::Result<()> {
 
     let result = (|| {
         let mut file = File::create(&tmp)?;
-        file.write_all(contents.as_bytes())?;
+        file.write_all(contents)?;
         file.sync_all()?;
         fs::rename(&tmp, path)?;
         // Make the rename itself durable.

@@ -17,6 +17,7 @@ asaf-console = { path = "crates/console" }
 asaf-library = { path = "crates/library" }
 asaf-openlyrics = { path = "crates/openlyrics" }
 asaf-bible = { path = "crates/bible" }
+asaf-fonts = { path = "crates/fonts" }
 
 # GPUI Kit (GPUI snapshot + gpui-component), pinned exactly: see README
 # ("Why GPUI is pinned"). Aliased as `gpui` so GPUI's derive macros resolve.
@@ -31,3 +32,14 @@ axum = { version = "0.8.9", features = ["ws"] }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "macros", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# SVG theme images in the console's preview are rendered by resvg, which is
+# far too slow unoptimized (seconds per frame in debug builds and tests).
+[profile.dev.package.resvg]
+opt-level = 3
+[profile.dev.package.usvg]
+opt-level = 3
+[profile.dev.package.tiny-skia]
+opt-level = 3
+[profile.dev.package.tiny-skia-path]
+opt-level = 3

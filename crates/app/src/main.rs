@@ -7,12 +7,14 @@
 //! asaf import-bible <file>...  import OSIS or Zefania Bibles
 //! asaf bibles                  list installed Bibles
 //! asaf remove-bible <abbrev>   remove an installed Bible
+//! asaf import-openlp <dir>     import songs and Bibles from an OpenLP data folder
+//! asaf themes                  list themes (the default is marked)
 //! ```
 //!
 //! Environment:
-//! - `ASAF_DATA_DIR`: where `asaf.sqlite` and the service autosave live
-//!   (default: the OS data dir + `Asaf`).
-//! - `ASAF_PORT`: server port (default 4510).
+//! - `ASAF_DATA_DIR`: where `asaf.sqlite`, imported images (`media/`) and
+//!   the service autosave live (default: the OS data dir + `Asaf`).
+//! - `ASAF_PORT`: server port, over the one in the settings (default 4510).
 //! - `ASAF_PROJECTOR_ON_MAIN=1`: allow a fullscreen projector on the main
 //!   display (for testing with a single screen).
 
@@ -20,8 +22,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
-use asaf_console::{Console, ServiceSession};
-use asaf_core::{Song, Store, Theme, sample_song};
+use asaf_console::{Console, ImportOpenLp, OpenSettings, OpenThemes, ServiceSession};
+use asaf_core::{Song, Store, sample_song};
 use asaf_library::Library;
 use asaf_library::service::{AUTOSAVE_FILE, restore_autosave};
 use asaf_projector::Projector;
@@ -47,9 +49,11 @@ fn main() -> ExitCode {
         Some("import-bible") if args.len() > 1 => import_bibles(library, &args[1..]),
         Some("bibles") if args.len() == 1 => list_bibles(library),
         Some("remove-bible") if args.len() == 2 => remove_bible(library, &args[1]),
+        Some("import-openlp") if args.len() == 2 => import_openlp(library, &args[1]),
+        Some("themes") if args.len() == 1 => list_themes(library),
         _ => {
             eprintln!(
-                "usage: asaf [import <file|dir>... | export <dir> | import-bible <file>... | bibles | remove-bible <abbrev>]"
+                "usage: asaf [import <file|dir>... | export <dir> | import-bible <file>... | bibles | remove-bible <abbrev> | import-openlp <dir> | themes]"
             );
             ExitCode::FAILURE
         }
@@ -162,16 +166,48 @@ fn remove_bible(mut library: Library, name: &str) -> ExitCode {
     }
 }
 
+fn import_openlp(mut library: Library, dir: &str) -> ExitCode {
+    match library.import_openlp(dir.as_ref()) {
+        Ok(report) => {
+            println!("{}", report.summary());
+            for problem in report.problems() {
+                eprintln!("  {problem}");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("asaf: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn list_themes(library: Library) -> ExitCode {
+    let result = library.themes().and_then(|themes| Ok((themes, library.default_theme()?.name)));
+    match result {
+        Ok((themes, default)) => {
+            for t in themes {
+                let mark = if t.name == default { " (default)" } else { "" };
+                println!("{}{mark}: {} {}, {}–{}% of the height", t.name, t.font_family, t.font_weight, t.size_min_vh, t.size_max_vh);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("asaf: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 fn run_app(library: Library) -> ExitCode {
-    let port = std::env::var("ASAF_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(asaf_server::DEFAULT_PORT);
+    let settings = library.settings().unwrap_or_default();
+    let port = std::env::var("ASAF_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(settings.port);
     let projector_on_main = std::env::var("ASAF_PROJECTOR_ON_MAIN").is_ok_and(|v| v == "1");
 
-    // Nothing is live until the operator picks a song.
-    let store = Store::new(Song::default(), Theme::default());
-    let server = match asaf_server::start(store.clone(), port) {
+    // Nothing is live until the operator picks a song; then it shows in the default theme.
+    let store = Store::new(Song::default(), library.default_theme().unwrap_or_default());
+    let media = library.media_dir().map(|d| d.to_path_buf());
+    let server = match asaf_server::start(store.clone(), port, media) {
         Ok(server) => server,
         Err(err) => {
             eprintln!("asaf: cannot listen on 127.0.0.1:{port}: {err}");
@@ -189,10 +225,16 @@ fn run_app(library: Library) -> ExitCode {
         UiTheme::change(ThemeMode::Dark, None, cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.bind_keys([gpui::KeyBinding::new("cmd-q", Quit, None)]);
-        cx.set_menus(vec![Menu::new("Asaf").items([MenuItem::action("Quit Asaf", Quit)])]);
+        cx.set_menus(vec![Menu::new("Asaf").items([
+            MenuItem::action("Settings…", OpenSettings),
+            MenuItem::action("Themes…", OpenThemes),
+            MenuItem::action("Import from OpenLP…", ImportOpenLp),
+            MenuItem::separator(),
+            MenuItem::action("Quit Asaf", Quit),
+        ])]);
         asaf_console::init(cx);
 
-        Projector::init(url.clone(), projector_on_main, cx);
+        Projector::init(url.clone(), projector_on_main, settings.display_uuid.clone(), cx);
         match Console::open(store, library, url, session, cx) {
             // Closing the console ends the app; the projector can't be operated without it.
             Ok(console) => cx.observe_release(&console, |_, cx| cx.quit()).detach(),

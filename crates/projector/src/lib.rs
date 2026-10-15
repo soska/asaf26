@@ -55,10 +55,11 @@ impl Global for Projector {}
 
 impl Projector {
     /// Opens the projector and starts watching for display changes.
-    pub fn init(url: String, allow_primary_fullscreen: bool, cx: &mut App) {
+    /// `preferred` is the UUID of the display chosen last time, if any.
+    pub fn init(url: String, allow_primary_fullscreen: bool, preferred: Option<String>, cx: &mut App) {
         cx.set_global(Projector {
             url,
-            preferred: None,
+            preferred,
             allow_primary_fullscreen,
             window: None,
             closed_by_user: false,
@@ -101,6 +102,11 @@ impl Projector {
                 }
             })
             .collect()
+    }
+
+    /// The UUID of the display the operator chose (to save in the settings).
+    pub fn preferred_uuid(cx: &App) -> Option<String> {
+        cx.try_global::<Projector>().and_then(|p| p.preferred.clone())
     }
 
     /// Operator picked a display: remember it and move the projector there.

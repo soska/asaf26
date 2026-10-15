@@ -274,10 +274,12 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "asaf-core",
+ "asaf-fonts",
  "asaf-library",
  "asaf-openlyrics",
  "asaf-projector",
  "gpui-kit",
+ "rusqlite",
  "tempfile",
 ]
 
@@ -290,13 +292,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "asaf-fonts"
+version = "0.0.1"
+
+[[package]]
 name = "asaf-library"
 version = "0.0.1"
 dependencies = [
  "asaf-bible",
  "asaf-core",
  "asaf-openlyrics",
+ "roxmltree 0.21.1",
  "rusqlite",
+ "serde_json",
  "tempfile",
 ]
 
@@ -327,10 +335,12 @@ name = "asaf-server"
 version = "0.0.1"
 dependencies = [
  "asaf-core",
+ "asaf-fonts",
  "axum",
  "futures-util",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tokio-tungstenite 0.28.0",
 ]

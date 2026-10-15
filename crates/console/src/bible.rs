@@ -4,7 +4,7 @@
 use asaf_core::bible::passage_slides;
 use asaf_core::{
     Bible, BibleLayout, BibleVerse, BookNames, LiveSnapshot, Passage, RefError, RefRange, ReferencePlacement,
-    ServiceItem, Slide, Theme, VerseRef, VersesPerSlide, format_reference, parse_reference,
+    ServiceItem, Slide, VerseRef, VersesPerSlide, format_reference, parse_reference,
 };
 use asaf_library::VerseHit;
 use gpui::component::button::{Button, ButtonVariants as _};
@@ -18,6 +18,7 @@ use gpui::{
 };
 
 use crate::console::Console;
+use crate::i18n::lang;
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -228,7 +229,7 @@ impl Console {
         if verses.is_empty() {
             return Err(format!("{reference} isn't in {}.", bible.abbreviation));
         }
-        let slides = passage_slides(&verses, &ranges, &names, &bible.abbreviation, &self.bible.layout, &Theme::default());
+        let slides = passage_slides(&verses, &ranges, &names, &bible.abbreviation, &self.bible.layout, &self.store.default_theme());
         Ok(PassagePreview {
             passage: Passage { bible_id, ranges },
             reference,
@@ -282,8 +283,9 @@ impl Console {
     /// on screen.
     pub(crate) fn set_bible_layout(&mut self, layout: BibleLayout, cx: &mut Context<Self>) {
         self.bible.layout = layout;
+        let default_theme = self.store.default_theme();
         if let (Some(p), Some(names)) = (&mut self.bible.preview, &self.bible.names) {
-            p.slides = passage_slides(&p.verses, &p.passage.ranges, names, &p.translation, &layout, &Theme::default());
+            p.slides = passage_slides(&p.verses, &p.passage.ranges, names, &p.translation, &layout, &default_theme);
         }
         self.resolve_cue(cx);
 
@@ -312,6 +314,7 @@ impl Console {
     // ---- rendering --------------------------------------------------------------
 
     pub(crate) fn bible_column(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let state = &self.bible;
         let count = state.hits.len();
@@ -330,12 +333,12 @@ impl Console {
                     .child(
                         h_flex()
                             .gap_2()
-                            .child(div().flex_1().font_weight(FontWeight::BOLD).child("Bible"))
+                            .child(div().flex_1().font_weight(FontWeight::BOLD).child(l.t("Bible")))
                             .child(
                                 Button::new("import-bible")
                                     .small()
-                                    .label("Import…")
-                                    .tooltip("Import an OSIS or Zefania Bible")
+                                    .label(l.t("Import…"))
+                                    .tooltip(l.t("Import an OSIS or Zefania Bible"))
                                     .on_click(cx.listener(|_, _, window, cx| transfer::import_bible(window, cx))),
                             ),
                     )
@@ -406,7 +409,7 @@ impl Console {
                         .text_color(theme.muted_foreground)
                         .child("Jn 3:16-18  ·  Gn 1:30-2:3  ·  Sal 23; 91:1-4")
                         .child("1 Juan 4  ·  Ro 8:28, 38-39  ·  Jud 24-25")
-                        .child("Words without numbers search the text."),
+                        .child(l.t("Words without numbers search the text.")),
                 )
             })
             .child(
@@ -417,11 +420,13 @@ impl Console {
                     .border_color(theme.border)
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child("⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  ⇧⏎ add to service  ·  Esc back"),
+                    .child(l.t("⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  ⇧⏎ add to service  ·  Esc back")),
             )
     }
 
     pub(crate) fn passage_preview_column(&self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+        let look = self.store.default_theme();
+        let l = lang(cx);
         let theme = cx.theme();
         let Some(p) = &self.bible.preview else {
             return v_flex()
@@ -430,7 +435,7 @@ impl Console {
                 .items_center()
                 .justify_center()
                 .text_color(theme.muted_foreground)
-                .child("Type a reference and press ⏎.")
+                .child(l.t("Type a reference and press ⏎."))
                 .into_any_element();
         };
         let is_live = live.passage.as_ref() == Some(&p.passage);
@@ -456,7 +461,7 @@ impl Console {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(theme.muted_foreground)
-                                    .child("PREVIEW · BIBLE"),
+                                    .child(l.t("PREVIEW · BIBLE")),
                             )
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(p.reference.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(name)),
@@ -464,8 +469,8 @@ impl Console {
                     .child(
                         Button::new("add-passage")
                             .small()
-                            .label("Add")
-                            .tooltip("Add to the service (⇧⏎)")
+                            .label(l.t("Add"))
+                            .tooltip(l.t("Add to the service (⇧⏎)"))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 if let Some(p) = &this.bible.preview {
                                     let item = ServiceItem::passage(
@@ -482,8 +487,8 @@ impl Console {
                         Button::new("go-live")
                             .small()
                             .primary()
-                            .label("Go live")
-                            .tooltip("Show the first slide (⏎ again, or ⌘⏎)")
+                            .label(l.t("Go live"))
+                            .tooltip(l.t("Show the first slide (⏎ again, or ⌘⏎)"))
                             .on_click(cx.listener(|this, _, window, cx| this.bible_go_live(0, window, cx))),
                     ),
             )
@@ -496,7 +501,7 @@ impl Console {
                     .p_3()
                     .gap_2()
                     .children(p.slides.iter().enumerate().map(|(i, slide)| {
-                        slide_card(("passage-slide", i), slide, is_live && i == live.current, cx)
+                        slide_card(("passage-slide", i), slide, is_live && i == live.current, &look, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.bible_go_live(i, window, cx)))
                     })),
             )
@@ -505,6 +510,7 @@ impl Console {
 
     /// Verses per slide, verse numbers and reference placement.
     pub(crate) fn layout_controls(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let layout = self.bible.layout;
         let per_slide = |label: &'static str, value: VersesPerSlide, cx: &Context<Self>| {
@@ -528,14 +534,14 @@ impl Console {
             .child(
                 h_flex()
                     .gap_1()
-                    .child(div().text_color(theme.muted_foreground).child("Verses per slide"))
+                    .child(div().text_color(theme.muted_foreground).child(l.t("Verses per slide")))
                     .child(per_slide("1", VersesPerSlide::Count(1), cx))
                     .child(per_slide("2", VersesPerSlide::Count(2), cx))
                     .child(per_slide("3", VersesPerSlide::Count(3), cx))
-                    .child(per_slide("Fit", VersesPerSlide::Fit, cx)),
+                    .child(per_slide("Fit", VersesPerSlide::Fit, cx).label(l.t("Fit"))),
             )
             .child(
-                Checkbox::new("verse-numbers").label("Verse numbers").checked(layout.verse_numbers).on_click(
+                Checkbox::new("verse-numbers").label(l.t("Verse numbers")).checked(layout.verse_numbers).on_click(
                     cx.listener(|this, checked: &bool, _, cx| {
                         this.set_bible_layout(BibleLayout { verse_numbers: *checked, ..this.bible.layout }, cx)
                     }),
@@ -543,7 +549,7 @@ impl Console {
             )
             .child(
                 Checkbox::new("reference-last")
-                    .label("Reference on last slide")
+                    .label(l.t("Reference on last slide"))
                     .checked(layout.reference == ReferencePlacement::LastSlide)
                     .on_click(cx.listener(|this, checked: &bool, _, cx| {
                         let reference = if *checked { ReferencePlacement::LastSlide } else { ReferencePlacement::Footer };

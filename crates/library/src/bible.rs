@@ -164,6 +164,12 @@ impl Library {
     /// abbreviation is already installed.
     pub fn import_bible(&mut self, path: &Path) -> std::result::Result<BibleImport, String> {
         let imported = asaf_bible::read_file(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        self.install_bible(imported)
+    }
+
+    /// Stores a Bible read from a file, unless a translation with the same
+    /// name or abbreviation is already installed.
+    pub(crate) fn install_bible(&mut self, imported: asaf_bible::ImportedBible) -> std::result::Result<BibleImport, String> {
         let mut bible = imported.bible;
         for key in [&bible.abbreviation, &bible.name] {
             if self.find_bible(key).map_err(|e| e.to_string())?.is_some() {

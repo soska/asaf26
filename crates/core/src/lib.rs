@@ -8,10 +8,11 @@ mod lyrics;
 pub mod reference;
 mod sample;
 mod service;
+mod settings;
 mod song;
 mod state;
 mod store;
-mod theme;
+pub mod theme;
 
 pub use bible::{Bible, BibleLayout, BibleVerse, BookNames, Passage, ReferencePlacement, VersesPerSlide};
 pub use lyrics::{format_lyrics, parse_lyrics};
@@ -24,4 +25,5 @@ pub use service::{
 pub use song::{SPLIT_MARKER, Slide, Song, Verse};
 pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};
-pub use theme::Theme;
+pub use settings::{DEFAULT_PORT, Language, Settings};
+pub use theme::{Align, DEFAULT_THEME_NAME, Theme, TransitionKind, VAlign, parse_color};

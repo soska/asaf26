@@ -1,27 +1,30 @@
-//! Local HTTP + websocket server. Serves the display page and pushes the full
-//! `DisplayState` to every connected display on connect and on every change.
+//! Local HTTP + websocket server. Serves the display page, the bundled fonts
+//! and imported theme images, and pushes the full `DisplayState` to every
+//! connected display on connect and on every change.
 
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::sync::{Arc, LazyLock};
 use std::thread;
 
 use asaf_core::{DisplayState, Store};
 use axum::Router;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::http::header;
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
 use serde::Serialize;
 use tokio::sync::watch;
 
-pub const DEFAULT_PORT: u16 = 4510;
+pub const DEFAULT_PORT: u16 = asaf_core::DEFAULT_PORT;
 
 const INDEX_HTML: &str = include_str!("../../../display/index.html");
 const DISPLAY_CSS: &str = include_str!("../../../display/display.css");
 const DISPLAY_JS: &str = include_str!("../../../display/display.js");
 const BACKGROUND_SVG: &str = include_str!("../../../display/background.svg");
 const LOGO_SVG: &str = include_str!("../../../display/logo.svg");
+static FONTS_CSS: LazyLock<String> = LazyLock::new(asaf_fonts::font_face_css);
 
 /// A running server. It lives on its own thread for the life of the process.
 pub struct ServerHandle {
@@ -34,9 +37,17 @@ impl ServerHandle {
     }
 }
 
+#[derive(Clone)]
+struct AppState {
+    rx: watch::Receiver<DisplayState>,
+    /// Imported theme images, served at `/media/<file>`.
+    media_dir: Option<Arc<PathBuf>>,
+}
+
 /// Binds 127.0.0.1:`port` synchronously (so a busy port is reported to the
-/// caller) and serves on a background thread.
-pub fn start(store: Arc<Store>, port: u16) -> std::io::Result<ServerHandle> {
+/// caller) and serves on a background thread. Images in `media_dir` are
+/// served at `/media/<file>`.
+pub fn start(store: Arc<Store>, port: u16, media_dir: Option<PathBuf>) -> std::io::Result<ServerHandle> {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port))?;
     listener.set_nonblocking(true)?;
     let addr = listener.local_addr()?;
@@ -63,7 +74,8 @@ pub fn start(store: Arc<Store>, port: u16) -> std::io::Result<ServerHandle> {
             runtime.block_on(async move {
                 let listener = tokio::net::TcpListener::from_std(listener)
                     .expect("convert std listener to tokio");
-                if let Err(err) = axum::serve(listener, router(rx)).await {
+                let state = AppState { rx, media_dir: media_dir.map(Arc::new) };
+                if let Err(err) = axum::serve(listener, router(state)).await {
                     eprintln!("asaf-server stopped: {err}");
                 }
             })
@@ -72,7 +84,7 @@ pub fn start(store: Arc<Store>, port: u16) -> std::io::Result<ServerHandle> {
     Ok(ServerHandle { addr })
 }
 
-fn router(rx: watch::Receiver<DisplayState>) -> Router {
+fn router(state: AppState) -> Router {
     Router::new()
         .route("/", get(|| async { Redirect::temporary("/display") }))
         .route("/display", get(|| async { asset("text/html; charset=utf-8", INDEX_HTML) }))
@@ -80,8 +92,55 @@ fn router(rx: watch::Receiver<DisplayState>) -> Router {
         .route("/assets/display.js", get(|| async { asset("text/javascript; charset=utf-8", DISPLAY_JS) }))
         .route("/assets/background.svg", get(|| async { asset("image/svg+xml", BACKGROUND_SVG) }))
         .route("/assets/logo.svg", get(|| async { asset("image/svg+xml", LOGO_SVG) }))
+        .route("/assets/fonts.css", get(|| async { asset("text/css; charset=utf-8", FONTS_CSS.as_str()) }))
+        .route("/fonts/{file}", get(font))
+        .route("/media/{file}", get(media))
         .route("/ws", get(ws_handler))
-        .with_state(rx)
+        .with_state(state)
+}
+
+/// A bundled font, or its license (`/fonts/Lora.ttf`, `/fonts/Lora-OFL.txt`).
+async fn font(Path(file): Path<String>) -> Response {
+    for f in asaf_fonts::FONTS {
+        if f.file == file {
+            let headers = [(header::CONTENT_TYPE, "font/ttf"), (header::CACHE_CONTROL, "max-age=86400")];
+            return (headers, f.bytes).into_response();
+        }
+        if f.license_file() == file {
+            return asset("text/plain; charset=utf-8", f.license);
+        }
+    }
+    StatusCode::NOT_FOUND.into_response()
+}
+
+/// An imported image. Names carry a hash of the contents, so they never change.
+async fn media(State(state): State<AppState>, Path(file): Path<String>) -> Response {
+    let Some(dir) = state.media_dir else { return StatusCode::NOT_FOUND.into_response() };
+    let Some(content_type) = media_type(&file) else { return StatusCode::NOT_FOUND.into_response() };
+    let path = dir.join(&file);
+    match tokio::task::spawn_blocking(move || std::fs::read(path)).await {
+        Ok(Ok(bytes)) => {
+            ([(header::CONTENT_TYPE, content_type), (header::CACHE_CONTROL, "max-age=31536000, immutable")], bytes)
+                .into_response()
+        }
+        _ => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+/// The content type of an image the media folder may serve, or `None` for
+/// any other name (path separators, hidden files, other extensions).
+fn media_type(file: &str) -> Option<&'static str> {
+    let safe = !file.starts_with('.') && file.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'));
+    let ext = file.rsplit_once('.')?.1.to_ascii_lowercase();
+    let content_type = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => return None,
+    };
+    safe.then_some(content_type)
 }
 
 fn asset(content_type: &'static str, body: &'static str) -> Response {
@@ -92,10 +151,8 @@ fn asset(content_type: &'static str, body: &'static str) -> Response {
         .into_response()
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(rx): State<watch::Receiver<DisplayState>>,
-) -> Response {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
+    let rx = state.rx;
     ws.on_upgrade(move |socket| push_state(socket, rx))
 }
 

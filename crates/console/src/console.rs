@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use asaf_core::{Blank, LiveSnapshot, Song, Store};
+use asaf_core::{Blank, LiveSnapshot, ServiceItem, Song, Store, Theme};
 use asaf_library::SongSummary;
 use asaf_projector::Projector;
 use gpui::component::button::{Button, ButtonVariants as _};
@@ -19,12 +19,16 @@ use gpui::{
 
 use crate::bible::BibleState;
 use crate::editor::{SongEditor, SongSaved};
+use crate::i18n::{UiLanguage, lang};
+use crate::settings::{LibraryChanged, SettingsChanged, SettingsWindow};
+use crate::theme_editor::{ThemeEditor, ThemesChanged};
 use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState};
 use crate::slides::slide_card;
 use crate::{
-    BlankBackground, BlankBlack, BlankLogo, EditNotes, EditSong, FocusSearch, GoLive, LeaveSearch, MoveItemDown,
-    MoveItemUp, NewService, NewSong, Next, NextItem, OpenService, Previous, PreviousItem, RemoveItem, SaveService,
-    SaveServiceAs, SelectNext, SelectPrevious, SharedLibrary, ShowBible, ShowSongs, Unblank, transfer,
+    BlankBackground, BlankBlack, BlankLogo, EditNotes, EditSong, FocusSearch, GoLive, ImportOpenLp, LeaveSearch,
+    MoveItemDown, MoveItemUp, NewService, NewSong, Next, NextItem, OpenService, OpenSettings, OpenThemes, Previous,
+    PreviousItem, RemoveItem, SaveService, SaveServiceAs, SelectNext, SelectPrevious, SharedLibrary, ShowBible,
+    ShowSongs, Unblank, transfer,
 };
 
 const RESULT_LIMIT: usize = 1000;
@@ -61,6 +65,10 @@ pub struct Console {
     pub(crate) preview: Option<Song>,
     /// Open editor windows, by song id (`None` for new songs).
     editors: Vec<(Option<i64>, AnyWindowHandle)>,
+    /// The library's themes, for per-item themes.
+    pub(crate) themes: Vec<Theme>,
+    pub(crate) theme_editor: Option<(AnyWindowHandle, Entity<ThemeEditor>)>,
+    pub(crate) settings_window: Option<AnyWindowHandle>,
     live_scroll: ScrollHandle,
     /// The live item and slide the live pane last scrolled to.
     live_scrolled_to: Option<(String, usize)>,
@@ -99,7 +107,15 @@ impl Console {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let search = cx.new(|cx| InputState::new(window, cx).placeholder("Search title, lyrics or author"));
+        // The console speaks the language from the settings, and the projector
+        // starts in the library's default theme.
+        let settings = library.lock().unwrap().settings().unwrap_or_default();
+        cx.set_global(UiLanguage(settings.language));
+        if let Ok(theme) = library.lock().unwrap().default_theme() {
+            store.set_default_theme(theme);
+        }
+        let l = lang(cx);
+        let search = cx.new(|cx| InputState::new(window, cx).placeholder(l.t("Search title, lyrics or author")));
         let bible = BibleState::new(window, cx);
         let service = ServiceState::new(&mut session, window, cx);
         let mut subscriptions = vec![
@@ -122,6 +138,7 @@ impl Console {
                 _ => {}
             }),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
+            cx.observe_global::<UiLanguage>(|_, cx| cx.notify()),
             // Don't lose the last half second of changes on ⌘Q.
             cx.on_app_quit(|this, _| {
                 this.service.flush_autosave();
@@ -133,7 +150,8 @@ impl Console {
         let note = match session.notice.take() {
             Some(notice) => Some(Notification::warning(notice)),
             None if !service.service.items.is_empty() => Some(Notification::info(format!(
-                "Restored “{}” from the last session",
+                "{} “{}”",
+                l.t("Restored from the last session:"),
                 service.service.display_name()
             ))),
             None => None,
@@ -158,13 +176,117 @@ impl Console {
             selected: None,
             preview: None,
             editors: Vec::new(),
+            themes: Vec::new(),
+            theme_editor: None,
+            settings_window: None,
             live_scroll: ScrollHandle::new(),
             live_scrolled_to: None,
             _subscriptions: subscriptions,
         };
+        console.refresh_themes(cx);
         console.refresh_search(cx);
         console.refresh_bibles(None, cx);
         console
+    }
+
+    // ---- themes and settings ------------------------------------------------------
+
+    pub(crate) fn refresh_themes(&mut self, cx: &mut Context<Self>) {
+        let lib = self.library.lock().unwrap();
+        self.themes = lib.themes().unwrap_or_default();
+        if let Ok(theme) = lib.default_theme() {
+            self.store.set_default_theme(theme);
+        }
+        drop(lib);
+        cx.notify();
+    }
+
+    /// A service item's own theme, if it names one the library has.
+    pub(crate) fn item_theme(&self, item: &ServiceItem) -> Option<Theme> {
+        let name = item.theme.as_deref()?.trim();
+        self.themes.iter().find(|t| t.name.eq_ignore_ascii_case(name)).cloned()
+    }
+
+    /// How a service item will look: its own theme, else the default.
+    pub(crate) fn look_of(&self, item: Option<&ServiceItem>) -> Theme {
+        item.and_then(|i| self.item_theme(i)).unwrap_or_else(|| self.store.default_theme())
+    }
+
+    /// Themes were edited: follow renames and deletions into the service,
+    /// and update the projector if the theme on screen changed.
+    pub(crate) fn themes_changed(&mut self, change: &ThemesChanged, cx: &mut Context<Self>) {
+        self.refresh_themes(cx);
+        let service_changed = match (&change.renamed, &change.deleted) {
+            (Some((old, new)), _) => self.service.service.theme_renamed(old, Some(new)),
+            (None, Some(deleted)) => self.service.service.theme_renamed(deleted, None),
+            _ => false,
+        };
+        if service_changed {
+            self.service.inputs_key = None; // show the new name in the theme field
+            self.service_changed(cx);
+        }
+        let live_item = self.service.live_key.and_then(|k| self.service.service.items.iter().find(|i| i.key == k)).cloned();
+        self.store.set_item_theme(live_item.and_then(|i| self.item_theme(&i)));
+        self.resolve_cue(cx);
+    }
+
+    pub(crate) fn open_theme_editor(&mut self, cx: &mut Context<Self>) {
+        if let Some((h, _)) = &self.theme_editor
+            && h.update(cx, |_, window, _| window.activate_window()).is_ok()
+        {
+            return;
+        }
+        // Start on the theme of the cued item, if it has one.
+        let select = self.service.cued().and_then(|i| self.item_theme(i)).map(|t| t.name);
+        match ThemeEditor::open(self.library.clone(), select, cx) {
+            Ok((handle, editor)) => {
+                self.theme_editor = Some((handle, editor.clone()));
+                self._subscriptions.push(cx.subscribe(&editor, |this, _, change: &ThemesChanged, cx| {
+                    this.themes_changed(change, cx)
+                }));
+            }
+            Err(e) => eprintln!("asaf: can't open the theme editor: {e:#}"),
+        }
+    }
+
+    pub(crate) fn open_settings(&mut self, cx: &mut Context<Self>) {
+        if let Some(h) = self.settings_window
+            && h.update(cx, |_, window, _| window.activate_window()).is_ok()
+        {
+            return;
+        }
+        match SettingsWindow::open(self.library.clone(), cx) {
+            Ok((handle, view)) => {
+                self.settings_window = Some(handle);
+                self._subscriptions.push(cx.subscribe(&view, |this, _, _: &SettingsChanged, cx| {
+                    this.themes_changed(&ThemesChanged::default(), cx)
+                }));
+                self._subscriptions.push(cx.subscribe(&view, |this, _, _: &LibraryChanged, cx| this.library_changed(cx)));
+            }
+            Err(e) => eprintln!("asaf: can't open settings: {e:#}"),
+        }
+    }
+
+    /// Songs or Bibles arrived (an import): refresh everything that lists them.
+    pub(crate) fn library_changed(&mut self, cx: &mut Context<Self>) {
+        self.refresh_search(cx);
+        self.refresh_bibles(None, cx); // also re-resolves the cued item
+    }
+
+    /// The operator picked a projector display: remember it for next time.
+    fn display_chosen(&mut self, cx: &mut Context<Self>) {
+        let uuid = Projector::preferred_uuid(cx);
+        let mut lib = self.library.lock().unwrap();
+        let result = lib.settings().and_then(|mut s| {
+            if s.display_uuid == uuid {
+                return Ok(());
+            }
+            s.display_uuid = uuid;
+            lib.save_settings(&s)
+        });
+        if let Err(e) = result {
+            eprintln!("asaf: couldn't save the display choice: {e}");
+        }
     }
 
     /// Switches the source panel and puts the cursor in its search box.
@@ -354,6 +476,11 @@ impl Render for Console {
             }))
             .on_action(cx.listener(|this, _: &LeaveSearch, window, cx| this.leave_search(window, cx)))
             .on_action(cx.listener(|this, _: &NewSong, window, cx| this.edit(Song::default(), window, cx)))
+            .on_action(cx.listener(|this, _: &OpenThemes, _, cx| this.open_theme_editor(cx)))
+            .on_action(cx.listener(|this, _: &OpenSettings, _, cx| this.open_settings(cx)))
+            .on_action(cx.listener(|this, _: &ImportOpenLp, window, cx| {
+                transfer::import_openlp(this.library.clone(), window, cx, |this, cx| this.library_changed(cx))
+            }))
             .on_action(cx.listener(|this, _: &EditSong, window, cx| {
                 if let Some(song) = this.song_to_edit() {
                     this.edit(song, window, cx);
@@ -386,6 +513,7 @@ impl Render for Console {
 
 impl Console {
     fn left_column(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let tab = |id: &'static str, label: &'static str, mode: Mode, tip: &'static str, cx: &mut Context<Self>| {
             Button::new(id)
@@ -407,8 +535,8 @@ impl Console {
                     .gap_1()
                     .px_3()
                     .pt_3()
-                    .child(tab("tab-songs", "Songs", Mode::Songs, "Songs (⌘1)", cx))
-                    .child(tab("tab-bible", "Bible", Mode::Bible, "Bible (⌘2)", cx)),
+                    .child(tab("tab-songs", l.t("Songs"), Mode::Songs, l.t("Songs (⌘1)"), cx))
+                    .child(tab("tab-bible", l.t("Bible"), Mode::Bible, l.t("Bible (⌘2)"), cx)),
             )
             .child(match self.mode {
                 Mode::Songs => self.library_column(window, cx).into_any_element(),
@@ -417,6 +545,7 @@ impl Console {
     }
 
     fn library_column(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let count = self.results.len();
         v_flex()
@@ -429,26 +558,26 @@ impl Console {
                     .child(
                         h_flex()
                             .gap_2()
-                            .child(div().flex_1().font_weight(FontWeight::BOLD).child("Songs"))
+                            .child(div().flex_1().font_weight(FontWeight::BOLD).child(l.t("Songs")))
                             .child(
                                 Button::new("new-song")
                                     .small()
-                                    .label("New")
-                                    .tooltip("New song (⌘N)")
+                                    .label(l.t("New"))
+                                    .tooltip(l.t("New song (⌘N)"))
                                     .on_click(cx.listener(|this, _, window, cx| this.edit(Song::default(), window, cx))),
                             )
                             .child(
                                 Button::new("import")
                                     .small()
-                                    .label("Import…")
-                                    .tooltip("Import OpenLyrics files or folders")
+                                    .label(l.t("Import…"))
+                                    .tooltip(l.t("Import OpenLyrics files or folders"))
                                     .on_click(cx.listener(|_, _, window, cx| transfer::import(window, cx))),
                             )
                             .child(
                                 Button::new("export-all")
                                     .small()
-                                    .label("Export…")
-                                    .tooltip("Export every song as OpenLyrics into a folder")
+                                    .label(l.t("Export…"))
+                                    .tooltip(l.t("Export every song as OpenLyrics into a folder"))
                                     .on_click(cx.listener(|_, _, window, cx| transfer::export_all(window, cx))),
                             ),
                     )
@@ -515,14 +644,16 @@ impl Console {
                     .text_xs()
                     .text_color(theme.muted_foreground)
                     .child(format!(
-                        "{count} song{}{}  ·  ⏎ go live, ⇧⏎ add to service",
-                        if count == 1 { "" } else { "s" },
-                        if count == RESULT_LIMIT { "+" } else { "" }
+                        "{count}{} {}  ·  {}",
+                        if count == RESULT_LIMIT { "+" } else { "" },
+                        if count == 1 { l.t("song") } else { l.t("songs") },
+                        l.t("⏎ go live, ⇧⏎ add to service")
                     )),
             )
     }
 
     fn preview_column(&self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let Some(song) = &self.preview else {
             return v_flex()
@@ -531,10 +662,11 @@ impl Console {
                 .items_center()
                 .justify_center()
                 .text_color(theme.muted_foreground)
-                .child(if self.results.is_empty() { "No songs found." } else { "Select a song." })
+                .child(if self.results.is_empty() { l.t("No songs found.") } else { l.t("Select a song.") })
                 .into_any_element();
         };
         let slides = song.slides();
+        let look = self.store.default_theme();
         let is_live_song = song.id.is_some() && live.song_id == song.id;
         let subtitle = song.authors.join(", ");
 
@@ -558,19 +690,19 @@ impl Console {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(theme.muted_foreground)
-                                    .child("PREVIEW · LIBRARY"),
+                                    .child(l.t("PREVIEW · LIBRARY")),
                             )
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(song.title.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(subtitle)),
                     )
-                    .child(Button::new("export-song").small().ghost().label("Export…").on_click(cx.listener(
+                    .child(Button::new("export-song").small().ghost().label(l.t("Export…")).on_click(cx.listener(
                         |this, _, window, cx| {
                             if let Some(song) = this.preview.clone() {
                                 transfer::export_song(song, window, cx);
                             }
                         },
                     )))
-                    .child(Button::new("edit-song").small().ghost().label("Edit").tooltip("Edit song (⌘E)").on_click(
+                    .child(Button::new("edit-song").small().ghost().label(l.t("Edit")).tooltip(l.t("Edit song (⌘E)")).on_click(
                         cx.listener(|this, _, window, cx| {
                             if let Some(song) = this.preview.clone() {
                                 this.edit(song, window, cx);
@@ -580,16 +712,16 @@ impl Console {
                     .child(
                         Button::new("add-song")
                             .small()
-                            .label("Add")
-                            .tooltip("Add to the service (⇧⏎ in search)")
+                            .label(l.t("Add"))
+                            .tooltip(l.t("Add to the service (⇧⏎ in search)"))
                             .on_click(cx.listener(|this, _, window, cx| this.add_song_to_service(window, cx))),
                     )
                     .child(
                         Button::new("go-live")
                             .small()
                             .primary()
-                            .label("Go live")
-                            .tooltip("Show the first slide (⏎ in search)")
+                            .label(l.t("Go live"))
+                            .tooltip(l.t("Show the first slide (⏎ in search)"))
                             .on_click(cx.listener(|this, _, window, cx| this.go_live(0, window, cx))),
                     ),
             )
@@ -601,10 +733,10 @@ impl Console {
                     .p_3()
                     .gap_2()
                     .when(slides.is_empty(), |d| {
-                        d.child(div().text_color(theme.muted_foreground).child("This song has no slides. Check its verse order."))
+                        d.child(div().text_color(theme.muted_foreground).child(l.t("This song has no slides. Check its verse order.")))
                     })
                     .children(slides.iter().enumerate().map(|(i, slide)| {
-                        slide_card(("slide", i), slide, is_live_song && i == live.current, cx)
+                        slide_card(("slide", i), slide, is_live_song && i == live.current, &look, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.go_live(i, window, cx)))
                     })),
             )
@@ -618,19 +750,21 @@ impl Console {
             self.live_scroll.scroll_to_item(live.current);
             self.live_scrolled_to = Some(at);
         }
+        let look = self.store.theme();
+        let l = lang(cx);
         let theme = cx.theme();
         let (blank_text, blank_color) = match live.blank {
-            Blank::None => ("Showing text", theme.success),
-            Blank::Black => ("Blanked to black (B)", theme.danger),
-            Blank::Background => ("Text hidden, background only (⇧B)", theme.danger),
-            Blank::Logo => ("Showing the logo (L)", theme.danger),
+            Blank::None => (l.t("Showing text"), theme.success),
+            Blank::Black => (l.t("Blanked to black (B)"), theme.danger),
+            Blank::Background => (l.t("Text hidden, background only (⇧B)"), theme.danger),
+            Blank::Logo => (l.t("Showing the logo (L)"), theme.danger),
         };
         let from_service = self
             .service
             .live_key
             .and_then(|k| self.service.service.position(k))
-            .map(|i| format!("Item {} of {} · ", i + 1, self.service.service.items.len()))
-            .unwrap_or_else(|| if live.slides.is_empty() { String::new() } else { "Not in the service · ".into() });
+            .map(|i| format!("{} {} {} {} · ", l.t("Item"), i + 1, l.t("of"), self.service.service.items.len()))
+            .unwrap_or_else(|| if live.slides.is_empty() { String::new() } else { format!("{} · ", l.t("Not in the service")) });
 
         v_flex()
             .flex_1()
@@ -650,7 +784,7 @@ impl Console {
                             .gap_2()
                             .text_xs()
                             .font_weight(FontWeight::BOLD)
-                            .child(div().text_color(theme.danger).child("● LIVE"))
+                            .child(div().text_color(theme.danger).child(l.t("● LIVE")))
                             .child(div().flex_1())
                             .child(div().text_color(blank_color).child(blank_text)),
                     )
@@ -659,12 +793,20 @@ impl Console {
                             .truncate()
                             .text_base()
                             .font_weight(FontWeight::BOLD)
-                            .child(if live.slides.is_empty() { "Nothing live yet.".to_string() } else { live.title.clone() }),
+                            .child(if live.slides.is_empty() { l.t("Nothing live yet.").to_string() } else { live.title.clone() }),
                     )
                     .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(
                         match live.slides.get(live.current) {
                             Some(slide) => {
-                                format!("{from_service}{} · {} of {}", slide.label, live.current + 1, live.slides.len())
+                                format!(
+                                    "{from_service}{} · {} {} {} · {} {}",
+                                    slide.label,
+                                    live.current + 1,
+                                    l.t("of"),
+                                    live.slides.len(),
+                                    l.t("Theme"),
+                                    live.theme_name
+                                )
                             }
                             None => String::new(),
                         },
@@ -680,7 +822,7 @@ impl Console {
                     .p_3()
                     .gap_2()
                     .children(live.slides.iter().enumerate().map(|(i, slide)| {
-                        slide_card(("live-slide", i), slide, i == live.current, cx)
+                        slide_card(("live-slide", i), slide, i == live.current, &look, cx)
                             .on_click(cx.listener(move |this, _, _, cx| this.act(cx, |s| s.go_to(i))))
                     })),
             )
@@ -691,7 +833,7 @@ impl Console {
                     .py_3()
                     .border_t_1()
                     .border_color(theme.border)
-                    .child(section("Projector display", cx).child(h_flex().flex_wrap().gap_1().children(
+                    .child(section(l.t("Projector display"), cx).child(h_flex().flex_wrap().gap_1().children(
                         Projector::displays(cx).into_iter().enumerate().map(|(i, d)| {
                             let id = d.id;
                             Button::new(("display", i))
@@ -699,8 +841,9 @@ impl Console {
                                 .label(d.label)
                                 .selected(d.is_projector)
                                 .when(d.is_projector, |b| b.primary())
-                                .on_click(cx.listener(move |_, _, _, cx| {
+                                .on_click(cx.listener(move |this, _, _, cx| {
                                     Projector::choose(id, cx);
+                                    this.display_chosen(cx);
                                     cx.notify();
                                 }))
                         }),
@@ -710,15 +853,36 @@ impl Console {
                             .gap_0p5()
                             .text_xs()
                             .text_color(theme.muted_foreground)
-                            .child("→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live")
-                            .child("B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text")
-                            .child("⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save")
-                            .child(div().truncate().child(self.display_url.clone())),
+                            .child(l.t("→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live"))
+                            .child(l.t("B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text"))
+                            .child(l.t("⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save"))
+                            .child(
+                                h_flex()
+                                    .gap_1()
+                                    .child(div().flex_1().min_w_0().truncate().child(self.display_url.clone()))
+                                    .child(
+                                        Button::new("open-themes")
+                                            .xsmall()
+                                            .ghost()
+                                            .label(l.t("Themes…"))
+                                            .tooltip(l.t("Edit themes (⌘T)"))
+                                            .on_click(cx.listener(|this, _, _, cx| this.open_theme_editor(cx))),
+                                    )
+                                    .child(
+                                        Button::new("open-settings")
+                                            .xsmall()
+                                            .ghost()
+                                            .label(l.t("Settings…"))
+                                            .tooltip(l.t("Settings (⌘,)"))
+                                            .on_click(cx.listener(|this, _, _, cx| this.open_settings(cx))),
+                                    ),
+                            ),
                     ),
             )
     }
 
     fn controls(&self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+        let l = lang(cx);
         let theme = cx.theme();
         let at_start = live.current == 0;
         let at_end = live.current + 1 >= live.slides.len();
@@ -730,39 +894,39 @@ impl Console {
             .border_color(theme.border)
             .child(
                 Button::new("prev")
-                    .label("◀  Previous")
+                    .label(l.t("◀  Previous"))
                     .disabled(at_start)
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, Store::previous))),
             )
             .child(
                 Button::new("next")
-                    .label("Next  ▶")
+                    .label(l.t("Next  ▶"))
                     .disabled(at_end)
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, Store::next))),
             )
             .child(div().flex_1())
             .child(
                 Button::new("hide-text")
-                    .label("Hide text")
+                    .label(l.t("Hide text"))
                     .when(live.blank == Blank::Background, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Background)))),
             )
             .child(
                 Button::new("logo")
-                    .label("Logo")
+                    .label(l.t("Logo"))
                     .when(live.blank == Blank::Logo, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Logo)))),
             )
             .child(
                 Button::new("blank")
-                    .label("Blank")
+                    .label(l.t("Blank"))
                     .when(live.blank == Blank::Black, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.act(cx, |s| s.toggle_blank(Blank::Black)))),
             )
     }
 }
 
-fn section(title: &'static str, cx: &App) -> gpui::Div {
+fn section(title: &str, cx: &App) -> gpui::Div {
     v_flex().gap_2().child(
         div()
             .text_xs()
@@ -1225,5 +1389,234 @@ pub(crate) mod tests {
         }
         eprintln!("slowest ⏎ → preview on a full-size Bible: {worst:?}");
         assert!(worst < Duration::from_secs(1), "{worst:?}");
+    }
+
+    // ---- themes, settings, migration ----------------------------------------------
+
+    use asaf_core::{Language, ServiceItem};
+
+    use crate::service::ServiceSession;
+    use crate::theme_editor::ThemesChanged;
+
+    fn theme_named(name: &str, color: &str) -> Theme {
+        Theme { name: name.into(), color: color.into(), ..Theme::default() }
+    }
+
+    /// A service of three songs; the second has its own theme.
+    fn themed_service(lib: &mut Library) -> ServiceSession {
+        lib.save_theme(&theme_named("Scripture", "#ffee00"), None).unwrap();
+        let mut service = asaf_core::Service::default();
+        service.push(ServiceItem::song(1, "Blessed Assurance"));
+        let mut themed = ServiceItem::song(2, "Cuán Grande Es Él");
+        themed.theme = Some("scripture".into());
+        service.push(themed);
+        service.push(ServiceItem::song(1, "Blessed Assurance"));
+        ServiceSession { service, ..Default::default() }
+    }
+
+    fn setup_themed(cx: &mut TestAppContext) -> (Arc<Store>, Entity<Console>, AnyWindowHandle, SharedLibrary) {
+        cx.update(|cx| {
+            gpui::init(cx);
+            crate::init(cx);
+        });
+        let mut lib = Library::open_in_memory().unwrap();
+        lib.save(&sample_song()).unwrap();
+        lib.save(&Song { title: "Cuán Grande Es Él".into(), verses: vec![Verse::new("v1", "Señor mi Dios")], ..Default::default() })
+            .unwrap();
+        let session = themed_service(&mut lib);
+        let library = Arc::new(Mutex::new(lib));
+        let (store, console, h) = open_console(cx, library.clone(), session);
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+        (store, console, h, library)
+    }
+
+    /// Per-item themes reach the projector together with the item's first
+    /// slide; items without one (and ad-hoc songs) use the default.
+    #[gpui::test]
+    fn service_items_go_live_in_their_own_theme(cx: &mut TestAppContext) {
+        let (store, _console, h, _) = setup_themed(cx);
+        let shown = |store: &Store| {
+            let st = store.display_state();
+            (st.theme.name.clone(), st.theme.color.clone(), st.slide.map(|s| s.lines[0].clone()))
+        };
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(shown(&store), ("Default".into(), "#ffffff".into(), Some("Blessed assurance, Jesus is mine!".into())));
+        let rev = store.snapshot().revision;
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(shown(&store), ("Scripture".into(), "#ffee00".into(), Some("Señor mi Dios".into())));
+        assert_eq!(store.snapshot().revision, rev + 1, "the slide and its theme change in one revision");
+        assert_eq!(store.snapshot().theme_name, "Scripture");
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(shown(&store).0, "Default");
+
+        // Ad hoc from the library: the default theme.
+        with_window(cx, h, |w, cx| w.press("cmd-up", cx));
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(shown(&store).0, "Scripture");
+        with_window(cx, h, |w, cx| {
+            w.press("cmd-f", cx);
+            w.input("bless", cx);
+            w.press("enter", cx);
+        });
+        assert_eq!(shown(&store).0, "Default");
+    }
+
+    #[gpui::test]
+    fn theme_chips_set_the_cued_items_theme(cx: &mut TestAppContext) {
+        let (store, console, h, _) = setup_themed(cx);
+        // The first item is cued; its chips are the default and each theme.
+        with_window(cx, h, |w, cx| w.click(("item-theme", 2usize), cx));
+        let theme_of = |cx: &mut TestAppContext, i: usize| cx.update(|cx| console.read(cx).service.service.items[i].theme.clone());
+        assert_eq!(theme_of(cx, 0).as_deref(), Some("Scripture"));
+        assert!(cx.update(|cx| console.read(cx).service.dirty));
+        with_window(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("enter", cx);
+        });
+        assert_eq!(store.display_state().theme.name, "Scripture");
+        with_window(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("cmd-up", cx);
+            w.render_frame(cx);
+            w.click(("item-theme", 0usize), cx);
+        });
+        assert_eq!(theme_of(cx, 0), None, "back to the default");
+        // The cue preview's slide cards and header follow the item's theme.
+        let look = cx.update(|cx| {
+            let c = console.read(cx);
+            c.look_of(c.service.cued()).name
+        });
+        assert_eq!(look, "Default");
+    }
+
+    #[gpui::test]
+    fn editing_themes_updates_the_service_and_the_projector(cx: &mut TestAppContext) {
+        let (store, console, h, library) = setup_themed(cx);
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(store.display_state().theme.name, "Scripture");
+
+        // The theme on screen is edited and renamed: the projector shows the
+        // new look at once and the service follows the new name.
+        library.lock().unwrap().save_theme(&theme_named("Bible text", "#00ffff"), Some("Scripture")).unwrap();
+        console.update(cx, |c, cx| {
+            c.themes_changed(&ThemesChanged { renamed: Some(("Scripture".into(), "Bible text".into())), deleted: None }, cx)
+        });
+        let st = store.display_state();
+        assert_eq!((st.theme.name.as_str(), st.theme.color.as_str()), ("Bible text", "#00ffff"));
+        assert_eq!(cx.update(|cx| console.read(cx).service.service.items[1].theme.clone()).as_deref(), Some("Bible text"));
+
+        // Deleted: back to the default, on screen and in the service.
+        library.lock().unwrap().delete_theme("Bible text").unwrap();
+        console.update(cx, |c, cx| c.themes_changed(&ThemesChanged { renamed: None, deleted: Some("Bible text".into()) }, cx));
+        assert_eq!(store.display_state().theme.name, "Default");
+        assert_eq!(cx.update(|cx| console.read(cx).service.service.items[1].theme.clone()), None);
+
+        // A new default theme shows straight away on an item that has none.
+        let mut lib = library.lock().unwrap();
+        lib.save_theme(&theme_named("Night", "#cccccc"), None).unwrap();
+        let mut settings = lib.settings().unwrap();
+        settings.default_theme = "Night".into();
+        lib.save_settings(&settings).unwrap();
+        drop(lib);
+        console.update(cx, |c, cx| c.themes_changed(&ThemesChanged::default(), cx));
+        assert_eq!(store.display_state().theme.name, "Night");
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+    }
+
+    #[gpui::test]
+    fn cmd_t_and_cmd_comma_open_the_theme_editor_and_settings(cx: &mut TestAppContext) {
+        let (store, console, h, library) = setup_themed(cx);
+        let windows = |cx: &mut TestAppContext| cx.update(|cx| cx.windows().len());
+        assert_eq!(windows(cx), 1);
+        // ⌘T on the themed item opens the editor on its theme.
+        with_window(cx, h, |w, cx| w.press("cmd-down", cx));
+        with_window(cx, h, |w, cx| w.press("cmd-t", cx));
+        assert_eq!(windows(cx), 2);
+        let (editor, editor_view) = cx.update(|cx| console.read(cx).theme_editor.clone().unwrap());
+        assert_eq!(cx.update(|cx| editor_view.read(cx).themes[editor_view.read(cx).selected].name.clone()), "Scripture");
+        // Pressed again: the same window comes forward.
+        with_window(cx, h, |w, cx| w.press("cmd-t", cx));
+        assert_eq!(windows(cx), 2);
+
+        // Saving in the editor reaches the console (and the projector).
+        with_window(cx, h, |w, cx| w.press("enter", cx));
+        assert_eq!(store.display_state().theme.name, "Scripture");
+        cx.update(|cx| {
+            editor
+                .update(cx, |_, window, cx| {
+                    editor_view.update(cx, |e, cx| {
+                        e.input(crate::theme_editor::Field::Color).update(cx, |s, cx| s.set_value("#ff00ff", window, cx));
+                        e.save(window, cx);
+                    })
+                })
+                .unwrap()
+        });
+        assert_eq!(store.display_state().theme.color, "#ff00ff");
+
+        // ⌘, opens settings; switching language there switches the console.
+        with_window(cx, h, |w, cx| {
+            console.read(cx).focus.clone().focus(w, cx);
+            w.press("cmd-,", cx);
+        });
+        assert_eq!(windows(cx), 3);
+        let settings = cx.update(|cx| console.read(cx).settings_window.unwrap());
+        cx.update(|cx| {
+            settings
+                .update(cx, |_, w, cx| {
+                    w.render_frame(cx);
+                    w.click("lang-es", cx);
+                })
+                .unwrap()
+        });
+        assert_eq!(cx.update(|cx| crate::i18n::lang(cx)), crate::i18n::Lang(Language::Spanish));
+        assert_eq!(library.lock().unwrap().settings().unwrap().language, Language::Spanish);
+        with_window(cx, h, |w, cx| w.render_frame(cx));
+    }
+
+    /// The console's "Import from OpenLP…" action: pick the folder, and the
+    /// songs and Bibles show up in the console.
+    #[gpui::test]
+    fn importing_from_openlp_fills_the_library(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../library/tests/fixtures/openlp");
+        for (file, sql) in [("songs/songs.sqlite", "songs.sql"), ("bibles/KJV.sqlite", "kjv.sql")] {
+            let path = dir.path().join("Data").join(file);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let sql = std::fs::read_to_string(fixtures.join(sql)).unwrap();
+            rusqlite::Connection::open(&path).unwrap().execute_batch(&sql).unwrap();
+        }
+        // A service from a machine that already has OpenLP's songs: its item is
+        // missing here until the import, then shows without re-cueing.
+        let mut service = asaf_core::Service::default();
+        service.push(ServiceItem::song(999, "Castillo Fuerte"));
+        let session = ServiceSession { service, ..Default::default() };
+        let (_, console, h, _) = setup_session(cx, |_| {}, session);
+        let cued_is_missing = |cx: &mut TestAppContext| {
+            cx.update(|cx| {
+                let c = console.read(cx);
+                matches!(c.service.resolved.as_ref().map(|r| &r.target), Some(crate::service::Target::Missing(_)))
+            })
+        };
+        cx.update(|cx| {
+            console.update(cx, |c, cx| {
+                c.service.cursor = Some(0);
+                c.resolve_cue(cx);
+            })
+        });
+        assert!(cued_is_missing(cx));
+        let before = cx.update(|cx| console.read(cx).results.len());
+        with_window(cx, h, |w, cx| w.dispatch_action(Box::new(crate::ImportOpenLp), cx));
+        cx.run_until_parked();
+        cx.simulate_path_prompt_response(|_| Some(vec![dir.path().join("Data")]));
+        cx.run_until_parked();
+        let (songs, bibles) = cx.update(|cx| {
+            let c = console.read(cx);
+            (c.results.iter().map(|r| r.title.clone()).collect::<Vec<_>>(), c.bible.bibles.len())
+        });
+        assert_eq!(songs.len(), before + 4, "{songs:?}"); // its Blessed Assurance has different lyrics
+        assert!(songs.contains(&"Castillo Fuerte".to_string()));
+        assert_eq!(bibles, 1);
+        assert!(!cued_is_missing(cx), "the cued item resolved once its song arrived");
     }
 }

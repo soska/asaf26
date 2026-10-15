@@ -9,6 +9,8 @@ publish.workspace = true
 asaf-core.workspace = true
 asaf-openlyrics.workspace = true
 asaf-bible.workspace = true
+serde_json.workspace = true
+roxmltree = "0.21"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 
 [dev-dependencies]

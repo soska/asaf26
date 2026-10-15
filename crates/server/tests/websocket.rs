@@ -28,7 +28,7 @@ async fn next_state(ws: &mut Client) -> Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn clients_get_state_on_connect_and_every_change() {
     let store = Store::new(sample_song(), Theme::default());
-    let server = asaf_server::start(store.clone(), 0).unwrap();
+    let server = asaf_server::start(store.clone(), 0, None).unwrap();
     let port = server.addr.port();
 
     let mut a = connect(port).await;
@@ -64,27 +64,132 @@ async fn clients_get_state_on_connect_and_every_change() {
     assert_eq!(st["blank"], "Black");
 }
 
+/// GET `path`: the status line, the headers (lowercased) and the body.
+async fn get(port: u16, path: &str) -> (String, String, Vec<u8>) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+    stream
+        .write_all(format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n").as_bytes())
+        .await
+        .unwrap();
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).await.unwrap();
+    let split = buf.windows(4).position(|w| w == b"\r\n\r\n").unwrap();
+    let head = String::from_utf8_lossy(&buf[..split]).to_string();
+    let (status, headers) = head.split_once("\r\n").unwrap_or((&head, ""));
+    (status.to_string(), headers.to_lowercase(), buf[split + 4..].to_vec())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn serves_display_page_and_assets() {
     let store = Store::new(sample_song(), Theme::default());
-    let port = asaf_server::start(store, 0).unwrap().addr.port();
-    for path in ["/display", "/assets/display.css", "/assets/display.js", "/assets/background.svg", "/assets/logo.svg"] {
-        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        stream
-            .write_all(format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n").as_bytes())
-            .await
-            .unwrap();
-        let mut buf = String::new();
-        stream.read_to_string(&mut buf).await.unwrap();
-        assert!(buf.starts_with("HTTP/1.1 200"), "{path}: {}", buf.lines().next().unwrap_or(""));
+    let port = asaf_server::start(store, 0, None).unwrap().addr.port();
+    for path in [
+        "/display",
+        "/assets/display.css",
+        "/assets/display.js",
+        "/assets/background.svg",
+        "/assets/logo.svg",
+        "/assets/fonts.css",
+    ] {
+        let (status, _, _) = get(port, path).await;
+        assert!(status.starts_with("HTTP/1.1 200"), "{path}: {status}");
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn serves_bundled_fonts_with_their_licenses() {
+    let store = Store::new(sample_song(), Theme::default());
+    let port = asaf_server::start(store, 0, None).unwrap().addr.port();
+    let (_, _, css) = get(port, "/assets/fonts.css").await;
+    let css = String::from_utf8(css).unwrap();
+    for f in asaf_fonts::FONTS {
+        assert!(css.contains(&format!("font-family: \"{}\"; src: url(\"/fonts/{}\")", f.family, f.file)), "{css}");
+        let (status, headers, body) = get(port, &format!("/fonts/{}", f.file)).await;
+        assert!(status.ends_with("200 OK"), "{}: {status}", f.file);
+        assert!(headers.contains("content-type: font/ttf"));
+        assert_eq!(body, f.bytes, "{} served byte for byte", f.file);
+        let (status, _, body) = get(port, &format!("/fonts/{}", f.license_file())).await;
+        assert!(status.ends_with("200 OK"));
+        assert!(String::from_utf8(body).unwrap().contains("SIL Open Font License"));
+    }
+    assert!(get(port, "/fonts/Arial.ttf").await.0.contains("404"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn serves_imported_images_and_nothing_else() {
+    let dir = tempfile::tempdir().unwrap();
+    let media = dir.path().join("media");
+    std::fs::create_dir(&media).unwrap();
+    std::fs::write(media.join("sky-0011aabb.jpg"), b"jpeg bytes").unwrap();
+    std::fs::write(media.join("logo-1.svg"), b"<svg/>").unwrap();
+    std::fs::write(media.join("notes.txt"), b"private").unwrap();
+    std::fs::write(dir.path().join("asaf.sqlite"), b"secret").unwrap();
+    let store = Store::new(sample_song(), Theme::default());
+    let port = asaf_server::start(store, 0, Some(media)).unwrap().addr.port();
+
+    let (status, headers, body) = get(port, "/media/sky-0011aabb.jpg").await;
+    assert!(status.ends_with("200 OK"), "{status}");
+    assert!(headers.contains("content-type: image/jpeg"));
+    assert_eq!(body, b"jpeg bytes");
+    assert!(get(port, "/media/logo-1.svg").await.1.contains("image/svg+xml"));
+    for path in [
+        "/media/notes.txt",
+        "/media/missing.png",
+        "/media/..%2Fasaf.sqlite",
+        "/media/%2E%2E%2Fasaf.sqlite",
+        "/media/../asaf.sqlite",
+        "/media/.hidden.png",
+    ] {
+        let (status, _, body) = get(port, path).await;
+        assert!(!status.ends_with("200 OK"), "{path}: {status}");
+        assert_ne!(body, b"secret");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn theme_changes_reach_displays_as_css_variables() {
+    let store = Store::new(sample_song(), Theme::default());
+    let port = asaf_server::start(store.clone(), 0, None).unwrap().addr.port();
+    let mut ws = connect(port).await;
+    let st = next_state(&mut ws).await;
+    assert_eq!(st["theme"]["name"], "Default");
+    assert!(st["css_vars"].as_array().unwrap().contains(&serde_json::json!(["--font-family", "\"Source Sans 3\", system-ui, sans-serif"])));
+
+    let scripture = Theme {
+        name: "Scripture".into(),
+        font_family: "Lora".into(),
+        align: asaf_core::Align::Left,
+        transition: asaf_core::TransitionKind::Cut,
+        background_image: Some("/media/sky-0011aabb.jpg".into()),
+        ..Theme::default()
+    };
+    store.load_song_themed(sample_song(), 2, Some(scripture));
+    let st = next_state(&mut ws).await;
+    assert_eq!(st["slide"]["label"], "V2", "the slide and its theme arrive together");
+    let vars: std::collections::HashMap<String, String> = st["css_vars"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| (p[0].as_str().unwrap().to_string(), p[1].as_str().unwrap().to_string()))
+        .collect();
+    assert_eq!(vars["--font-family"], "\"Lora\", system-ui, sans-serif");
+    assert_eq!(vars["--align"], "left");
+    assert_eq!(vars["--fade"], "0ms");
+    assert_eq!(vars["--bg-image"], "url(\"/media/sky-0011aabb.jpg\")");
+    assert_eq!(st["transition"]["kind"], "cut");
+
+    store.set_default_theme(Theme { color: "#ff0000".into(), ..Theme::default() });
+    store.load_song(sample_song(), 0);
+    let st = next_state(&mut ws).await;
+    assert_eq!(st["theme"]["name"], "Default");
+    assert_eq!(st["theme"]["color"], "#ff0000");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn passages_reach_the_display_as_wrapping_slides() {
     let store = Store::new(sample_song(), Theme::default());
-    let port = asaf_server::start(store.clone(), 0).unwrap().addr.port();
+    let port = asaf_server::start(store.clone(), 0, None).unwrap().addr.port();
     let mut ws = connect(port).await;
     assert_eq!(next_state(&mut ws).await["slide"]["wrap"], false);
 

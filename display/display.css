@@ -1,13 +1,18 @@
+/* Defaults until the first state arrives; the theme sets every one of these
+   (asaf_core::Theme::css_vars). Bundled fonts come from /assets/fonts.css. */
 :root {
   --fade: 300ms;
-  --font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --shift: 0vh;
+  --font-family: "Source Sans 3", system-ui, sans-serif;
   --font-weight: 700;
   --line-height: 1.2;
   --color: #fff;
   --outline-color: rgba(0, 0, 0, 0.9);
-  --outline-width: 0.45vh;
+  --outline-width: 0.9vh;
   --shadow: 0 0.4vh 1.2vh rgba(0, 0, 0, 0.85);
   --align: center;
+  --justify: center;
+  --valign: center;
   --mx: 6vw;
   --my: 8vh;
   --bg-color: #101018;
@@ -32,19 +37,24 @@ html, body {
   background: var(--bg-color) var(--bg-image) center / cover no-repeat;
 }
 
+/* A hidden layer waits below its place (by --shift, 0 unless the theme's
+   transition is "slide"); the shown one sits in place; a leaving one rises. */
 .layer {
   opacity: 0;
-  transition: opacity var(--fade) ease-in-out;
+  transform: translateY(var(--shift));
+  transition: opacity var(--fade) ease-in-out, transform var(--fade) ease-out;
 }
-.layer.on { opacity: 1; }
+.layer.on { opacity: 1; transform: none; }
+.layer.out { transform: translateY(calc(-1 * var(--shift))); }
+.layer.instant { transition: none; }
 
 /* The area text must fit in. The footer sits in the bottom margin. */
 .safe {
   position: absolute;
   inset: var(--my) var(--mx);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: var(--valign);
+  justify-content: var(--justify);
 }
 
 .text, .footer {

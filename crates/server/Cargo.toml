@@ -7,11 +7,13 @@ publish.workspace = true
 
 [dependencies]
 asaf-core.workspace = true
+asaf-fonts.workspace = true
 axum.workspace = true
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+tempfile = "3"
 tokio-tungstenite = "0.28"
 futures-util = "0.3"

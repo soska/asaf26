@@ -1,4 +1,5 @@
-//! OpenLyrics import and export, and Bible import, from the console.
+//! OpenLyrics import and export, Bible import and migration from OpenLP,
+//! from the console.
 
 use std::path::PathBuf;
 
@@ -7,7 +8,8 @@ use gpui::component::WindowExt as _;
 use gpui::component::notification::Notification;
 use gpui::{App, Context, PathPromptOptions, Window};
 
-use crate::Console;
+use crate::i18n::lang;
+use crate::{Console, SharedLibrary};
 
 pub fn import(window: &mut Window, cx: &mut Context<Console>) {
     let library = cx.entity().read(cx).library().clone();
@@ -76,6 +78,44 @@ pub fn import_bible(window: &mut Window, cx: &mut Context<Console>) {
                 window.push_notification(note, cx);
             }
             this.refresh_bibles(last, cx);
+        });
+    })
+    .detach();
+}
+
+/// Asks for an OpenLP data folder and imports its songs and Bibles in the
+/// background; `done` runs afterwards (refresh what shows the library).
+pub fn import_openlp<V: 'static>(
+    library: SharedLibrary,
+    window: &mut Window,
+    cx: &mut Context<V>,
+    done: impl FnOnce(&mut V, &mut Context<V>) + 'static,
+) {
+    let paths = cx.prompt_for_paths(PathPromptOptions {
+        files: false,
+        directories: true,
+        multiple: false,
+        prompt: Some(lang(cx).t("Import from OpenLP").into()),
+    });
+    cx.spawn_in(window, async move |this, cx| {
+        let Ok(Ok(Some(mut dirs))) = paths.await else { return };
+        let Some(dir) = dirs.pop() else { return };
+        let result = cx.background_executor().spawn(async move { library.lock().unwrap().import_openlp(&dir) }).await;
+        let _ = this.update_in(cx, |this, window, cx| {
+            let note = match result {
+                Ok(report) => {
+                    let problems = report.problems();
+                    if problems.is_empty() {
+                        Notification::success(report.summary())
+                    } else {
+                        let shown: Vec<&str> = problems.iter().take(3).map(String::as_str).collect();
+                        Notification::warning(format!("{}\n{}", report.summary(), shown.join("\n")))
+                    }
+                }
+                Err(e) => Notification::error(e),
+            };
+            window.push_notification(note, cx);
+            done(this, cx);
         });
     })
     .detach();

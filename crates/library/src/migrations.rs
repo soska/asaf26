@@ -50,6 +50,18 @@ const MIGRATIONS: &[&str] = &[
         content_rowid = 'id',
         tokenize = 'unicode61 remove_diacritics 2'
      );",
+    // 3: themes (the theme as asaf_core::Theme JSON; its name is the key) and
+    // settings (asaf_core::Settings, one row per key).
+    "CREATE TABLE themes (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        data       TEXT NOT NULL,
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+     );
+     CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+     );",
 ];
 
 pub fn run(conn: &mut Connection) -> Result<()> {

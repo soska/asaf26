@@ -1,18 +1,19 @@
 //! Slide cards for the preview and live panes: a label and footer over a
-//! small dark "screen" with the slide's text, so a list of them reads like
-//! thumbnails of the output. An approximation; the projector is the truth.
+//! small "screen" in the theme's background colour, with the slide's text in
+//! its font and colour, so a list of them reads like thumbnails of the
+//! output. An approximation; the projector is the truth.
 
-use asaf_core::Slide;
+use asaf_core::{Align, Slide, Theme};
 use gpui::component::{ActiveTheme as _, v_flex};
 use gpui::prelude::FluentBuilder as _;
-use gpui::{
-    App, ElementId, FontWeight, InteractiveElement, ParentElement, Stateful, Styled, Div, div, px, rgb,
-};
+use gpui::{App, Div, ElementId, FontWeight, InteractiveElement, ParentElement, Stateful, Styled, div, px};
 use gpui::component::h_flex;
 
-/// A card for `slide`; `on_air` highlights the slide on screen. The caller
-/// adds the click handler.
-pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, cx: &App) -> Stateful<Div> {
+use crate::preview::color;
+
+/// A card for `slide` in `look`; `on_air` highlights the slide on screen.
+/// The caller adds the click handler.
+pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, look: &Theme, cx: &App) -> Stateful<Div> {
     let theme = cx.theme();
     v_flex()
         .id(id)
@@ -46,12 +47,17 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                 .px_3()
                 .py_2()
                 .rounded_sm()
-                .bg(rgb(0x101018))
-                .text_color(rgb(0xffffff))
+                .bg(color(&look.background_color))
+                .text_color(color(&look.color))
                 .text_xs()
-                .font_weight(FontWeight::SEMIBOLD)
-                .items_center()
+                .font_family(look.font_family.clone())
+                .font_weight(FontWeight(f32::from(look.font_weight)))
                 .justify_center()
-                .children(slide.lines.iter().map(|l| div().text_center().child(l.clone()))),
+                .map(|d| match look.align {
+                    Align::Left => d.items_start(),
+                    Align::Center => d.items_center(),
+                    Align::Right => d.items_end(),
+                })
+                .children(slide.lines.iter().map(|l| div().child(l.clone()))),
         )
 }

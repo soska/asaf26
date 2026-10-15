@@ -17,8 +17,10 @@ struct Live {
     slides: Vec<Slide>,
     current: usize,
     blank: Blank,
-    theme: Theme,
-    transition: Transition,
+    /// Used unless the live item has a theme of its own.
+    default_theme: Theme,
+    /// The live service item's own theme (its per-item override).
+    item_theme: Option<Theme>,
     revision: u64,
     changed_at_ms: u64,
 }
@@ -39,6 +41,8 @@ pub struct LiveSnapshot {
     pub slides: Vec<Slide>,
     pub current: usize,
     pub blank: Blank,
+    /// Name of the theme on screen.
+    pub theme_name: String,
     pub revision: u64,
 }
 
@@ -51,8 +55,8 @@ impl Store {
                 slides,
                 current: 0,
                 blank: Blank::None,
-                theme,
-                transition: Transition::default(),
+                default_theme: theme,
+                item_theme: None,
                 revision: 1,
                 changed_at_ms: now_ms(),
             }),
@@ -82,28 +86,77 @@ impl Store {
             slides: live.slides.clone(),
             current: live.current,
             blank: live.blank,
+            theme_name: live.theme().name.clone(),
             revision: live.revision,
         }
     }
 
-    /// Puts `song` live, starting at slide `index` (clamped).
+    /// Puts `song` live, starting at slide `index` (clamped), in the default theme.
     pub fn load_song(&self, song: Song, index: usize) {
+        self.load_song_themed(song, index, None);
+    }
+
+    /// Puts `song` live in `theme` (`None`: the default theme). The slide and
+    /// the theme change together, in one revision.
+    pub fn load_song_themed(&self, song: Song, index: usize, theme: Option<Theme>) {
         self.update(|l| {
             l.slides = song.slides();
             l.item = LiveItem::Song(song);
             l.current = index.min(l.slides.len().saturating_sub(1));
+            l.item_theme = theme;
             true
         });
     }
 
     /// Puts a passage live, already laid out as `slides`, at slide `index`
-    /// (clamped). `title` is its reference, for the console.
+    /// (clamped), in the default theme. `title` is its reference, for the console.
     pub fn load_passage(&self, passage: Passage, title: String, slides: Vec<Slide>, index: usize) {
+        self.load_passage_themed(passage, title, slides, index, None);
+    }
+
+    pub fn load_passage_themed(
+        &self,
+        passage: Passage,
+        title: String,
+        slides: Vec<Slide>,
+        index: usize,
+        theme: Option<Theme>,
+    ) {
         self.update(|l| {
             l.current = index.min(slides.len().saturating_sub(1));
             l.slides = slides;
             l.item = LiveItem::Passage { passage, title };
+            l.item_theme = theme;
             true
+        });
+    }
+
+    /// The theme on screen: the live item's own, else the default.
+    pub fn theme(&self) -> Theme {
+        self.live.lock().unwrap().theme().clone()
+    }
+
+    pub fn default_theme(&self) -> Theme {
+        self.live.lock().unwrap().default_theme.clone()
+    }
+
+    /// A new or edited default theme. Displays update only if it's the one
+    /// on screen.
+    pub fn set_default_theme(&self, theme: Theme) {
+        self.update(|l| {
+            let shown = l.item_theme.is_none() && l.default_theme != theme;
+            l.default_theme = theme;
+            shown
+        });
+    }
+
+    /// Changes the live item's own theme (`None`: back to the default), e.g.
+    /// after that theme was edited.
+    pub fn set_item_theme(&self, theme: Option<Theme>) {
+        self.update(|l| {
+            let before = l.theme().clone();
+            l.item_theme = theme;
+            *l.theme() != before
         });
     }
 
@@ -183,12 +236,18 @@ impl Store {
 }
 
 impl Live {
+    fn theme(&self) -> &Theme {
+        self.item_theme.as_ref().unwrap_or(&self.default_theme)
+    }
+
     fn display_state(&self) -> DisplayState {
+        let theme = self.theme();
         DisplayState {
             slide: self.slides.get(self.current).cloned(),
             blank: self.blank,
-            theme: self.theme.clone(),
-            transition: self.transition.clone(),
+            theme: theme.clone(),
+            css_vars: theme.css_vars(),
+            transition: Transition::of(theme),
             revision: self.revision,
             changed_at_ms: self.changed_at_ms,
         }
@@ -298,5 +357,45 @@ mod tests {
         assert_eq!(json["slide"]["label"], "C1");
         assert_eq!(json["blank"], "None");
         assert!(json["theme"]["size_max_vh"].is_number());
+        assert_eq!(json["css_vars"][0], serde_json::json!(["--fade", "300ms"]));
+        assert_eq!(json["transition"]["kind"], "fade");
+    }
+
+    #[test]
+    fn item_themes_override_the_default_and_change_with_the_slide() {
+        let s = store();
+        let revisions = Arc::new(AtomicU64::new(0));
+        {
+            let revisions = revisions.clone();
+            s.subscribe(move |_| {
+                revisions.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+        let scripture = Theme { name: "Scripture".into(), color: "#ffee00".into(), ..Theme::default() };
+        s.load_song_themed(crate::sample_song(), 1, Some(scripture.clone()));
+        assert_eq!(revisions.load(Ordering::SeqCst), 1, "slide and theme in one revision");
+        let st = s.display_state();
+        assert_eq!((st.theme.name.as_str(), st.slide.unwrap().label.as_str()), ("Scripture", "C1"));
+        assert!(st.css_vars.contains(&("--color", "rgb(255, 238, 0)".into())));
+        assert_eq!(s.snapshot().theme_name, "Scripture");
+
+        // Editing the default doesn't touch an item with its own theme…
+        let dark = Theme { background_color: "#000000".into(), transition_ms: 0, ..Theme::default() };
+        s.set_default_theme(dark.clone());
+        assert_eq!(revisions.load(Ordering::SeqCst), 1);
+        // …until something in the default theme goes live.
+        s.load_song(crate::sample_song(), 0);
+        let st = s.display_state();
+        assert_eq!((st.theme, st.transition.duration_ms), (dark.clone(), 0));
+        s.set_default_theme(Theme { background_color: "#202020".into(), ..dark });
+        assert_eq!(revisions.load(Ordering::SeqCst), 3);
+        assert_eq!(s.theme().background_color, "#202020");
+
+        // An item theme set on the live item applies straight away; the same one again is no change.
+        s.set_item_theme(Some(scripture.clone()));
+        s.set_item_theme(Some(scripture));
+        assert_eq!(revisions.load(Ordering::SeqCst), 4);
+        s.set_item_theme(None);
+        assert_eq!(s.theme().name, "Default");
     }
 }

@@ -1,14 +1,20 @@
 //! The operator console: song library and Bible lookup (the sources), the
-//! service list, preview and live panes, and the song editor. It drives the
-//! core store and never draws projected output.
+//! service list, preview and live panes, the song editor, the theme editor
+//! and settings. It drives the core store and never draws projected output
+//! (its previews are approximations).
 
 mod bible;
 mod console;
 mod editor;
+mod i18n;
+mod preview;
 mod service;
+mod settings;
 mod slides;
+mod theme_editor;
 mod transfer;
 
+use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use asaf_library::Library;
@@ -16,7 +22,10 @@ use gpui::{App, KeyBinding, actions};
 
 pub use console::Console;
 pub use editor::{SongEditor, SongSaved};
+pub use i18n::{UiLanguage, set_language};
 pub use service::{AUTOSAVE_DELAY, ServiceSession};
+pub use settings::{LibraryChanged, SettingsChanged, SettingsWindow};
+pub use theme_editor::{ThemeEditor, ThemesChanged};
 
 pub type SharedLibrary = Arc<Mutex<Library>>;
 
@@ -48,11 +57,23 @@ actions!(
         LeaveSearch,
         NewSong,
         EditSong,
+        OpenThemes,
+        OpenSettings,
+        ImportOpenLp,
     ]
 );
-actions!(asaf_editor, [SaveSong]);
+actions!(asaf_editor, [SaveSong, SaveTheme]);
+
+/// Makes the bundled fonts available to the console's previews.
+fn load_fonts(cx: &mut App) {
+    let fonts = asaf_fonts::FONTS.iter().map(|f| Cow::Borrowed(f.bytes)).collect();
+    if let Err(e) = cx.text_system().add_fonts(fonts) {
+        eprintln!("asaf: couldn't load the bundled fonts for the console: {e:#}");
+    }
+}
 
 pub fn init(cx: &mut App) {
+    load_fonts(cx);
     // Live control: never while typing in a text field.
     let live = Some("Console && !Input");
     cx.bind_keys([
@@ -93,6 +114,9 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("up", SelectPrevious, Some("BibleSearch > Input")),
         KeyBinding::new("escape", LeaveSearch, Some("BibleSearch > Input")),
         KeyBinding::new("escape", LeaveSearch, Some("ServiceItem > Input")),
+        KeyBinding::new("cmd-t", OpenThemes, Some("Console")),
+        KeyBinding::new("cmd-,", OpenSettings, Some("Console")),
         KeyBinding::new("cmd-s", SaveSong, Some("SongEditor")),
+        KeyBinding::new("cmd-s", SaveTheme, Some("ThemeEditor")),
     ]);
 }

@@ -22,7 +22,14 @@ pub struct Transition {
 
 impl Default for Transition {
     fn default() -> Self {
-        Self { kind: "fade".into(), duration_ms: 300 }
+        Self::of(&Theme::default())
+    }
+}
+
+impl Transition {
+    /// The theme's transition.
+    pub fn of(theme: &Theme) -> Self {
+        Self { kind: theme.transition.as_str().into(), duration_ms: theme.transition_ms }
     }
 }
 
@@ -32,6 +39,8 @@ pub struct DisplayState {
     pub slide: Option<Slide>,
     pub blank: Blank,
     pub theme: Theme,
+    /// The theme as CSS custom properties (`[name, value]` pairs) for the page to set.
+    pub css_vars: Vec<(&'static str, String)>,
     pub transition: Transition,
     /// Increments on every change.
     pub revision: u64,
