@@ -1,12 +1,13 @@
-//! The console's language: a string table from English to Spanish. Code
-//! writes the English text (`lang(cx).t("Songs")`); a test checks every such
-//! string has a Spanish entry. Messages built with `format!` from other
-//! parts (reference errors, import reports) stay English.
+//! The console's language. Code writes the English text
+//! (`lang(cx).t("Songs")`) and it's looked up in the language's catalog
+//! (`asaf_i18n::catalog::Catalog`, duckalization's format); a test checks
+//! every such string has a Spanish entry. Messages built with `format!` from
+//! other parts (reference errors, import reports) stay English.
 
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use asaf_core::Language;
+use asaf_i18n::catalog::{Catalog, english_plural, fill};
 use gpui::{App, Global};
 
 /// The language the console shows, app-wide.
@@ -34,16 +35,43 @@ pub const fn en(text: &'static str) -> &'static str {
     text
 }
 
-static SPANISH_BY_ENGLISH: LazyLock<HashMap<&'static str, &'static str>> =
-    LazyLock::new(|| SPANISH.iter().copied().collect());
+// Built from the table below until it moves to `locales/es.json`.
+static SPANISH_CATALOG: LazyLock<Catalog> = LazyLock::new(|| Catalog::from_pairs("es", SPANISH));
 
 impl Lang {
+    /// The catalog for this language; `None` for English, the source.
+    fn catalog(self) -> Option<&'static Catalog> {
+        match self.0 {
+            Language::English => None,
+            Language::Spanish => Some(&SPANISH_CATALOG),
+        }
+    }
+
     /// `en` in this language (itself if there's no translation).
     pub fn t(self, en: &'static str) -> &'static str {
-        match self.0 {
-            Language::English => en,
-            Language::Spanish => SPANISH_BY_ENGLISH.get(en).copied().unwrap_or(en),
-        }
+        self.catalog().map_or(en, |c| c.text(en, None))
+    }
+
+    /// `en` in the sense given by `context` (`l.tc("Book", "verb")`), for
+    /// English text that needs different translations in different places.
+    #[allow(dead_code, reason = "first callers come with ARM-390")]
+    pub fn tc(self, en: &'static str, context: &'static str) -> &'static str {
+        self.catalog().map_or(en, |c| c.text(en, Some(context)))
+    }
+
+    /// `en` translated, then each `{name}` filled with its value:
+    /// `l.f("Added {title} to the service", &[("title", &name)])`.
+    #[allow(dead_code, reason = "first callers come with ARM-390")]
+    pub fn f(self, en: &'static str, args: &[(&str, &str)]) -> String {
+        fill(self.t(en), args)
+    }
+
+    /// The plural form for `count`, with `{count}` filled:
+    /// `l.n(count, "{count} song", "{count} songs")`.
+    #[allow(dead_code, reason = "first callers come with ARM-390")]
+    pub fn n(self, count: u64, one: &'static str, other: &'static str) -> String {
+        let form = self.catalog().map_or_else(|| english_plural(one, other, count), |c| c.plural(one, other, count));
+        fill(form, &[("count", &count.to_string())])
     }
 }
 
@@ -252,7 +280,7 @@ mod tests {
     fn every_string_has_a_spanish_translation() {
         let used = used_strings();
         assert!(used.len() > 50, "found {} strings", used.len());
-        let missing: Vec<_> = used.iter().filter(|s| !SPANISH_BY_ENGLISH.contains_key(s.as_str())).collect();
+        let missing: Vec<_> = used.iter().filter(|s| !SPANISH.iter().any(|(en, _)| en == s)).collect();
         assert!(missing.is_empty(), "no Spanish for: {missing:#?}");
     }
 
@@ -273,5 +301,29 @@ mod tests {
         assert_eq!(Lang(Language::English).t("Songs"), "Songs");
         assert_eq!(Lang(Language::Spanish).t("Songs"), "Canciones");
         assert_eq!(Lang(Language::Spanish).t("not in the table"), "not in the table");
+    }
+
+    #[test]
+    fn placeholders_are_filled_after_translating() {
+        let title = [("title", "Sublime gracia")];
+        assert_eq!(Lang(Language::English).f("Added {title} to the service", &title), "Added Sublime gracia to the service");
+        // Not in the table: the English template, filled.
+        assert_eq!(Lang(Language::Spanish).f("Added {title} to the service", &title), "Added Sublime gracia to the service");
+        assert_eq!(Lang(Language::Spanish).f("Songs", &title), "Canciones");
+    }
+
+    #[test]
+    fn counts_pick_the_plural_form() {
+        assert_eq!(Lang(Language::English).n(1, "{count} song", "{count} songs"), "1 song");
+        assert_eq!(Lang(Language::English).n(3, "{count} song", "{count} songs"), "3 songs");
+        // No Spanish plurals until the catalog has them: the English forms.
+        assert_eq!(Lang(Language::Spanish).n(1, "{count} song", "{count} songs"), "1 song");
+        assert_eq!(Lang(Language::Spanish).n(0, "{count} song", "{count} songs"), "0 songs");
+    }
+
+    #[test]
+    fn context_without_a_translation_is_the_english_text() {
+        assert_eq!(Lang(Language::English).tc("Book", "verb"), "Book");
+        assert_eq!(Lang(Language::Spanish).tc("Songs", "verb"), "Songs");
     }
 }

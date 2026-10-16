@@ -275,6 +275,7 @@ dependencies = [
  "anyhow",
  "asaf-core",
  "asaf-fonts",
+ "asaf-i18n",
  "asaf-library",
  "asaf-openlyrics",
  "asaf-projector",
