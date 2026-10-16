@@ -244,7 +244,7 @@ async fn service_items_and_verses_go_through_the_operator() {
                 None => reply(Err(format!("There is no item {}.", item + 1))),
             },
             Command::Verse { reference, live, .. } => {
-                let slide = asaf_core::Slide { lines: vec!["Jesus wept.".into()], label: reference.clone(), footer: None, wrap: true };
+                let slide = asaf_core::Slide { lines: vec!["Jesus wept.".into()], label: reference.clone(), kind: asaf_core::SlideKind::Scripture, ..Default::default() };
                 if live {
                     let passage = asaf_core::Passage { bible_id: 1, ranges: Vec::new() };
                     store2.load_passage(passage, reference.clone(), vec![slide.clone()], 0);

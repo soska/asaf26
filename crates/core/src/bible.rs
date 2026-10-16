@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use crate::reference::RefRange;
-use crate::{Slide, Theme};
+use crate::{Slide, SlideKind, Theme};
 
 /// One installed translation.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -304,7 +304,8 @@ pub enum VersesPerSlide {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReferencePlacement {
-    /// Each slide's footer names its own verses and the translation.
+    /// Each slide's reference (a text area of the theme) names its own
+    /// verses and the translation.
     Footer,
     /// The whole passage's reference is the last line of the last slide.
     LastSlide,
@@ -371,11 +372,11 @@ pub fn passage_slides(
                 .iter()
                 .map(|v| if layout.verse_numbers { format!("{} {}", superscript(v.verse), v.text) } else { v.text.clone() })
                 .collect();
-            let footer = match layout.reference {
+            let reference = match layout.reference {
                 ReferencePlacement::Footer => Some(with_translation(&label, translation)),
                 ReferencePlacement::LastSlide => None,
             };
-            Slide { lines, label, footer, wrap: true }
+            Slide { lines, label, kind: SlideKind::Scripture, reference, ..Default::default() }
         })
         .collect();
 
@@ -398,10 +399,11 @@ fn with_translation(reference: &str, translation: &str) -> String {
 }
 
 /// Characters of verse text that fit on one slide at a comfortable size:
-/// the midpoint of the theme's size range on a 16:9 screen, assuming an
-/// average glyph width of 0.55 em and some waste at line ends.
+/// the midpoint of the theme's size range for scripture on a 16:9 screen,
+/// assuming an average glyph width of 0.55 em and some waste at line ends.
 pub fn fit_chars(theme: &Theme) -> usize {
-    let size = ((theme.size_min_vh + theme.size_max_vh) / 2.0).max(1.0);
+    let layout = theme.layout(SlideKind::Scripture);
+    let size = ((layout.size_min_vh + layout.size_max_vh) / 2.0).max(1.0);
     let width_vh = (100.0 - 2.0 * theme.margin_x_pct) / 100.0 * (100.0 * 16.0 / 9.0);
     let height_vh = 100.0 - 2.0 * theme.margin_y_pct;
     let lines = (height_vh / (size * theme.line_height.max(1.0))).floor().max(1.0);
@@ -513,8 +515,8 @@ mod tests {
         let labels: Vec<&str> = slides.iter().map(|s| s.label.as_str()).collect();
         assert_eq!(labels, ["Génesis 1:30-31", "Génesis 2:1-2", "Génesis 2:3", "Génesis 2:7"]);
         assert_eq!(slides[0].lines[0], format!("³⁰ 30{}", "x".repeat(10)));
-        assert_eq!(slides[1].footer.as_deref(), Some("Génesis 2:1-2 (RV)"));
-        assert!(slides.iter().all(|s| s.wrap));
+        assert_eq!(slides[1].reference.as_deref(), Some("Génesis 2:1-2 (RV)"));
+        assert!(slides.iter().all(|s| s.wrap()));
     }
 
     #[test]
@@ -529,7 +531,7 @@ mod tests {
         };
         let slides = passage_slides(&vs, &ranges, &names, "KJV", &layout, &Theme::default());
         assert_eq!(slides.len(), 3);
-        assert!(slides.iter().all(|s| s.footer.is_none()));
+        assert!(slides.iter().all(|s| s.reference.is_none()));
         assert_eq!(slides[0].lines, [format!("16{}", "x".repeat(20))]);
         assert_eq!(slides[2].lines.last().unwrap(), "John 3:16-18 (KJV)");
     }

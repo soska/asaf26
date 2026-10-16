@@ -1,12 +1,14 @@
 //! The console's approximation of the projected output for a theme: its
 //! background colour and image, text in the theme's font, weight, colour,
-//! alignment and margins, sized roughly like the display's auto-fit, with
-//! the outline and shadow drawn as offset copies of the text. The projector
-//! (the display page) is the truth; this only has to look close.
+//! alignment and margins (the slide kind's layout), sized roughly like the
+//! display's auto-fit, with the outline and shadow drawn as offset copies of
+//! the text, and the text areas in the margins. The projector (the display
+//! page) is the truth; this only has to look close.
 
 use std::sync::{Arc, LazyLock};
 
-use asaf_core::{Align, TextCase, Theme, VAlign, markup, parse_color};
+use asaf_core::{Align, AreaKind, Layout, Place, Slide, SlideKind, TextCase, Theme, VAlign, markup, parse_color};
+use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AnyElement, Background, Div, FontStyle, FontWeight, HighlightStyle, Hsla, Image, ImageFormat, ImageSource,
     IntoElement, ObjectFit, ParentElement, Pixels, Rgba, Styled, StyledImage as _, StyledText, TextAlign, div, img,
@@ -114,7 +116,7 @@ fn highlighted(
 
 /// The text size the display page's auto-fit would roughly pick, in pixels,
 /// for `lines` on a `width`×`height` screen.
-pub(crate) fn fitted_size(theme: &Theme, lines: &[String], width: f32, height: f32) -> f32 {
+pub(crate) fn fitted_size(theme: &Theme, layout: &Layout, lines: &[String], width: f32, height: f32) -> f32 {
     let vh = height / 100.0;
     let safe_w = width * (1.0 - 2.0 * theme.margin_x_pct / 100.0);
     let safe_h = height * (1.0 - 2.0 * theme.margin_y_pct / 100.0);
@@ -123,15 +125,28 @@ pub(crate) fn fitted_size(theme: &Theme, lines: &[String], width: f32, height: f
     // An average glyph is about half an em wide.
     let by_width = safe_w / (longest * 0.5);
     let by_height = safe_h / (rows * theme.line_height.max(0.8));
-    by_width.min(by_height).clamp(theme.size_min_vh * vh, theme.size_max_vh * vh)
+    // While the theme is edited the largest size may be below the smallest.
+    let min = layout.size_min_vh * vh;
+    by_width.min(by_height).clamp(min, (layout.size_max_vh * vh).max(min))
 }
 
-/// `lines` shown on a `width`-wide 16:9 screen in `theme`.
-pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSource>, width: Pixels) -> Div {
+fn text_align(align: Align) -> TextAlign {
+    match align {
+        Align::Left => TextAlign::Left,
+        Align::Center => TextAlign::Center,
+        Align::Right => TextAlign::Right,
+    }
+}
+
+/// `slide` (or just the background) shown on a `width`-wide 16:9 screen in
+/// `theme`.
+pub(crate) fn screen(theme: &Theme, slide: Option<&Slide>, background: Option<ImageSource>, width: Pixels) -> Div {
     let w = f32::from(width);
     let h = w * 9.0 / 16.0;
     let vh = h / 100.0;
-    let size = fitted_size(theme, lines, w, h);
+    let lines = slide.map(|s| s.lines.as_slice()).unwrap_or_default();
+    let layout = theme.layout(slide.map(|s| s.kind).unwrap_or(SlideKind::Lyrics));
+    let size = fitted_size(theme, &layout, lines, w, h);
     let weight = FontWeight(f32::from(theme.font_weight));
     // Emphasis colours are for the fill; the outline and shadow copies are
     // all their own colour.
@@ -144,12 +159,8 @@ pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSo
             .font_weight(weight)
             .text_size(px(size))
             .line_height(relative(theme.line_height))
-            .text_align(match theme.align {
-                Align::Left => TextAlign::Left,
-                Align::Center => TextAlign::Center,
-                Align::Right => TextAlign::Right,
-            })
-            .children(lines.iter().map(|l| div().child(styled_line(l, theme.text_case, weight, strong, em))))
+            .text_align(text_align(layout.align))
+            .children(lines.iter().map(|l| div().child(styled_line(l, layout.text_case, weight, strong, em))))
             .into_any_element()
     };
     // The safe area, placed like display.css places it.
@@ -161,12 +172,12 @@ pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSo
             .left(px(w * theme.margin_x_pct / 100.0 + dx))
             .right(px(w * theme.margin_x_pct / 100.0 - dx))
             .flex();
-        d = match theme.align {
+        d = match layout.align {
             Align::Left => d.justify_start(),
             Align::Center => d.justify_center(),
             Align::Right => d.justify_end(),
         };
-        d = match theme.valign {
+        d = match layout.valign {
             VAlign::Top => d.items_start(),
             VAlign::Middle => d.items_center(),
             VAlign::Bottom => d.items_end(),
@@ -188,6 +199,55 @@ pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSo
         }
     }
     layers.push(area(0.0, 0.0, text(color(&theme.color), true)).into_any_element());
+    // The text areas, one line per place and alignment (no outline or
+    // shadow).
+    type Slot<'a> = ((Place, Align), Vec<(AreaKind, &'a str)>);
+    let mut slots: Vec<Slot> = Vec::new();
+    for kind in AreaKind::ALL {
+        let a = theme.area(kind);
+        let Some(text) = slide.and_then(|s| kind.text(s)).map(str::trim).filter(|t| !t.is_empty()) else { continue };
+        if a.place == Place::Hidden {
+            continue;
+        }
+        let key = (a.place, a.align.unwrap_or(layout.align));
+        match slots.iter_mut().find(|(k, _)| *k == key) {
+            Some((_, areas)) => areas.push((kind, text)),
+            None => slots.push((key, vec![(kind, text)])),
+        }
+    }
+    for ((place, align), areas) in slots {
+        let y = h * theme.margin_y_pct / 100.0 * 0.3;
+        let line = div()
+            .absolute()
+            .left(px(w * theme.margin_x_pct / 100.0))
+            .right(px(w * theme.margin_x_pct / 100.0))
+            .map(|d| if place == Place::Top { d.top(px(y)) } else { d.bottom(px(y)) })
+            .flex()
+            .items_end()
+            .map(|d| match align {
+                Align::Left => d.justify_start(),
+                Align::Center => d.justify_center(),
+                Align::Right => d.justify_end(),
+            })
+            .overflow_hidden()
+            .whitespace_nowrap()
+            .font_family(theme.font_family.clone())
+            .font_weight(FontWeight::MEDIUM)
+            .opacity(0.9)
+            .children(areas.into_iter().enumerate().map(|(i, (kind, text))| {
+                let a = theme.area(kind);
+                let text = if i > 0 { format!(" · {text}") } else { text.to_string() };
+                div()
+                    .flex_none()
+                    .text_size(px(a.size_vh * vh))
+                    .text_color(optional_color(&a.color).unwrap_or(color(&theme.color).into()))
+                    .child(match a.text_case {
+                        TextCase::Normal => text,
+                        TextCase::Upper => text.to_uppercase(),
+                    })
+            }));
+        layers.push(line.into_any_element());
+    }
 
     div()
         .relative()
@@ -224,15 +284,18 @@ mod tests {
     #[test]
     fn fitted_size_stays_in_the_theme_range() {
         let theme = Theme::default();
+        let layout = theme.layout(SlideKind::Lyrics);
         let (w, h) = (1600.0, 900.0);
         let one_word = ["Amen.".to_string()];
-        assert_eq!(fitted_size(&theme, &one_word, w, h), theme.size_max_vh * 9.0, "short slides get the maximum");
+        assert_eq!(fitted_size(&theme, &layout, &one_word, w, h), theme.size_max_vh * 9.0, "short slides get the maximum");
         let long = ["x".repeat(400)];
-        assert_eq!(fitted_size(&theme, &long, w, h), theme.size_min_vh * 9.0, "never below the minimum");
+        assert_eq!(fitted_size(&theme, &layout, &long, w, h), theme.size_min_vh * 9.0, "never below the minimum");
         let four = vec!["This is my story, this is my song,".to_string(); 4];
         let marked = vec!["**This is my story**, this is my song,".to_string(); 4];
-        assert_eq!(fitted_size(&theme, &marked, w, h), fitted_size(&theme, &four, w, h), "markers take no room");
-        let s = fitted_size(&theme, &four, w, h);
+        assert_eq!(fitted_size(&theme, &layout, &marked, w, h), fitted_size(&theme, &layout, &four, w, h), "markers take no room");
+        let upside_down = Layout { size_min_vh: 8.0, size_max_vh: 2.0, ..layout.clone() };
+        assert_eq!(fitted_size(&theme, &upside_down, &four, w, h), 8.0 * 9.0, "a bad range doesn't panic");
+        let s = fitted_size(&theme, &layout, &four, w, h);
         assert!(s > theme.size_min_vh * 9.0 && s < theme.size_max_vh * 9.0, "{s}");
     }
 

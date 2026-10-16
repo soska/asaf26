@@ -803,14 +803,11 @@ impl Console {
         let covered = !window.notifications(cx).is_empty() || window.has_active_dialog(cx);
         page.set_visible(!covered);
         let stand_in = page.bounds().filter(|_| covered).map(|b| {
-            let lines = match (live.blank, live.slides.get(live.current)) {
-                (Blank::None, Some(slide)) => slide.lines.clone(),
-                _ => Vec::new(),
-            };
+            let slide = live.slides.get(live.current).filter(|_| live.blank == Blank::None);
             let background = image_source(look.background_image.as_deref(), &self.library);
             match live.blank {
                 Blank::Black => div().size_full().into_any_element(),
-                _ => screen(look, &lines, background, b.size.width).into_any_element(),
+                _ => screen(look, slide, background, b.size.width).into_any_element(),
             }
         });
         Some(
@@ -1278,7 +1275,7 @@ pub(crate) mod tests {
         let live = store.snapshot();
         assert_eq!(live.title, "Juan 3:16-18 (RV1909)");
         assert_eq!((live.current, live.slides.len()), (0, 3));
-        assert_eq!(live.slides[0].footer.as_deref(), Some("Juan 3:16 (RV1909)"));
+        assert_eq!(live.slides[0].reference.as_deref(), Some("Juan 3:16 (RV1909)"));
         with_window(cx, h, |w, cx| {
             w.render_frame(cx);
             w.press("right", cx);

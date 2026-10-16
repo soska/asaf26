@@ -26,8 +26,11 @@ pub use service::{
     AutosaveInfo, ItemContent, SERVICE_EXTENSION, SERVICE_FORMAT, SERVICE_VERSION, Service, ServiceFileError,
     ServiceItem, service_from_json, service_to_json,
 };
-pub use song::{SPLIT_MARKER, Slide, Song, SongProblem, Verse};
+pub use song::{SPLIT_MARKER, Slide, SlideKind, Song, SongProblem, Verse};
 pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};
 pub use settings::{Appearance, DEFAULT_PORT, Language, Settings, valid_pin};
-pub use theme::{Align, DEFAULT_THEME_NAME, TextCase, Theme, TransitionKind, VAlign, builtin_themes, parse_color};
+pub use theme::{
+    Align, AreaKind, DEFAULT_THEME_NAME, Layout, Place, TextArea, TextCase, Theme, TransitionKind, VAlign, builtin_themes,
+    parse_color,
+};

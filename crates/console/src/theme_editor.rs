@@ -8,7 +8,8 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use asaf_core::{
-    Align, Blank, DEFAULT_THEME_NAME, DisplayState, Slide, TextCase, Theme, TransitionKind, VAlign, parse_color, sample_song,
+    Align, AreaKind, Blank, DEFAULT_THEME_NAME, DisplayState, Layout, Place, Slide, SlideKind, TextCase, Theme,
+    TransitionKind, VAlign, parse_color, sample_song,
 };
 use asaf_fonts::FONTS;
 use asaf_library::ThemeError;
@@ -62,10 +63,19 @@ pub(crate) enum Field {
     Gradient,
     Dim,
     TransitionMs,
+    TitleSize,
+    TitleColor,
+    ReferenceSize,
+    ReferenceColor,
+    CreditsSize,
+    CreditsColor,
+    /// Used only while the theme has a scripture layout of its own.
+    ScriptureSizeMin,
+    ScriptureSizeMax,
 }
 
 impl Field {
-    pub const ALL: [Field; 20] = [
+    pub const ALL: [Field; 28] = [
         Field::Name,
         Field::Font,
         Field::SizeMin,
@@ -86,10 +96,35 @@ impl Field {
         Field::Gradient,
         Field::Dim,
         Field::TransitionMs,
+        Field::TitleSize,
+        Field::TitleColor,
+        Field::ReferenceSize,
+        Field::ReferenceColor,
+        Field::CreditsSize,
+        Field::CreditsColor,
+        Field::ScriptureSizeMin,
+        Field::ScriptureSizeMax,
     ];
 
     fn index(self) -> usize {
         Self::ALL.iter().position(|f| *f == self).unwrap()
+    }
+
+    /// The size and colour fields of a text area.
+    fn of_area(kind: AreaKind) -> (Field, Field) {
+        match kind {
+            AreaKind::Title => (Field::TitleSize, Field::TitleColor),
+            AreaKind::Reference => (Field::ReferenceSize, Field::ReferenceColor),
+            AreaKind::Credits => (Field::CreditsSize, Field::CreditsColor),
+        }
+    }
+
+    /// The text area a field belongs to.
+    fn area(self) -> Option<AreaKind> {
+        AreaKind::ALL.into_iter().find(|&k| {
+            let (size, color) = Field::of_area(k);
+            self == size || self == color
+        })
     }
 
     /// The field's text for `t`.
@@ -115,6 +150,10 @@ impl Field {
             Field::Gradient => t.gradient_color.clone(),
             Field::Dim => (t.background_dim * 100.0).round().to_string(),
             Field::TransitionMs => t.transition_ms.to_string(),
+            Field::TitleSize | Field::ReferenceSize | Field::CreditsSize => t.area(self.area().unwrap()).size_vh.to_string(),
+            Field::TitleColor | Field::ReferenceColor | Field::CreditsColor => t.area(self.area().unwrap()).color.clone(),
+            Field::ScriptureSizeMin => t.layout(SlideKind::Scripture).size_min_vh.to_string(),
+            Field::ScriptureSizeMax => t.layout(SlideKind::Scripture).size_max_vh.to_string(),
         }
     }
 
@@ -155,6 +194,18 @@ impl Field {
             Field::TransitionMs => {
                 t.transition_ms = text.parse::<u32>().ok().filter(|v| *v <= asaf_core::theme::MAX_TRANSITION_MS).ok_or("number")?
             }
+            Field::TitleSize | Field::ReferenceSize | Field::CreditsSize => {
+                let (lo, hi) = asaf_core::theme::AREA_SIZE_RANGE_VH;
+                t.area_mut(self.area().unwrap()).size_vh = number(lo, hi)?
+            }
+            Field::TitleColor | Field::ReferenceColor | Field::CreditsColor => {
+                t.area_mut(self.area().unwrap()).color = optional_colour()?
+            }
+            Field::ScriptureSizeMin | Field::ScriptureSizeMax => {
+                let Some(l) = &mut t.scripture else { return Ok(()) };
+                let v = number(1.0, 40.0)?;
+                if self == Field::ScriptureSizeMin { l.size_min_vh = v } else { l.size_max_vh = v }
+            }
         }
         Ok(())
     }
@@ -181,6 +232,14 @@ impl Field {
             Field::Gradient => en("Gradient to (empty: none)"),
             Field::Dim => en("Darken (%)"),
             Field::TransitionMs => en("Duration (ms)"),
+            Field::TitleSize => en("Title size (%)"),
+            Field::TitleColor => en("Title color"),
+            Field::ReferenceSize => en("Reference size (%)"),
+            Field::ReferenceColor => en("Reference color"),
+            Field::CreditsSize => en("Credits size (%)"),
+            Field::CreditsColor => en("Credits color"),
+            Field::ScriptureSizeMin => en("Smallest scripture text (%)"),
+            Field::ScriptureSizeMax => en("Largest scripture text (%)"),
         }
     }
 }
@@ -199,6 +258,8 @@ pub struct ThemeEditor {
     /// The display page showing the sample slide and the logo screen, when
     /// webviews could be made.
     pages: Option<[Rc<EmbeddedPage>; 2]>,
+    /// Which sample slide the preview shows.
+    pub(crate) preview_kind: SlideKind,
     discard_confirmed: bool,
     focus: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -207,6 +268,26 @@ pub struct ThemeEditor {
 impl EventEmitter<ThemesChanged> for ThemeEditor {}
 
 const SAMPLE_SLIDE: usize = 1; // the chorus of the sample hymn: four lines
+
+/// What the preview shows for `kind`: the sample hymn's chorus, with
+/// emphasis to show off its colours, or a verse.
+fn sample_slide(kind: SlideKind) -> Slide {
+    match kind {
+        SlideKind::Lyrics => {
+            let mut slide = sample_song().slides().swap_remove(SAMPLE_SLIDE);
+            slide.lines[0] = "**This is my story**, this is my song,".into();
+            slide.lines[1] = "Praising my __Savior__ all the day long;".into();
+            slide
+        }
+        SlideKind::Scripture => Slide {
+            lines: vec!["¹⁶ For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.".into()],
+            label: "John 3:16".into(),
+            kind,
+            reference: Some("John 3:16 (KJV)".into()),
+            ..Default::default()
+        },
+    }
+}
 
 impl ThemeEditor {
     /// Opens the editor on the theme called `select` (else the default).
@@ -279,6 +360,7 @@ impl ThemeEditor {
             choice: Theme::default(),
             inputs,
             pages,
+            preview_kind: SlideKind::Lyrics,
             discard_confirmed: false,
             focus: cx.focus_handle(),
             _subscriptions: subscriptions,
@@ -336,6 +418,9 @@ impl ThemeEditor {
         }
         if theme.size_max_vh < theme.size_min_vh {
             bad.push(Field::SizeMax);
+        }
+        if theme.scripture.as_ref().is_some_and(|l| l.size_max_vh < l.size_min_vh) {
+            bad.push(Field::ScriptureSizeMax);
         }
         (theme, bad)
     }
@@ -510,6 +595,30 @@ impl ThemeEditor {
         f(&mut self.choice);
         cx.notify();
     }
+
+    fn set_scripture(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut Layout)) {
+        if let Some(layout) = &mut self.choice.scripture {
+            f(layout);
+            cx.notify();
+        }
+    }
+
+    /// Gives scripture a layout of its own, starting from the lyrics' as
+    /// edited, or (`own` false) puts it back to the lyrics'.
+    pub(crate) fn set_own_scripture_layout(&mut self, own: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if own == self.choice.scripture.is_some() {
+            return;
+        }
+        let mut draft = self.draft(cx).0;
+        draft.scripture = own.then(|| draft.layout(SlideKind::Lyrics));
+        self.choice.scripture = draft.scripture.clone();
+        for field in [Field::ScriptureSizeMin, Field::ScriptureSizeMax] {
+            let value = field.get(&draft);
+            self.input(field).clone().update(cx, |s, cx| s.set_value(value, window, cx));
+        }
+        self.preview_kind = SlideKind::Scripture;
+        cx.notify();
+    }
 }
 
 type AfterDiscard = dyn FnOnce(&mut ThemeEditor, &mut Window, &mut Context<ThemeEditor>);
@@ -540,11 +649,7 @@ impl Render for ThemeEditor {
         let l = lang(cx);
         let (draft, bad) = self.draft(cx);
         let dirty = draft != self.stored();
-        let mut sample_slide = sample_song().slides().swap_remove(SAMPLE_SLIDE);
-        // Show off the emphasis colours.
-        sample_slide.lines[0] = "**This is my story**, this is my song,".into();
-        sample_slide.lines[1] = "Praising my __Savior__ all the day long;".into();
-        let sample = sample_slide.lines.clone();
+        let sample = sample_slide(self.preview_kind);
         let background = image_source(draft.background_image.as_deref(), &self.library);
         let logo = image_source(draft.logo.as_deref(), &self.library);
         let theme = cx.theme().clone();
@@ -677,6 +782,101 @@ impl Render for ThemeEditor {
                         this.set_choice(cx, |t| if logo { t.logo = None } else { t.background_image = None })
                     })))
         };
+        let small_label = |text: &'static str, width: f32| div().w(px(width)).flex_none().text_xs().text_color(muted).child(l.t(text));
+        let area_block = |kind: AreaKind, cx: &mut Context<Self>| {
+            let a = draft.area(kind).clone();
+            let name = kind.name();
+            let (size, colour) = Field::of_area(kind);
+            let places = h_flex().gap_1().children(Place::ALL.into_iter().map(|p| {
+                let (label, key) = match p {
+                    Place::Hidden => (en("Hidden"), "hidden"),
+                    Place::Top => (en("Top"), "top"),
+                    Place::Bottom => (en("Bottom"), "bottom"),
+                };
+                choice(format!("area-{name}-{key}").into(), l.t(label), a.place == p)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.area_mut(kind).place = p)))
+            }));
+            let aligns = h_flex().gap_1().children([None, Some(Align::Left), Some(Align::Center), Some(Align::Right)].map(|al| {
+                let (label, key) = match al {
+                    None => (en("Like the text"), "text"),
+                    Some(Align::Left) => (en("Left"), "left"),
+                    Some(Align::Center) => (en("Center"), "center"),
+                    Some(Align::Right) => (en("Right"), "right"),
+                };
+                choice(format!("area-{name}-align-{key}").into(), l.t(label), a.align == al)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.area_mut(kind).align = al)))
+            }));
+            let cases = h_flex().gap_1().children(TextCase::ALL.into_iter().map(|c| {
+                let label = match c {
+                    TextCase::Normal => en("As typed"),
+                    TextCase::Upper => en("ALL CAPS"),
+                };
+                choice(format!("area-{name}-case-{}", c.css()).into(), l.t(label), a.text_case == c)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.area_mut(kind).text_case = c)))
+            }));
+            let title = match kind {
+                AreaKind::Title => en("Song title"),
+                AreaKind::Reference => en("Scripture reference"),
+                AreaKind::Credits => en("Credits (authors, copyright)"),
+            };
+            v_flex()
+                .gap_1()
+                .child(div().text_xs().font_weight(FontWeight::SEMIBOLD).child(l.t(title)))
+                .child(h_flex().gap_3().flex_wrap().child(places).when(a.place != Place::Hidden, |d| d.child(aligns)))
+                .when(a.place != Place::Hidden, |d| {
+                    d.child(
+                        h_flex()
+                            .gap_2()
+                            .items_end()
+                            .child(field(size, 120.))
+                            .child(field(colour, 120.))
+                            .child(swatch(&or_text(&a.color)))
+                            .child(div().pb_1().child(cases)),
+                    )
+                })
+        };
+        let areas: Vec<_> = AreaKind::ALL.into_iter().map(|k| area_block(k, cx)).collect();
+
+        let own = draft.scripture.clone();
+        let scripture_modes = h_flex().gap_1().children([(false, en("Like lyrics")), (true, en("Its own layout"))].map(|(on, label)| {
+            choice(if on { "scripture-own" } else { "scripture-same" }.into(), l.t(label), own.is_some() == on)
+                .on_click(cx.listener(move |this, _, window, cx| this.set_own_scripture_layout(on, window, cx)))
+        }));
+        let scripture_layout = own.map(|layout| {
+            let aligns = h_flex().gap_1().children(Align::ALL.into_iter().map(|a| {
+                let label = match a {
+                    Align::Left => en("Left"),
+                    Align::Center => en("Center"),
+                    Align::Right => en("Right"),
+                };
+                choice(format!("scripture-align-{}", a.css()).into(), l.t(label), layout.align == a)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_scripture(cx, |l| l.align = a)))
+            }));
+            let valigns = h_flex().gap_1().children(VAlign::ALL.into_iter().map(|a| {
+                let (label, key) = match a {
+                    VAlign::Top => (en("Top"), "top"),
+                    VAlign::Middle => (en("Middle"), "middle"),
+                    VAlign::Bottom => (en("Bottom"), "bottom"),
+                };
+                choice(format!("scripture-valign-{key}").into(), l.t(label), layout.valign == a)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_scripture(cx, |l| l.valign = a)))
+            }));
+            let cases = h_flex().gap_1().children(TextCase::ALL.into_iter().map(|c| {
+                let label = match c {
+                    TextCase::Normal => en("As typed"),
+                    TextCase::Upper => en("ALL CAPS"),
+                };
+                choice(format!("scripture-case-{}", c.css()).into(), l.t(label), layout.text_case == c)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_scripture(cx, |l| l.text_case = c)))
+            }));
+            v_flex()
+                .gap_2()
+                .child(h_flex().gap_2().child(small_label(en("Across"), 70.)).child(aligns))
+                .child(h_flex().gap_2().child(small_label(en("Down"), 70.)).child(valigns))
+                .child(h_flex().gap_2().child(small_label(en("Letters"), 70.)).child(cases))
+                .child(h_flex().gap_3().child(field(Field::ScriptureSizeMin, 190.)).child(field(Field::ScriptureSizeMax, 190.)))
+        });
+
         let bg_row = image_row(false, &draft.background_image, cx);
         let logo_row = image_row(true, &draft.logo, cx);
 
@@ -735,6 +935,12 @@ impl Render for ThemeEditor {
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Across"))).child(aligns))
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Down"))).child(valigns))
             .child(h_flex().gap_3().child(field(Field::MarginX, 150.)).child(field(Field::MarginY, 190.)))
+            .child(heading(en("Scripture")))
+            .child(h_flex().gap_2().child(small_label(en("Placement and size"), 120.)).child(scripture_modes))
+            .children(scripture_layout)
+            .child(heading(en("Title, reference and credits")))
+            .child(div().text_xs().text_color(muted).child(l.t("Small lines in the top or bottom margin. Ones in the same place and alignment share a line.")))
+            .children(areas)
             .child(heading(en("Background")))
             .child(
                 h_flex()
@@ -754,7 +960,7 @@ impl Render for ThemeEditor {
         // notifications and dialogs (the approximation shows meanwhile).
         let covered = !window.notifications(cx).is_empty() || window.has_active_dialog(cx);
         if let Some([slide, logo]) = &self.pages {
-            slide.send(preview_script(&draft, Some(sample_slide), Blank::None));
+            slide.send(preview_script(&draft, Some(sample.clone()), Blank::None));
             logo.send(preview_script(&draft, None, Blank::Logo));
             slide.set_visible(!covered);
             logo.set_visible(!covered);
@@ -781,14 +987,25 @@ impl Render for ThemeEditor {
             .p_4()
             .border_l_1()
             .border_color(theme.border)
-            .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(muted).child(l.t("PREVIEW")))
-            .child(div().relative().w(px(468.)).child(screen(&draft, &sample, background.clone(), px(468.))).children(page(0)))
+            .child(
+                h_flex()
+                    .gap_2()
+                    .child(div().flex_1().text_xs().font_weight(FontWeight::BOLD).text_color(muted).child(l.t("PREVIEW")))
+                    .children([(SlideKind::Lyrics, en("Song")), (SlideKind::Scripture, en("Scripture"))].map(|(kind, label)| {
+                        let id = if kind == SlideKind::Lyrics { "preview-song" } else { "preview-scripture" };
+                        choice(id.into(), l.t(label), self.preview_kind == kind).on_click(cx.listener(move |this, _, _, cx| {
+                            this.preview_kind = kind;
+                            cx.notify()
+                        }))
+                    })),
+            )
+            .child(div().relative().w(px(468.)).child(screen(&draft, Some(&sample), background.clone(), px(468.))).children(page(0)))
             .child(div().text_xs().text_color(muted).child(l.t("Blanked to the logo:")))
             .child(
                 div()
                     .relative()
                     .w(px(234.))
-                    .child(screen(&draft, &[], background, px(234.)))
+                    .child(screen(&draft, None, background, px(234.)))
                     .children(logo.map(|src| {
                         gpui::img(src)
                             .absolute()
@@ -901,8 +1118,13 @@ mod tests {
 
     /// Scrolls the form to its end, where the background and transition are.
     fn scroll_form_down(w: &mut Window, cx: &mut App) {
+        scroll_form(w, cx, 4000.);
+    }
+
+    /// Scrolls the form down by `by` pixels.
+    fn scroll_form(w: &mut Window, cx: &mut App, by: f32) {
         w.render_frame(cx);
-        w.scroll("theme-form", gpui::ScrollDelta::Pixels(gpui::point(px(0.), px(-2000.))), cx);
+        w.scroll("theme-form", gpui::ScrollDelta::Pixels(gpui::point(px(0.), px(-by))), cx);
         w.render_frame(cx);
     }
 
@@ -925,10 +1147,14 @@ mod tests {
             letter_spacing_em: 0.05,
             gradient_color: "#5b21b6".into(),
             background_dim: 0.35,
+            scripture: Some(Layout { size_min_vh: 3.5, size_max_vh: 7.0, ..Layout::default() }),
             ..Theme::default()
         };
+        let mut t = t;
+        (t.title_area.size_vh, t.credits_area.color) = (3.5, "#aabbcc".into());
         for f in Field::ALL {
-            let mut back = Theme { name: "x".into(), font_family: "y".into(), ..Theme::default() };
+            let mut back =
+                Theme { name: "x".into(), font_family: "y".into(), scripture: Some(Layout::default()), ..Theme::default() };
             f.set(&mut back, &f.get(&t)).unwrap();
             assert_eq!(f.get(&back), f.get(&t), "{f:?}");
         }
@@ -951,6 +1177,11 @@ mod tests {
             (Field::Dim, "95", false),
             (Field::Dim, "40", true),
             (Field::Gradient, "", true),
+            (Field::TitleSize, "12", false),
+            (Field::ReferenceColor, "", true),
+            (Field::CreditsColor, "grey", false),
+            // Ignored while scripture is laid out like lyrics.
+            (Field::ScriptureSizeMin, "nonsense", true),
         ] {
             assert_eq!(f.set(&mut t, text).is_ok(), ok, "{f:?} {text:?}");
         }
@@ -972,9 +1203,10 @@ mod tests {
             w.render_frame(cx);
             w.click("font-3", cx);
             w.click("weight-400", cx);
-            scroll_form_down(w, cx);
+            scroll_form(w, cx, 300.);
             w.click("align-left", cx);
             w.click("valign-Bottom", cx);
+            scroll_form_down(w, cx);
             w.click("transition-slide", cx);
             w.click("bg-clear", cx);
         });
@@ -1003,6 +1235,58 @@ mod tests {
             [ThemesChanged { renamed: Some(("Default".into(), "Sunday".into())), deleted: None }]
         );
         assert!(!cx.update(|cx| editor.read(cx).is_dirty(cx)));
+    }
+
+    #[gpui::test]
+    fn text_areas_and_the_scripture_layout(cx: &mut TestAppContext) {
+        let (library, editor, h, _) = open(cx, crate::test_library());
+        with(cx, h, |w, cx| {
+            scroll_form(w, cx, 500.);
+            w.click("scripture-own", cx);
+            w.render_frame(cx);
+            w.click("scripture-align-left", cx);
+            w.click("scripture-valign-top", cx);
+        });
+        assert_eq!(cx.update(|cx| editor.read(cx).preview_kind), SlideKind::Scripture, "the preview follows");
+        set_field(cx, h, &editor, Field::ScriptureSizeMax, "7");
+        with(cx, h, |w, cx| {
+            scroll_form(w, cx, 300.);
+            w.click("area-title-top", cx);
+            w.render_frame(cx);
+            w.click("area-title-align-right", cx);
+            w.click("area-title-case-uppercase", cx);
+            w.click("area-credits-hidden", cx);
+        });
+        set_field(cx, h, &editor, Field::TitleColor, "#ffcc00");
+        let (draft, bad) = cx.update(|cx| editor.read(cx).draft(cx));
+        assert!(bad.is_empty(), "{bad:?}");
+        let lyrics = Theme::default().layout(SlideKind::Lyrics);
+        assert_eq!(
+            draft.scripture,
+            Some(Layout { align: Align::Left, valign: VAlign::Top, size_max_vh: 7.0, ..lyrics.clone() })
+        );
+        assert_eq!(
+            draft.title_area,
+            asaf_core::TextArea {
+                place: Place::Top,
+                align: Some(Align::Right),
+                color: "#ffcc00".into(),
+                text_case: TextCase::Upper,
+                ..Default::default()
+            }
+        );
+        assert_eq!((draft.credits_area.place, draft.reference_area.place), (Place::Hidden, Place::Bottom));
+
+        // Scripture sizes below their minimum are flagged.
+        set_field(cx, h, &editor, Field::ScriptureSizeMax, "2");
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).1), [Field::ScriptureSizeMax]);
+        set_field(cx, h, &editor, Field::ScriptureSizeMax, "7");
+        with(cx, h, |w, cx| w.press("cmd-s", cx));
+        assert_eq!(library.lock().unwrap().default_theme().unwrap(), draft);
+
+        // Back to the lyrics' layout.
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.set_own_scripture_layout(false, w, cx)));
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.scripture.clone()), None);
     }
 
     #[gpui::test]

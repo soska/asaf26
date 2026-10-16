@@ -635,6 +635,7 @@ fn slide_with_verse_of(slides: &[Slide], old_label: &str) -> Option<usize> {
 mod tests {
     use super::*;
     use asaf_core::Language;
+    use asaf_core::SlideKind;
 
     #[test]
     fn reference_errors_read_like_the_english_display() {
@@ -659,7 +660,7 @@ mod tests {
 
     #[test]
     fn finds_the_slide_holding_a_verse() {
-        let slide = |label: &str| Slide { lines: vec![], label: label.into(), footer: None, wrap: true };
+        let slide = |label: &str| Slide { label: label.into(), kind: SlideKind::Scripture, ..Default::default() };
         let slides = [slide("Juan 3:16-17"), slide("Juan 3:18"), slide("Juan 4:1-3")];
         assert_eq!(slide_with_verse_of(&slides, "Juan 3:17"), Some(0));
         assert_eq!(slide_with_verse_of(&slides, "Juan 3:18-20"), Some(1));

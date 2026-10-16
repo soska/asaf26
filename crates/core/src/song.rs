@@ -29,18 +29,35 @@ pub struct Verse {
     pub lines: Vec<String>,
 }
 
+/// What a slide holds, which picks its layout in the theme.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SlideKind {
+    /// Song lyrics: lines stay whole unless they can't fit at the minimum
+    /// size.
+    #[default]
+    Lyrics,
+    /// Bible verses: prose, wrapped to fill the screen.
+    Scripture,
+}
+
 /// What a screen shows. Derived from songs and passages, never stored.
 /// Serialized for the display pages and the remote with `lines` as plain
-/// text and `runs` as each line's styled runs (see [`markup`]).
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// text and `runs` as each line's styled runs (see [`markup`]), plus the
+/// combined `footer` and `wrap` (prose) for pages that don't place the text
+/// areas themselves.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Slide {
     /// As typed, with any emphasis markup.
     pub lines: Vec<String>,
     pub label: String,
-    pub footer: Option<String>,
-    /// Prose (Bible verses): lines wrap to fill the screen. Lyric lines stay
-    /// whole unless they can't fit at the minimum size.
-    pub wrap: bool,
+    pub kind: SlideKind,
+    /// The song's title.
+    pub title: Option<String>,
+    /// The song's authors and copyright.
+    pub credits: Option<String>,
+    /// The verses' reference and translation: "Juan 3:16 (RV1909)".
+    pub reference: Option<String>,
 }
 
 impl Slide {
@@ -48,17 +65,36 @@ impl Slide {
     pub fn plain_lines(&self) -> Vec<String> {
         self.lines.iter().map(|l| markup::plain(l)).collect()
     }
+
+    /// Prose (Bible verses): lines wrap to fill the screen.
+    pub fn wrap(&self) -> bool {
+        self.kind == SlideKind::Scripture
+    }
+
+    /// Title, reference and credits on one line, for the console and the
+    /// stage view.
+    pub fn footer(&self) -> Option<String> {
+        let parts: Vec<&str> = [&self.title, &self.reference, &self.credits]
+            .into_iter()
+            .filter_map(|p| p.as_deref().map(str::trim).filter(|p| !p.is_empty()))
+            .collect();
+        (!parts.is_empty()).then(|| parts.join(" · "))
+    }
 }
 
 impl Serialize for Slide {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let runs: Vec<Vec<markup::Run>> = self.lines.iter().map(|l| markup::parse(l)).collect();
-        let mut s = serializer.serialize_struct("Slide", 5)?;
+        let mut s = serializer.serialize_struct("Slide", 9)?;
         s.serialize_field("lines", &self.plain_lines())?;
         s.serialize_field("runs", &runs)?;
         s.serialize_field("label", &self.label)?;
-        s.serialize_field("footer", &self.footer)?;
-        s.serialize_field("wrap", &self.wrap)?;
+        s.serialize_field("kind", &self.kind)?;
+        s.serialize_field("title", &self.title)?;
+        s.serialize_field("credits", &self.credits)?;
+        s.serialize_field("reference", &self.reference)?;
+        s.serialize_field("footer", &self.footer())?;
+        s.serialize_field("wrap", &self.wrap())?;
         s.end()
     }
 }
@@ -116,7 +152,8 @@ impl Song {
     /// in the order that do not match a verse are skipped; matching is
     /// case-insensitive.
     pub fn slides(&self) -> Vec<Slide> {
-        let footer = self.footer();
+        let title = Some(self.title.trim().to_string()).filter(|t| !t.is_empty());
+        let credits = self.credits();
         let ordered: Vec<&Verse> = if self.verse_order.is_empty() {
             self.verses.iter().collect()
         } else {
@@ -131,8 +168,10 @@ impl Song {
                 slides.push(Slide {
                     lines: part.to_vec(),
                     label: if parts.len() > 1 { format!("{label}.{}", i + 1) } else { label.clone() },
-                    footer: footer.clone(),
-                    wrap: false,
+                    kind: SlideKind::Lyrics,
+                    title: title.clone(),
+                    credits: credits.clone(),
+                    reference: None,
                 });
             }
         }
@@ -193,15 +232,16 @@ impl Song {
         problems
     }
 
-    fn footer(&self) -> Option<String> {
-        let mut parts = vec![self.title.clone()];
+    /// Authors and copyright: "Fanny Crosby · Public domain".
+    fn credits(&self) -> Option<String> {
+        let mut parts = Vec::new();
         if !self.authors.is_empty() {
             parts.push(self.authors.join(", "));
         }
-        if let Some(c) = &self.copyright {
-            parts.push(c.clone());
+        if let Some(c) = self.copyright.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
+            parts.push(c.to_string());
         }
-        Some(parts.join(" · "))
+        (!parts.is_empty()).then(|| parts.join(" · "))
     }
 }
 
@@ -262,9 +302,16 @@ mod tests {
     }
 
     #[test]
-    fn footer_has_title_and_authors() {
-        let slides = song(&["v1"]).slides();
-        assert_eq!(slides[0].footer.as_deref(), Some("Test · Someone"));
+    fn slides_carry_title_and_credits() {
+        let mut s = song(&["v1"]);
+        let slide = &s.slides()[0];
+        assert_eq!((slide.title.as_deref(), slide.credits.as_deref()), (Some("Test"), Some("Someone")));
+        assert_eq!(slide.footer().as_deref(), Some("Test · Someone"));
+        s.copyright = Some("Public domain".into());
+        assert_eq!(s.slides()[0].credits.as_deref(), Some("Someone · Public domain"));
+        (s.authors, s.copyright) = (vec![], None);
+        assert_eq!((s.slides()[0].credits.clone(), s.slides()[0].footer()), (None, Some("Test".into())));
+        assert_eq!(Slide::default().footer(), None);
     }
 
     #[test]
@@ -303,6 +350,8 @@ mod tests {
             serde_json::json!([[{"text": "Santo", "strong": true}, {"text": ", santo"}], [{"text": "plain"}]])
         );
         assert_eq!(json["label"], "V1");
+        assert_eq!((&json["kind"], &json["title"], &json["wrap"]), (&"lyrics".into(), &"Test".into(), &false.into()));
+        assert_eq!((&json["footer"], &json["reference"]), (&"Test · Someone".into(), &serde_json::Value::Null));
     }
 
     #[test]

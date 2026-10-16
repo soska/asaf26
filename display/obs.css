@@ -1,7 +1,8 @@
 /* OBS variant (/obs): the display's text as lower thirds over a transparent
    page, for a browser source on top of the camera. No background, no black
    or logo: any blank just hides the text. The theme still sets the font,
-   colours, outline, shadow, alignment, side margins and transition;
+   colours, outline, shadow, alignment, side margins, text areas and
+   transition;
    display.js fits the text to this band with its own size range. */
 html.obs, html.obs body {
   background: transparent;
@@ -29,7 +30,11 @@ html.obs, html.obs body {
   align-items: center;
 }
 
-.obs .footer {
-  bottom: 2.5vh;
-  font-size: 2.6vh;
+/* The text areas keep their alignment but sit around the band: the top
+   ones just above it, the bottom ones below it, at one size. */
+.obs .band.top {
+  top: auto;
+  bottom: 31vh;
 }
+.obs .band.bottom { bottom: 2.5vh; }
+.obs .area { font-size: 2.6vh; }

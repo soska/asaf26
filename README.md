@@ -132,10 +132,22 @@ to darken the background (so text reads over a busy picture), the logo shown
 by "blank to logo", and the transition between slides (fade, slide up or cut)
 and its duration. Colours are `#rrggbb` or `#rrggbbaa` (alpha).
 
+Scripture slides can have a layout of their own (alignment, vertical
+position, letters and size range; else they're laid out like lyrics), which
+also sets how many verses Fit packs on a slide. Around the slide text are
+three small text areas: the song title, the scripture reference and the
+credits (authors and copyright). Each goes in the top or bottom margin or is
+hidden, aligned like the text or left, centre or right, with its own size,
+colour (empty: the text colour) and letters. Areas in the same place and
+alignment share one line, separated by " · ", so a theme from before text
+areas (all three at the bottom, like the text) keeps its one footer line. The
+OBS page puts top areas just above its band of text.
+
 Besides Default, every library comes with eight built-in themes: Aurora,
-Jade, Coral and Gala (dark gradients; Coral and Gala in capitals), Lava (big
-condensed capitals near the bottom), Sepia (a serif, left-aligned, for
-scripture), and Oasis and Polar (light, for bright rooms, with the logo in
+Jade, Coral and Gala (dark gradients; Coral and Gala in capitals, with verses
+as typed), Lava (big condensed capitals near the bottom, verses smaller in the
+middle), Sepia (a serif, left-aligned, for scripture, the reference on top),
+and Oasis and Polar (light, for bright rooms, with the logo in
 dark ink). Existing libraries get them once, when they're first opened by a
 version that has them; they're ordinary themes from then on, to edit or
 delete (a deleted one doesn't come back), and a theme of your own with the
@@ -143,8 +155,8 @@ same name is left alone.
 
 The theme editor (`⌘T`, or Themes… in the live pane) lists the themes on the
 left (New, Duplicate, Delete…, Make default), the settings in the middle and
-a preview on the right: the sample chorus, plus a small "blanked to the logo"
-view, drawn by the display page itself (`/display?preview`, in webviews), so
+a preview on the right: the sample chorus or a verse (Song / Scripture), plus
+a small "blanked to the logo" view, drawn by the display page itself (`/display?preview`, in webviews), so
 fonts, outline, shadow and auto-fit are exactly what the projector shows,
 unsaved changes included. While a notification covers it, or if a webview
 can't be made, the console's approximation (`preview.rs`) shows instead. Fields
@@ -359,9 +371,9 @@ table (`bible.rs`).
 
 Passage layout (in the preview header): verses per slide (1, 2, 3 or Fit,
 which packs whole verses up to an estimate from the theme's size range),
-verse numbers on/off (as superscripts), and the reference either in each
-slide's footer (`Juan 3:16-17 (RV1909)`) or as the last line of the last
-slide. Changing the layout of the live passage updates the projector in place
+verse numbers on/off (as superscripts), and the reference either on each
+slide, in the theme's reference area (`Juan 3:16-17 (RV1909)`), or as the last
+line of the last slide. Changing the layout of the live passage updates the projector in place
 and keeps the verse that was showing.
 
 ### Lyrics format

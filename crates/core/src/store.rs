@@ -368,6 +368,7 @@ fn now_ms() -> u64 {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
+    use crate::SlideKind;
 
     fn store() -> Arc<Store> {
         Store::new(crate::sample_song(), Theme::default())
@@ -436,7 +437,7 @@ mod tests {
     fn passages_go_live_like_songs() {
         let s = store();
         let passage = Passage { bible_id: 1, ranges: Vec::new() };
-        let slide = |label: &str| Slide { lines: vec!["text".into()], label: label.into(), footer: None, wrap: true };
+        let slide = |label: &str| Slide { lines: vec!["text".into()], label: label.into(), kind: SlideKind::Scripture, ..Default::default() };
         s.load_passage(passage.clone(), "Juan 3:16-18".into(), vec![slide("a"), slide("b")], 5);
         let snap = s.snapshot();
         assert_eq!((snap.current, snap.song_id, snap.passage.as_ref()), (1, None, Some(&passage)));

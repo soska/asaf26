@@ -25,6 +25,7 @@
   let state = null;
   let active = 0; // index into layers of the layer holding the shown slide
   let shownKey = null;
+  let shownAreas = null;
   let connected = false;
   let lastLatency = null;
 
@@ -52,8 +53,9 @@
     const safe = layer.querySelector(".safe");
     if (!text.firstChild) return;
     const vh = window.innerHeight / 100;
-    const min = (obs ? OBS_SIZE_VH.min : state.theme.size_min_vh) * vh;
-    const max = (obs ? OBS_SIZE_VH.max : state.theme.size_max_vh) * vh;
+    const sizes = layout(layer.classList.contains("scripture") ? "scripture" : "lyrics");
+    const min = (obs ? OBS_SIZE_VH.min : sizes.size_min_vh) * vh;
+    const max = (obs ? OBS_SIZE_VH.max : sizes.size_max_vh) * vh;
     const w = safe.clientWidth;
     const h = safe.clientHeight;
     const fits = (px) => {
@@ -115,12 +117,56 @@
     return div;
   }
 
+  // The theme's placement and sizes for a kind of slide (Theme::layout).
+  function layout(kind) {
+    const theme = state.theme;
+    return (kind === "scripture" && theme.scripture) || theme;
+  }
+
+  // The song title, reference and credits, each where the theme puts it:
+  // a band (top or bottom margin) and a slot in it (left, center, right).
+  // Areas sharing a slot share its line, in this order.
+  const AREAS = ["title", "reference", "credits"];
+  function fillAreas(layer, slide) {
+    layer.querySelectorAll(".band").forEach((band) => band.remove());
+    const align = layout(slide.kind).align;
+    const slots = new Map();
+    for (const name of AREAS) {
+      const text = slide[name]?.trim();
+      const area = state.theme[`${name}_area`];
+      if (!text || !area || area.place === "hidden") continue;
+      const key = `${area.place} ${area.align ?? align}`;
+      if (!slots.has(key)) slots.set(key, []);
+      slots.get(key).push([name, text]);
+    }
+    for (const [key, areas] of slots) {
+      const [place, side] = key.split(" ");
+      let band = layer.querySelector(`.band.${place}`);
+      if (!band) {
+        band = document.createElement("div");
+        band.className = `band ${place}`;
+        layer.append(band);
+      }
+      const slot = document.createElement("div");
+      slot.className = `slot ${side}`;
+      areas.forEach(([name, text], i) => {
+        const span = document.createElement("span");
+        span.className = `area ${name}`;
+        span.textContent = i > 0 ? ` · ${text}` : text;
+        slot.append(span);
+      });
+      band.append(slot);
+    }
+  }
+
   function fill(layer, slide) {
+    layer.slide = slide;
     const text = layer.querySelector(".text");
     const runs = slide.runs ?? slide.lines.map((line) => [{ text: line }]);
     text.replaceChildren(...runs.map(lineElement));
     text.classList.toggle("prose", !!slide.wrap);
-    layer.querySelector(".footer").textContent = slide.footer ?? "";
+    layer.classList.toggle("scripture", slide.kind === "scripture");
+    fillAreas(layer, slide);
     fit(layer);
   }
 
@@ -129,6 +175,12 @@
     state = next;
     // A new font, size range or margin changes what fits: refit both layers.
     if (applyTheme(state.css_vars ?? [])) refitSoon();
+    // The text areas may have moved (their places aren't CSS variables).
+    const areasKey = JSON.stringify([state.theme.title_area, state.theme.reference_area, state.theme.credits_area, state.theme.scripture?.align, state.theme.align]);
+    if (areasKey !== shownAreas) {
+      shownAreas = areasKey;
+      for (const layer of layers) if (layer.slide) fillAreas(layer, layer.slide);
+    }
 
     const slide = state.slide;
     const key = slide ? JSON.stringify(slide) : null;
@@ -140,7 +192,11 @@
       incoming.classList.add("instant");
       incoming.classList.remove("on", "out");
       if (slide) fill(incoming, slide);
-      else incoming.querySelector(".text").replaceChildren();
+      else {
+        incoming.slide = null;
+        incoming.querySelector(".text").replaceChildren();
+        incoming.querySelectorAll(".band").forEach((band) => band.remove());
+      }
       void incoming.offsetWidth; // commit the waiting position before animating
       incoming.classList.remove("instant");
       layers[1 - active].classList.add("out");

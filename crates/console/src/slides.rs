@@ -15,6 +15,7 @@ use crate::preview::{background_fill, color, optional_color, styled_line};
 /// The caller adds the click handler.
 pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, look: &Theme, cx: &App) -> Stateful<Div> {
     let theme = cx.theme();
+    let layout = look.layout(slide.kind);
     v_flex()
         .id(id)
         .gap_1()
@@ -37,7 +38,7 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                         .text_color(if on_air { theme.foreground } else { theme.muted_foreground })
                         .child(slide.label.clone()),
                 )
-                .when_some(slide.footer.clone(), |d, f| {
+                .when_some(slide.footer(), |d, f| {
                     d.child(div().flex_1().min_w_0().truncate().text_color(theme.muted_foreground).child(f))
                 }),
         )
@@ -53,14 +54,14 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                 .font_family(look.font_family.clone())
                 .font_weight(FontWeight(f32::from(look.font_weight)))
                 .justify_center()
-                .map(|d| match look.align {
+                .map(|d| match layout.align {
                     Align::Left => d.items_start(),
                     Align::Center => d.items_center(),
                     Align::Right => d.items_end(),
                 })
                 .children(slide.lines.iter().map(|l| {
                     let weight = FontWeight(f32::from(look.font_weight));
-                    div().child(styled_line(l, look.text_case, weight, optional_color(&look.strong_color), optional_color(&look.em_color)))
+                    div().child(styled_line(l, layout.text_case, weight, optional_color(&look.strong_color), optional_color(&look.em_color)))
                 })),
         )
 }

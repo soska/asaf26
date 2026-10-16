@@ -6,6 +6,8 @@ use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
+use crate::SlideKind;
+
 /// The theme every library starts with and that can't be deleted.
 pub const DEFAULT_THEME_NAME: &str = "Default";
 
@@ -62,6 +64,97 @@ pub struct Theme {
     pub logo: Option<String>,
     pub transition: TransitionKind,
     pub transition_ms: u32,
+    /// The song title, the credits (authors, copyright) and the scripture
+    /// reference, around the slide text.
+    pub title_area: TextArea,
+    pub credits_area: TextArea,
+    pub reference_area: TextArea,
+    /// Where scripture slides put their text and how big; `None`: as
+    /// lyrics (the fields above).
+    pub scripture: Option<Layout>,
+}
+
+/// Where a text area goes: in the top or bottom margin, or nowhere.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Place {
+    Hidden,
+    Top,
+    #[default]
+    Bottom,
+}
+
+impl Place {
+    pub const ALL: [Place; 3] = [Place::Hidden, Place::Top, Place::Bottom];
+}
+
+/// One of the small text areas around the slide text. Areas in the same
+/// place and alignment share a line, in [`AreaKind::ALL`] order, separated
+/// by " · ".
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TextArea {
+    pub place: Place,
+    /// `None`: aligned like the slide text.
+    pub align: Option<Align>,
+    pub size_vh: f32,
+    /// Empty: the text colour.
+    pub color: String,
+    pub text_case: TextCase,
+}
+
+impl Default for TextArea {
+    /// Today's footer: one small line at the bottom, aligned like the text.
+    fn default() -> Self {
+        Self { place: Place::Bottom, align: None, size_vh: 2.2, color: String::new(), text_case: TextCase::Normal }
+    }
+}
+
+/// Which text area.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AreaKind {
+    Title,
+    Reference,
+    Credits,
+}
+
+impl AreaKind {
+    pub const ALL: [AreaKind; 3] = [AreaKind::Title, AreaKind::Reference, AreaKind::Credits];
+
+    /// Its name in the slide JSON and the display page's classes.
+    pub fn name(self) -> &'static str {
+        match self {
+            AreaKind::Title => "title",
+            AreaKind::Reference => "reference",
+            AreaKind::Credits => "credits",
+        }
+    }
+
+    /// The area's text on `slide`.
+    pub fn text(self, slide: &crate::Slide) -> Option<&str> {
+        match self {
+            AreaKind::Title => slide.title.as_deref(),
+            AreaKind::Reference => slide.reference.as_deref(),
+            AreaKind::Credits => slide.credits.as_deref(),
+        }
+    }
+}
+
+/// Where the slide text goes and how big, for one kind of slide.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Layout {
+    pub align: Align,
+    pub valign: VAlign,
+    pub size_min_vh: f32,
+    pub size_max_vh: f32,
+    pub text_case: TextCase,
+}
+
+impl Default for Layout {
+    fn default() -> Self {
+        Theme::default().layout(SlideKind::Lyrics)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -188,6 +281,10 @@ impl Default for Theme {
             logo: Some("/assets/logo.svg".into()),
             transition: TransitionKind::Fade,
             transition_ms: 300,
+            title_area: TextArea::default(),
+            credits_area: TextArea::default(),
+            reference_area: TextArea::default(),
+            scripture: None,
         }
     }
 }
@@ -197,6 +294,7 @@ pub const SIZE_RANGE_VH: (f32, f32) = (1.0, 40.0);
 pub const MAX_TRANSITION_MS: u32 = 5000;
 pub const LETTER_SPACING_RANGE_EM: (f32, f32) = (-0.1, 0.5);
 pub const MAX_DIM: f32 = 0.9;
+pub const AREA_SIZE_RANGE_VH: (f32, f32) = (1.0, 10.0);
 
 /// An RGBA colour parsed from `#rgb`, `#rrggbb` or `#rrggbbaa`.
 pub fn parse_color(text: &str) -> Option<[u8; 4]> {
@@ -266,6 +364,36 @@ fn css_url(url: Option<&str>) -> String {
 }
 
 impl Theme {
+    /// Placement and sizes for `kind` of slide.
+    pub fn layout(&self, kind: SlideKind) -> Layout {
+        match (kind, &self.scripture) {
+            (SlideKind::Scripture, Some(layout)) => layout.clone(),
+            _ => Layout {
+                align: self.align,
+                valign: self.valign,
+                size_min_vh: self.size_min_vh,
+                size_max_vh: self.size_max_vh,
+                text_case: self.text_case,
+            },
+        }
+    }
+
+    pub fn area(&self, kind: AreaKind) -> &TextArea {
+        match kind {
+            AreaKind::Title => &self.title_area,
+            AreaKind::Reference => &self.reference_area,
+            AreaKind::Credits => &self.credits_area,
+        }
+    }
+
+    pub fn area_mut(&mut self, kind: AreaKind) -> &mut TextArea {
+        match kind {
+            AreaKind::Title => &mut self.title_area,
+            AreaKind::Reference => &mut self.reference_area,
+            AreaKind::Credits => &mut self.credits_area,
+        }
+    }
+
     /// The theme as CSS custom properties for the display page, in a fixed
     /// order. The page sets each on `:root`; `display.css` uses them.
     pub fn css_vars(&self) -> Vec<(&'static str, String)> {
@@ -279,7 +407,7 @@ impl Theme {
                 css_color(&self.shadow_color)
             )
         };
-        vec![
+        let mut vars = vec![
             // A cut is a transition that takes no time.
             ("--fade", format!("{}ms", if self.transition == TransitionKind::Cut { 0 } else { self.transition_ms })),
             // How far an incoming slide travels (and an outgoing one leaves).
@@ -314,7 +442,30 @@ impl Theme {
             }),
             ("--bg-dim", trim_float(self.background_dim, 2)),
             ("--logo", css_url(self.logo.as_deref())),
-        ]
+        ];
+        // Scripture slides' layer redefines --align, --justify, --valign
+        // and --text-transform from these.
+        let scripture = self.layout(SlideKind::Scripture);
+        vars.extend([
+            ("--scripture-align", scripture.align.css().into()),
+            ("--scripture-justify", scripture.align.justify().into()),
+            ("--scripture-valign", scripture.valign.css().into()),
+            ("--scripture-transform", scripture.text_case.css().into()),
+        ]);
+        for kind in AreaKind::ALL {
+            let area = self.area(kind);
+            let [size, color, transform] = match kind {
+                AreaKind::Title => ["--title-size", "--title-color", "--title-transform"],
+                AreaKind::Reference => ["--reference-size", "--reference-color", "--reference-transform"],
+                AreaKind::Credits => ["--credits-size", "--credits-color", "--credits-transform"],
+            };
+            vars.extend([
+                (size, format!("{}vh", trim_float(area.size_vh, 2))),
+                (color, or_text_color(&area.color)),
+                (transform, area.text_case.css().into()),
+            ]);
+        }
+        vars
     }
 
     /// The same theme with every value in range and every colour valid
@@ -369,6 +520,18 @@ impl Theme {
         for url in [&mut self.background_image, &mut self.logo] {
             *url = url.take().map(|u| u.trim().to_string()).filter(|u| is_local_url(u));
         }
+        for kind in AreaKind::ALL {
+            let area = self.area_mut(kind);
+            area.size_vh = clamp(area.size_vh, AREA_SIZE_RANGE_VH.0, AREA_SIZE_RANGE_VH.1, TextArea::default().size_vh);
+            area.color = match parse_color(&area.color) {
+                Some(_) => area.color.trim().to_ascii_lowercase(),
+                None => String::new(),
+            };
+        }
+        if let Some(l) = &mut self.scripture {
+            l.size_min_vh = clamp(l.size_min_vh, SIZE_RANGE_VH.0, SIZE_RANGE_VH.1, d.size_min_vh);
+            l.size_max_vh = clamp(l.size_max_vh, l.size_min_vh, SIZE_RANGE_VH.1, d.size_max_vh.max(l.size_min_vh));
+        }
         self
     }
 }
@@ -390,6 +553,14 @@ pub fn builtin_themes() -> Vec<Theme> {
         f(&mut t);
         t
     };
+    // The song title in capitals at the top, in an accent colour.
+    let top_title = |color: &str, size_vh: f32| TextArea {
+        place: Place::Top,
+        size_vh,
+        color: color.into(),
+        text_case: TextCase::Upper,
+        ..TextArea::default()
+    };
     let set_shadow = |t: &mut Theme, (color, blur, offset): (String, f32, f32)| {
         (t.shadow_color, t.shadow_blur_vh, t.shadow_offset_vh) = (color, blur, offset);
     };
@@ -401,6 +572,7 @@ pub fn builtin_themes() -> Vec<Theme> {
             set_shadow(t, shadow("#0000008c", 1.5, 0.3));
             (t.background_color, t.gradient_color) = ("#0b1026".into(), "#5b21b6".into());
             t.transition_ms = 400;
+            t.title_area = top_title("#c4b5fd", 2.4);
         }),
         themed("Jade", &|t| {
             t.font_weight = 600;
@@ -415,6 +587,9 @@ pub fn builtin_themes() -> Vec<Theme> {
             set_shadow(t, shadow("#00000066", 1.0, 0.2));
             (t.background_color, t.gradient_color) = ("#3f0d1f".into(), "#be123c".into());
             (t.transition, t.transition_ms) = (TransitionKind::Slide, 450);
+            t.title_area = top_title("#fdba74", 2.4);
+            t.scripture =
+                Some(Layout { size_min_vh: 3.5, size_max_vh: 7.5, text_case: TextCase::Normal, ..t.layout(SlideKind::Lyrics) });
         }),
         themed("Sepia", &|t| {
             (t.font_family, t.font_weight) = ("Lora".into(), 500);
@@ -424,6 +599,8 @@ pub fn builtin_themes() -> Vec<Theme> {
             (t.align, t.margin_x_pct, t.margin_y_pct) = (Align::Left, 10.0, 12.0);
             (t.background_color, t.gradient_color) = ("#1a120b".into(), "#3d2b1f".into());
             t.transition_ms = 500;
+            // Made for scripture: the reference heads the passage.
+            t.reference_area = TextArea { place: Place::Top, size_vh: 3.2, color: "#e9b872".into(), ..TextArea::default() };
         }),
         themed("Lava", &|t| {
             (t.font_family, t.font_weight, t.text_case) = ("Oswald".into(), 600, TextCase::Upper);
@@ -433,6 +610,15 @@ pub fn builtin_themes() -> Vec<Theme> {
             (t.valign, t.margin_y_pct) = (VAlign::Bottom, 12.0);
             (t.background_color, t.gradient_color) = ("#0a0a0a".into(), "#3b0d02".into());
             t.transition = TransitionKind::Slide;
+            t.title_area = TextArea { align: Some(Align::Left), ..top_title("#ff8a3d", 2.6) };
+            // Verses read better smaller, as typed, in the middle.
+            t.scripture = Some(Layout {
+                valign: VAlign::Middle,
+                size_min_vh: 4.0,
+                size_max_vh: 8.0,
+                text_case: TextCase::Normal,
+                ..t.layout(SlideKind::Lyrics)
+            });
         }),
         themed("Oasis", &|t| {
             (t.font_family, t.font_weight, t.line_height) = ("Lora".into(), 600, 1.3);
@@ -456,6 +642,8 @@ pub fn builtin_themes() -> Vec<Theme> {
             set_shadow(t, shadow("#000000b3", 1.0, 0.0));
             (t.background_color, t.gradient_color) = ("#050505".into(), "#1c1917".into());
             t.transition_ms = 700;
+            t.title_area = top_title("#d4af37", 2.2);
+            t.scripture = Some(Layout { text_case: TextCase::Normal, ..t.layout(SlideKind::Lyrics) });
         }),
     ]
 }
@@ -533,6 +721,19 @@ mod tests {
             ("--strong-color", |t| t.strong_color = " ".into(), "inherit"),
             ("--em-color", |_| {}, "inherit"),
             ("--em-color", |t| t.em_color = "#0f0".into(), "rgb(0, 255, 0)"),
+            ("--title-size", |_| {}, "2.2vh"),
+            ("--title-color", |_| {}, "inherit"),
+            ("--credits-color", |t| t.credits_area.color = "#aabbcc".into(), "rgb(170, 187, 204)"),
+            ("--reference-transform", |t| t.reference_area.text_case = TextCase::Upper, "uppercase"),
+            ("--reference-size", |t| t.reference_area.size_vh = 3.5, "3.5vh"),
+            ("--scripture-align", |t| t.align = Align::Right, "right"),
+            ("--scripture-justify", |t| t.scripture = Some(Layout { align: Align::Left, ..Layout::default() }), "flex-start"),
+            ("--scripture-valign", |t| t.scripture = Some(Layout { valign: VAlign::Top, ..Layout::default() }), "flex-start"),
+            ("--scripture-transform", |t| t.text_case = TextCase::Upper, "uppercase"),
+            ("--scripture-transform", |t| {
+                t.text_case = TextCase::Upper;
+                t.scripture = Some(Layout::default());
+            }, "none"),
         ];
         for (name, change, want) in cases {
             let mut t = base.clone();
@@ -589,6 +790,34 @@ mod tests {
     }
 
     #[test]
+    fn scripture_has_its_own_layout_or_the_lyrics_one() {
+        let t = Theme { align: Align::Left, size_max_vh: 9.0, ..Theme::default() };
+        let lyrics = t.layout(SlideKind::Lyrics);
+        assert_eq!((lyrics.align, lyrics.size_max_vh), (Align::Left, 9.0));
+        assert_eq!(t.layout(SlideKind::Scripture), lyrics);
+        let own = Layout { valign: VAlign::Top, size_min_vh: 3.0, ..Layout::default() };
+        let t = Theme { scripture: Some(own.clone()), ..t };
+        assert_eq!((t.layout(SlideKind::Scripture), t.layout(SlideKind::Lyrics)), (own, lyrics));
+        assert_eq!(Layout::default(), Theme::default().layout(SlideKind::Lyrics));
+    }
+
+    #[test]
+    fn sanitized_repairs_text_areas_and_the_scripture_layout() {
+        let mut t = Theme {
+            title_area: TextArea { size_vh: 50.0, color: "gold".into(), ..TextArea::default() },
+            ..Theme::default()
+        };
+        t.credits_area.size_vh = f32::NAN;
+        t.reference_area.color = " #ABC ".into();
+        t.scripture = Some(Layout { size_min_vh: 12.0, size_max_vh: 5.0, ..Layout::default() });
+        let t = t.sanitized();
+        assert_eq!((t.title_area.size_vh, t.title_area.color.as_str()), (AREA_SIZE_RANGE_VH.1, ""));
+        assert_eq!((t.credits_area.size_vh, t.reference_area.color.as_str()), (2.2, "#abc"));
+        let s = t.scripture.unwrap();
+        assert_eq!((s.size_min_vh, s.size_max_vh), (12.0, 12.0));
+    }
+
+    #[test]
     fn builtin_themes_are_valid_and_distinct() {
         let themes = builtin_themes();
         assert_eq!(themes.len(), 8);
@@ -613,5 +842,15 @@ mod tests {
         assert_eq!(serde_json::from_str::<Theme>(&json).unwrap(), t);
         let old: Theme = serde_json::from_str(r##"{"name":"Old","color":"#ff0"}"##).unwrap();
         assert_eq!((old.name.as_str(), old.color.as_str(), old.font_weight), ("Old", "#ff0", 700));
+        // Older themes had one footer line at the bottom: every area goes there.
+        assert!(AreaKind::ALL.iter().all(|&k| *old.area(k) == TextArea::default()) && old.scripture.is_none());
+        let t = Theme {
+            title_area: TextArea { place: Place::Top, align: Some(Align::Right), ..TextArea::default() },
+            scripture: Some(Layout { valign: VAlign::Top, ..Layout::default() }),
+            ..Theme::default()
+        };
+        let json = serde_json::to_string(&t).unwrap();
+        assert!(json.contains(r#""title_area":{"place":"top","align":"right""#), "{json}");
+        assert_eq!(serde_json::from_str::<Theme>(&json).unwrap(), t);
     }
 }

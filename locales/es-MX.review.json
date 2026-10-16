@@ -35,6 +35,24 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "11xpx38fx8g": {
+    "status": "machine",
+    "translatedHash": "1w7o7als8xn",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Biblia",
+      "Pasaje"
+    ],
+    "note": "Used both as a section header and as the preview's Scripture/Song toggle."
+  },
+  "12ecg5fvm55": {
+    "status": "machine",
+    "translatedHash": "28a8xx4pnpe",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "12lewi7lj6d": {
     "status": "approved",
     "translatedHash": "hzwyn9hukr",
@@ -76,6 +94,12 @@
     "translatedHash": "xqdr1hoqth",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "14p6elxndob": {
+    "status": "machine",
+    "translatedHash": "qrqslm4ofi",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "14xvcizn3rj": {
     "status": "approved",
@@ -239,6 +263,16 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "19ywcnm2389": {
+    "status": "machine",
+    "translatedHash": "3s5s4irwml",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Texto bíblico más pequeño (%)"
+    ]
+  },
   "1a1finnyrai": {
     "status": "approved",
     "translatedHash": "1mtzh02t0e9",
@@ -277,6 +311,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1bs65nfggy": {
+    "status": "machine",
+    "translatedHash": "1mvm17xh2d2",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1bzyzlrfy1x": {
     "status": "approved",
     "translatedHash": "2awnht4yfdd",
@@ -301,6 +341,16 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1clng1luas9": {
+    "status": "machine",
+    "translatedHash": "156eiq99lly",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Texto bíblico más grande (%)"
+    ]
+  },
   "1deknw8bj6t": {
     "status": "approved",
     "translatedHash": "21fgs8xr8dy",
@@ -323,6 +373,12 @@
     "translatedHash": "uq8w185tbv",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1em75sieq89": {
+    "status": "machine",
+    "translatedHash": "1gzatvi1hp3",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1f5sihl6h3i": {
     "status": "approved",
@@ -474,6 +530,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1l1n6gck0ez": {
+    "status": "machine",
+    "translatedHash": "1sc9yyppkko",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1l7gq65mn9n": {
     "status": "approved",
     "translatedHash": "1av6aaonvjb",
@@ -500,6 +562,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1m7m51wbz6": {
+    "status": "machine",
+    "translatedHash": "942t2tmjzw",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1mb2byo88u5": {
     "status": "approved",
     "translatedHash": "q5eo8whumm",
@@ -511,6 +579,12 @@
     "translatedHash": "kw7xyqz6bj",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1mi4jz6j806": {
+    "status": "machine",
+    "translatedHash": "1wzgk6wxt7",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1nb6jwpabt8": {
     "status": "approved",
@@ -589,6 +663,12 @@
     "translatedHash": "x156fsq3d6",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1s0umdocdeh": {
+    "status": "machine",
+    "translatedHash": "2c35nrjm8jb",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1sf05pjn4vt": {
     "status": "approved",
@@ -770,6 +850,16 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "210uzr8yx07": {
+    "status": "machine",
+    "translatedHash": "8lc509xuv0",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Diseño propio"
+    ]
+  },
   "215116uqkle": {
     "status": "machine",
     "translatedHash": "12ewv6my1z9",
@@ -799,6 +889,12 @@
     "translatedHash": "d2aom0yw1h",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "21flf7iybuk": {
+    "status": "machine",
+    "translatedHash": "22tajj522n",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "21ihsq2nghm": {
     "status": "approved",
@@ -895,6 +991,12 @@
     "translatedHash": "1x9y4hmal0l",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "273b4fh7eec": {
+    "status": "machine",
+    "translatedHash": "ju9ipcn4dc",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "275zw8wjybp": {
     "status": "approved",
@@ -1130,6 +1232,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "4z1wt245nn": {
+    "status": "machine",
+    "translatedHash": "j2fpa1eeao",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "52fv03gu2z": {
     "status": "approved",
     "translatedHash": "1ubsgeblkm7",
@@ -1150,11 +1258,23 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "6sof4ksag1": {
+    "status": "machine",
+    "translatedHash": "1nfet9k4i7h",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "6vtvfmhxim": {
     "status": "approved",
     "translatedHash": "a1emg06d4a",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "6xt1tu26n2": {
+    "status": "machine",
+    "translatedHash": "1pl7r1r61c2",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "7a8nmls28r": {
     "status": "machine",
@@ -1287,6 +1407,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "ci95hd861j": {
+    "status": "machine",
+    "translatedHash": "j14g682y9",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "cvw477di5z": {
     "status": "approved",
     "translatedHash": "2jqz5hvfzd",
@@ -1348,6 +1474,12 @@
     "translatedHash": "aqtvw6nxgs",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "eymdd143ab": {
+    "status": "machine",
+    "translatedHash": "1osxce1b3z1",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "f16f8ceiio": {
     "status": "approved",

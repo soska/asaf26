@@ -24,6 +24,19 @@
   --bg-gradient: none;
   --bg-dim: 0;
   --logo: none;
+  --scripture-align: var(--align);
+  --scripture-justify: var(--justify);
+  --scripture-valign: var(--valign);
+  --scripture-transform: var(--text-transform);
+  --title-size: 2.2vh;
+  --title-color: inherit;
+  --title-transform: none;
+  --reference-size: 2.2vh;
+  --reference-color: inherit;
+  --reference-transform: none;
+  --credits-size: 2.2vh;
+  --credits-color: inherit;
+  --credits-transform: none;
 }
 
 html, body {
@@ -63,7 +76,16 @@ html.embedded, html.embedded body { cursor: default; }
 .layer.out { transform: translateY(calc(-1 * var(--shift))); }
 .layer.instant { transition: none; }
 
-/* The area text must fit in. The footer sits in the bottom margin. */
+/* Scripture slides have their own placement (the theme's scripture layout,
+   the same as lyrics unless it has one). */
+.layer.scripture {
+  --align: var(--scripture-align);
+  --justify: var(--scripture-justify);
+  --valign: var(--scripture-valign);
+  --text-transform: var(--scripture-transform);
+}
+
+/* The area the slide text must fit in. The text areas sit in the margins. */
 .safe {
   position: absolute;
   inset: var(--my) var(--mx);
@@ -72,7 +94,7 @@ html.embedded, html.embedded body { cursor: default; }
   justify-content: var(--justify);
 }
 
-.text, .footer {
+.text, .band {
   color: var(--color);
   font-family: var(--font-family);
   font-weight: var(--font-weight);
@@ -103,18 +125,46 @@ html.embedded, html.embedded body { cursor: default; }
   max-width: 100%;
 }
 
-.footer {
+/* The song title, credits and reference, in the top or bottom margin.
+   display.js puts each area in its slot (left, center or right); areas
+   sharing a slot share its line. */
+.band {
   position: absolute;
   left: var(--mx);
   right: var(--mx);
-  bottom: calc(var(--my) * 0.3);
-  font-size: 2.2vh;
   font-weight: 500;
   -webkit-text-stroke-width: 0.25vh;
+  opacity: 0.9;
+}
+.band.top { top: calc(var(--my) * 0.3); }
+.band.bottom { bottom: calc(var(--my) * 0.3); }
+.slot {
+  position: absolute;
+  left: 0;
+  right: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.9;
+}
+.band.top .slot { top: 0; }
+.band.bottom .slot { bottom: 0; }
+.slot.left { text-align: left; }
+.slot.center { text-align: center; }
+.slot.right { text-align: right; }
+.area.title {
+  font-size: var(--title-size);
+  color: var(--title-color);
+  text-transform: var(--title-transform);
+}
+.area.reference {
+  font-size: var(--reference-size);
+  color: var(--reference-color);
+  text-transform: var(--reference-transform);
+}
+.area.credits {
+  font-size: var(--credits-size);
+  color: var(--credits-color);
+  text-transform: var(--credits-transform);
 }
 
 /* Blank to logo: the theme's logo over its background. */

@@ -13,7 +13,7 @@
 
 use std::time::Duration;
 
-use asaf_core::{Blank, Command, Outcome, Passage, RemoteView, ServiceEntry, Slide, Song, Store, Theme, Verse, sample_song};
+use asaf_core::{Blank, Command, Outcome, Passage, RemoteView, ServiceEntry, Slide, SlideKind, Song, Store, Theme, Verse, sample_song};
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -29,8 +29,9 @@ fn main() {
     let john = Slide {
         lines: vec!["¹⁶ For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.".into()],
         label: "John 3:16".into(),
-        footer: Some("John 3:16 (KJV)".into()),
-        wrap: true,
+        kind: SlideKind::Scripture,
+        reference: Some("John 3:16 (KJV)".into()),
+        ..Default::default()
     };
     let entries = [("Blessed Assurance", "song"), ("John 3:16 (KJV)", "passage"), ("Holy, Holy, Holy", "song"), ("Psalm 23 (KJV)", "passage")]
         .map(|(title, kind)| ServiceEntry { title: title.into(), kind });
