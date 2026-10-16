@@ -1486,10 +1486,10 @@
     "by": "armando"
   },
   "o54cnfr1fb": {
-    "status": "machine",
+    "status": "approved",
     "translatedHash": "1d7k1txlwap",
     "at": "2026-10-16",
-    "by": "claude",
+    "by": "armando",
     "confidence": "high",
     "note": "Same as the previous 'Siguiente  ▶'; the arrow is now an icon."
   },
@@ -1596,10 +1596,10 @@
     "by": "armando"
   },
   "ry4ta3de7l": {
-    "status": "machine",
+    "status": "approved",
     "translatedHash": "1etyer36prw",
     "at": "2026-10-16",
-    "by": "claude"
+    "by": "armando"
   },
   "rz6712kzgp": {
     "status": "approved",
@@ -1704,10 +1704,10 @@
     "by": "armando"
   },
   "vjxiut1gq9": {
-    "status": "machine",
+    "status": "approved",
     "translatedHash": "zj652mozmp",
     "at": "2026-10-16",
-    "by": "claude",
+    "by": "armando",
     "confidence": "high",
     "note": "Same as the previous '◀  Anterior'; the arrow is now an icon."
   },
