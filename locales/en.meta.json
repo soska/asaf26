@@ -84,6 +84,12 @@
       "crates/console/src/service.rs:896:56"
     ]
   },
+  "154ej8zgzam": {
+    "message": "TEXT HIDDEN",
+    "refs": [
+      "display/stage.js:60:33"
+    ]
+  },
   "15j2tbe8i28": {
     "message": "No PIN",
     "refs": [
@@ -127,6 +133,18 @@
       "crates/console/src/console.rs:695:87"
     ]
   },
+  "175shwyrp1": {
+    "message": "Asaf stage",
+    "refs": [
+      "display/stage.js:120:22"
+    ]
+  },
+  "176xb2bgq7l": {
+    "message": "Next · {slide}",
+    "refs": [
+      "display/stage.js:73:14"
+    ]
+  },
   "17cvwp47g35": {
     "message": "⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  ⇧⏎ add to service  ·  Esc back",
     "refs": [
@@ -148,13 +166,20 @@
   "181powe3aqk": {
     "message": "Nothing live yet.",
     "refs": [
-      "crates/console/src/console.rs:829:66"
+      "crates/console/src/console.rs:829:66",
+      "display/remote.js:122:48"
     ]
   },
   "184ddtayynn": {
     "message": "New theme",
     "refs": [
       "crates/console/src/theme_editor.rs:313:89"
+    ]
+  },
+  "18fg3mwr23k": {
+    "message": "Blank to black",
+    "refs": [
+      "display/remote.js:110:28"
     ]
   },
   "18gipka4xzw": {
@@ -197,6 +222,12 @@
     "message": "Across",
     "refs": [
       "crates/console/src/theme_editor.rs:635:96"
+    ]
+  },
+  "19jq9j5c082": {
+    "message": "Nothing is live yet.",
+    "refs": [
+      "display/remote.js:98:34"
     ]
   },
   "19o7ukmmegs": {
@@ -249,7 +280,9 @@
     "refs": [
       "crates/console/src/bible.rs:512:38",
       "crates/console/src/console.rs:753:38",
-      "crates/console/src/service.rs:847:38"
+      "crates/console/src/service.rs:847:38",
+      "display/remote.js:104:35",
+      "display/remote.js:175:26"
     ]
   },
   "1ce0j82vshj": {
@@ -289,6 +322,12 @@
     },
     "refs": [
       "crates/console/src/transfer.rs:209:22"
+    ]
+  },
+  "1gfwr05jgir": {
+    "message": "{title}: live",
+    "refs": [
+      "display/remote.js:222:45"
     ]
   },
   "1gj0vp1z1az": {
@@ -408,6 +447,12 @@
       "crates/console/src/remote.rs:103:56"
     ]
   },
+  "1kmgvtw7we0": {
+    "message": "Showing the logo",
+    "refs": [
+      "display/remote.js:71:27"
+    ]
+  },
   "1kmxz3amydy": {
     "message": "Left",
     "refs": [
@@ -426,6 +471,18 @@
       "crates/console/src/editor.rs:367:30"
     ]
   },
+  "1l7gq65mn9n": {
+    "message": "Up next",
+    "refs": [
+      "display/stage.js:76:36"
+    ]
+  },
+  "1li8587ej1y": {
+    "message": "Next slide",
+    "refs": [
+      "display/remote.js:106:42"
+    ]
+  },
   "1lkgrf799my": {
     "message": "{count}+ songs",
     "refs": [
@@ -436,6 +493,12 @@
     "message": "The library couldn't be updated: {error}",
     "refs": [
       "crates/console/src/theme_editor.rs:735:41"
+    ]
+  },
+  "1mb2byo88u5": {
+    "message": "Wrong PIN.",
+    "refs": [
+      "display/remote.js:79:33"
     ]
   },
   "1mge26ozluc": {
@@ -451,6 +514,12 @@
       "crates/console/src/bible.rs:597:39"
     ]
   },
+  "1ojj8ux1f0e": {
+    "message": "That didn't work.",
+    "refs": [
+      "display/remote.js:38:49"
+    ]
+  },
   "1p0ywqa3omi": {
     "message": "Couldn't save: {error}",
     "refs": [
@@ -463,6 +532,12 @@
       "crates/console/src/console.rs:592:46",
       "crates/console/src/service.rs:691:88",
       "crates/console/src/theme_editor.rs:694:69"
+    ]
+  },
+  "1r0muke0y3x": {
+    "message": "Checking…",
+    "refs": [
+      "display/remote.js:276:34"
     ]
   },
   "1r54hpt6rac": {
@@ -514,6 +589,18 @@
       "crates/console/src/bible.rs:495:40"
     ]
   },
+  "1sf05pjn4vt": {
+    "message": "The console has closed.",
+    "refs": [
+      "display/remote.js:84:46"
+    ]
+  },
+  "1sti865u0fr": {
+    "message": "Disconnected.",
+    "refs": [
+      "display/remote.js:338:69"
+    ]
+  },
   "1t4q16jy0vr": {
     "message": "Duration (ms)",
     "refs": [
@@ -531,6 +618,12 @@
     "message": "Verse order mentions \"{tag}\", which has no lyrics.",
     "refs": [
       "crates/console/src/editor.rs:381:47"
+    ]
+  },
+  "1u4pgds32os": {
+    "message": "Reference",
+    "refs": [
+      "display/remote.js:102:47"
     ]
   },
   "1u5ynms5tfh": {
@@ -556,6 +649,12 @@
     "message": "Choose a song or type a reference on the left and press ⇧⏎ to add it, or drag songs here.",
     "refs": [
       "crates/console/src/service.rs:728:42"
+    ]
+  },
+  "1uuna21i34m": {
+    "message": "Next item ▶",
+    "refs": [
+      "display/remote.js:99:34"
     ]
   },
   "1vhvb3ck5h3": {
@@ -634,6 +733,12 @@
       "crates/console/src/theme_editor.rs:133:28"
     ]
   },
+  "1zl2pj8uous": {
+    "message": "{slide} · {number} of {count} · item {item} of {items}",
+    "refs": [
+      "display/remote.js:128:11"
+    ]
+  },
   "1zsap8x3yrr": {
     "message": "Save",
     "refs": [
@@ -680,7 +785,8 @@
   "21dmt9g48s": {
     "message": "Showing text",
     "refs": [
-      "crates/console/src/console.rs:787:31"
+      "crates/console/src/console.rs:787:31",
+      "display/remote.js:68:27"
     ]
   },
   "21dpf1vyepo": {
@@ -693,6 +799,12 @@
     "message": "Delete the theme “{name}”?",
     "refs": [
       "crates/console/src/theme_editor.rs:331:25"
+    ]
+  },
+  "21ihsq2nghm": {
+    "message": "LIVE",
+    "refs": [
+      "display/remote.js:95:61"
     ]
   },
   "21jeer7mcdp": {
@@ -711,6 +823,12 @@
     "message": "{name} copy",
     "refs": [
       "crates/console/src/theme_editor.rs:313:36"
+    ]
+  },
+  "22u36jfqh2x": {
+    "message": "Hide",
+    "refs": [
+      "display/remote.js:108:20"
     ]
   },
   "22wr0pbngsh": {
@@ -755,6 +873,13 @@
     "refs": [
       "crates/console/src/settings.rs:121:37",
       "crates/console/src/theme_editor.rs:367:37"
+    ]
+  },
+  "25ymodg257h": {
+    "message": "Asaf remote",
+    "refs": [
+      "display/remote.js:91:22",
+      "display/remote.js:92:53"
     ]
   },
   "275zw8wjybp": {
@@ -816,6 +941,12 @@
     "message": "Text color",
     "refs": [
       "crates/console/src/theme_editor.rs:137:29"
+    ]
+  },
+  "29vk0c2p0jm": {
+    "message": "Connect",
+    "refs": [
+      "display/remote.js:93:57"
     ]
   },
   "2a9gt2mhfgr": {
@@ -901,6 +1032,12 @@
       "crates/console/src/settings.rs:240:33"
     ]
   },
+  "2fz3n46p2o8": {
+    "message": "LOGO",
+    "refs": [
+      "display/stage.js:61:27"
+    ]
+  },
   "2g42092g5an": {
     "message": "Show the first slide (⏎ in search)",
     "refs": [
@@ -910,7 +1047,8 @@
   "2gjcf36a6hh": {
     "message": "Hide text",
     "refs": [
-      "crates/console/src/console.rs:944:30"
+      "crates/console/src/console.rs:944:30",
+      "display/remote.js:108:32"
     ]
   },
   "2hl4pgcp8o": {
@@ -926,6 +1064,12 @@
       "crates/console/src/console.rs:728:79"
     ]
   },
+  "2vps6ici1d": {
+    "message": "Look up",
+    "refs": [
+      "display/remote.js:103:72"
+    ]
+  },
   "3dk6he4tyy": {
     "message": "Bottom",
     "refs": [
@@ -938,16 +1082,29 @@
       "crates/console/src/theme_editor.rs:675:30"
     ]
   },
+  "3rqsk7vax8": {
+    "message": "BLACK",
+    "refs": [
+      "display/stage.js:59:28"
+    ]
+  },
   "40gvy60opr": {
     "message": "New song (⌘N)",
     "refs": [
       "crates/console/src/console.rs:593:48"
     ]
   },
+  "4twwe1r0w1": {
+    "message": "Enter the PIN first.",
+    "refs": [
+      "display/remote.js:80:43"
+    ]
+  },
   "4ywu5j20yx": {
     "message": "Song",
     "refs": [
-      "crates/console/src/service.rs:665:54"
+      "crates/console/src/service.rs:665:54",
+      "display/remote.js:171:49"
     ]
   },
   "52fv03gu2z": {
@@ -978,7 +1135,9 @@
   "7p8z05g2bo": {
     "message": "Logo",
     "refs": [
-      "crates/console/src/console.rs:950:30"
+      "crates/console/src/console.rs:950:30",
+      "display/remote.js:109:14",
+      "display/remote.js:109:26"
     ]
   },
   "7zx9ynkbvj": {
@@ -987,10 +1146,23 @@
       "crates/console/src/service.rs:803:26"
     ]
   },
+  "8olefby1mu": {
+    "message": "Service",
+    "refs": [
+      "display/remote.js:151:51",
+      "display/remote.js:96:51"
+    ]
+  },
   "8vxab5babl": {
     "message": "Largest text (% of height)",
     "refs": [
       "crates/console/src/theme_editor.rs:135:31"
+    ]
+  },
+  "9dvzsfq64z": {
+    "message": "Black",
+    "refs": [
+      "display/remote.js:110:15"
     ]
   },
   "9ftp746757": {
@@ -1050,6 +1222,12 @@
       "crates/console/src/transfer.rs:44:49"
     ]
   },
+  "c214cub0o3": {
+    "message": "End",
+    "refs": [
+      "display/stage.js:76:52"
+    ]
+  },
   "c4yf8or77f": {
     "message": "e.g. v1 c1 v2 c1 — empty: as written",
     "refs": [
@@ -1093,6 +1271,12 @@
     "refs": [
       "crates/console/src/theme_editor.rs:461:19",
       "crates/console/src/theme_editor.rs:591:107"
+    ]
+  },
+  "deaaegh0f9": {
+    "message": "Translation",
+    "refs": [
+      "display/remote.js:101:43"
     ]
   },
   "di10ulmbjv": {
@@ -1161,7 +1345,15 @@
     "refs": [
       "crates/console/src/bible.rs:358:89",
       "crates/console/src/console.rs:566:47",
-      "crates/console/src/service.rs:665:75"
+      "crates/console/src/service.rs:665:75",
+      "display/remote.js:171:62",
+      "display/remote.js:96:73"
+    ]
+  },
+  "genggt1rkv": {
+    "message": "Previous slide",
+    "refs": [
+      "display/remote.js:105:42"
     ]
   },
   "go9kh68fw": {
@@ -1283,6 +1475,19 @@
       "crates/console/src/editor.rs:272:82"
     ]
   },
+  "mopijunp5v": {
+    "message": "Connection",
+    "refs": [
+      "display/remote.js:94:22",
+      "display/stage.js:121:22"
+    ]
+  },
+  "mriiqpf4w6": {
+    "message": "The console didn't answer in time.",
+    "refs": [
+      "display/remote.js:83:57"
+    ]
+  },
   "ms7xi4pdht": {
     "message": "Discard your changes to this song?",
     "refs": [
@@ -1301,6 +1506,12 @@
       "crates/console/src/console.rs:565:74"
     ]
   },
+  "ngfjskcfqf": {
+    "message": "Blanked to black",
+    "refs": [
+      "display/remote.js:69:28"
+    ]
+  },
   "nx85nszytu": {
     "message": "PREVIEW",
     "refs": [
@@ -1317,7 +1528,8 @@
   "ohl1i7pnqh": {
     "message": "The service is empty.",
     "refs": [
-      "crates/console/src/service.rs:727:42"
+      "crates/console/src/service.rs:727:42",
+      "display/remote.js:100:33"
     ]
   },
   "oqg5fphuy8": {
@@ -1346,11 +1558,23 @@
       "crates/console/src/service.rs:401:38"
     ]
   },
+  "qec6fwqwid": {
+    "message": "Slides",
+    "refs": [
+      "display/remote.js:96:28"
+    ]
+  },
   "qqr9u9goft": {
     "message": "Songs",
     "refs": [
       "crates/console/src/console.rs:565:47",
       "crates/console/src/console.rs:588:89"
+    ]
+  },
+  "qvfajoqbhy": {
+    "message": "{slide} · {number} of {count}",
+    "refs": [
+      "display/remote.js:129:11"
     ]
   },
   "qvz5z6n6hp": {
@@ -1363,6 +1587,12 @@
     "message": "Remote for phones:",
     "refs": [
       "crates/console/src/console.rs:891:103"
+    ]
+  },
+  "r311xm7zy5": {
+    "message": "next",
+    "refs": [
+      "display/remote.js:171:93"
     ]
   },
   "raksrzzeyr": {
@@ -1477,10 +1707,22 @@
       "crates/console/src/console.rs:910:56"
     ]
   },
+  "u7iepx657e": {
+    "message": "The PIN has changed.",
+    "refs": [
+      "display/remote.js:81:43"
+    ]
+  },
   "ubt0r7iu3g": {
     "message": "No OpenLP song database.",
     "refs": [
       "crates/console/src/transfer.rs:232:19"
+    ]
+  },
+  "v60wf5tv6m": {
+    "message": "Not connected.",
+    "refs": [
+      "display/remote.js:27:13"
     ]
   },
   "va2t15vl3a": {
@@ -1525,6 +1767,12 @@
       "crates/console/src/console.rs:820:75"
     ]
   },
+  "yrnrow8klc": {
+    "message": "The console dropped the command.",
+    "refs": [
+      "display/remote.js:82:55"
+    ]
+  },
   "zcel97o727": {
     "message": "Text hidden, background only (⇧B)",
     "refs": [
@@ -1544,6 +1792,12 @@
     },
     "refs": [
       "crates/console/src/transfer.rs:202:22"
+    ]
+  },
+  "zycpo8oqpz": {
+    "message": "Text hidden",
+    "refs": [
+      "display/remote.js:70:33"
     ]
   }
 }

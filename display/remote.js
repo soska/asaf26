@@ -24,7 +24,7 @@
 
   function send(cmd, done) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      toast("Not connected.");
+      toast(__("Not connected."));
       return;
     }
     const id = nextId++;
@@ -35,7 +35,7 @@
   function result(msg) {
     const done = pending.get(msg.id);
     pending.delete(msg.id);
-    if (!msg.ok) toast(msg.error || "That didn't work.");
+    if (!msg.ok) toast(serverText(msg.error) || __("That didn't work."));
     if (done) done(msg);
   }
 
@@ -63,16 +63,71 @@
     return li;
   }
 
-  const BLANKS = { None: "Showing text", Black: "Blanked to black", Background: "Text hidden", Logo: "Showing the logo" };
+  function blankText(blank) {
+    switch (blank) {
+      case "None": return __("Showing text");
+      case "Black": return __("Blanked to black");
+      case "Background": return __("Text hidden");
+      case "Logo": return __("Showing the logo");
+      default: return blank;
+    }
+  }
+
+  // Errors the server itself sends (the console's come translated already).
+  function serverText(error) {
+    switch (error) {
+      case "Wrong PIN.": return __("Wrong PIN.");
+      case "Enter the PIN first.": return __("Enter the PIN first.");
+      case "The PIN has changed.": return __("The PIN has changed.");
+      case "The console dropped the command.": return __("The console dropped the command.");
+      case "The console didn't answer in time.": return __("The console didn't answer in time.");
+      case "The console has closed.": return __("The console has closed.");
+      default: return error;
+    }
+  }
+
+  // Text written in remote.html, in the page's language.
+  function staticTexts() {
+    document.title = __("Asaf remote");
+    document.querySelector("#pin h1").textContent = __("Asaf remote");
+    document.querySelector("#pin button").textContent = __("Connect");
+    $("dot").title = __("Connection");
+    document.querySelector(".live-line .tag").textContent = __("LIVE");
+    const tabs = { slides: __("Slides"), service: __("Service"), bible: __("Bible") };
+    document.querySelectorAll("nav button").forEach((b) => { b.textContent = tabs[b.dataset.tab]; });
+    $("no-slides").textContent = __("Nothing is live yet.");
+    $("next-item").textContent = __("Next item ▶");
+    $("no-items").textContent = __("The service is empty.");
+    $("bible").setAttribute("aria-label", __("Translation"));
+    $("reference").setAttribute("aria-label", __("Reference"));
+    document.querySelector("#verse button[type=submit]").textContent = __("Look up");
+    $("verse-live").textContent = __("Go live");
+    $("prev").setAttribute("aria-label", __("Previous slide"));
+    $("next").setAttribute("aria-label", __("Next slide"));
+    const blanks = {
+      Background: [__("Hide"), __("Hide text")],
+      Logo: [__("Logo"), __("Logo")],
+      Black: [__("Black"), __("Blank to black")],
+    };
+    document.querySelectorAll("[data-blank]").forEach((b) => {
+      const [text, label] = blanks[b.dataset.blank];
+      b.textContent = text;
+      b.setAttribute("aria-label", label);
+    });
+  }
 
   function render() {
     const st = state;
     const live = st.slides.length > 0;
-    $("title").textContent = live ? st.title : "Nothing live yet.";
+    $("title").textContent = live ? st.title : __("Nothing live yet.");
     const slide = st.slides[st.current];
-    const of = st.live != null ? ` · item ${st.live + 1} of ${st.items.length}` : "";
-    $("position").textContent = slide ? `${slide.label} · ${st.current + 1} of ${st.slides.length}${of}` : "";
-    $("blank-state").textContent = BLANKS[st.blank] ?? st.blank;
+    const where = { slide: slide?.label, number: st.current + 1, count: st.slides.length };
+    $("position").textContent = !slide
+      ? ""
+      : st.live != null
+        ? __("{slide} · {number} of {count} · item {item} of {items}", { ...where, item: st.live + 1, items: st.items.length })
+        : __("{slide} · {number} of {count}", where);
+    $("blank-state").textContent = blankText(st.blank);
     $("blank-state").classList.toggle("on", st.blank !== "None");
     document.querySelectorAll("[data-blank]").forEach((b) => b.classList.toggle("on", b.dataset.blank === st.blank));
     $("prev").disabled = !live || st.current === 0;
@@ -93,7 +148,7 @@
     scrolledTo = st.current;
 
     // Service: tap once to choose, "Go live" to show it.
-    $("service-name").textContent = st.service || "Service";
+    $("service-name").textContent = st.service || __("Service");
     const nextIndex = st.cued != null && st.cued !== st.live ? st.cued : null;
     $("next-item").disabled = nextIndex == null;
     if (chosenItem != null && chosenItem >= st.items.length) chosenItem = null;
@@ -113,11 +168,11 @@
         t.textContent = item.title;
         const k = document.createElement("div");
         k.className = "k";
-        k.textContent = [item.kind === "song" ? "Song" : "Bible", i === nextIndex ? "next" : ""].filter(Boolean).join(" · ");
+        k.textContent = [item.kind === "song" ? __("Song") : __("Bible"), i === nextIndex ? __("next") : ""].filter(Boolean).join(" · ");
         what.append(t, k);
         const go = document.createElement("button");
         go.className = "go primary";
-        go.textContent = "Go live";
+        go.textContent = __("Go live");
         go.onclick = (ev) => {
           ev.stopPropagation();
           chosenItem = null;
@@ -159,12 +214,12 @@
     $("reference").blur(); // drop the phone's keyboard
     send({ cmd: "verse", reference, translation, live }, (r) => {
       if (!r.ok) {
-        $("verse-title").textContent = r.error;
+        $("verse-title").textContent = serverText(r.error);
         $("verse-slides").replaceChildren();
         $("verse-live").disabled = true;
         return;
       }
-      $("verse-title").textContent = live ? `${r.title}: live` : r.title;
+      $("verse-title").textContent = live ? __("{title}: live", { title: r.title }) : r.title;
       $("verse-slides").replaceChildren(...r.slides.map((s) => card(s, false)));
       $("verse-live").disabled = false;
       if (live) showTab("slides");
@@ -209,7 +264,7 @@
   function askPin(error) {
     $("app").hidden = true;
     $("pin").hidden = false;
-    $("pin-error").textContent = error || "";
+    $("pin-error").textContent = serverText(error) || "";
     $("pin-input").value = "";
     $("pin-input").focus();
   }
@@ -218,7 +273,7 @@
   $("pin").addEventListener("submit", (ev) => {
     ev.preventDefault();
     typedPin = $("pin-input").value.trim();
-    $("pin-error").textContent = "Checking…";
+    $("pin-error").textContent = __("Checking…");
     connect();
   });
 
@@ -262,6 +317,7 @@
           }
           break;
         case "state":
+          if (retryMs !== 250) i18n.load(); // back after a drop: the language may have changed
           retryMs = 250;
           state = msg.state;
           $("pin").hidden = true;
@@ -272,11 +328,14 @@
         case "result":
           result(msg);
           break;
+        case "locale":
+          i18n.update(msg.locale);
+          break;
       }
     };
     socket.onclose = () => {
       $("dot").classList.remove("on");
-      for (const done of pending.values()) done({ ok: false, error: "Disconnected." });
+      for (const done of pending.values()) done({ ok: false, error: __("Disconnected.") });
       pending.clear();
       if (refused) return;
       retryTimer = setTimeout(connect, retryMs);
@@ -284,5 +343,9 @@
     };
     socket.onerror = () => socket.close();
   }
-  connect();
+  i18n.onChange(() => {
+    staticTexts();
+    if (state) render();
+  });
+  i18n.load().then(connect);
 })();

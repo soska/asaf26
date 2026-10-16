@@ -16,5 +16,6 @@ asaf-openlyrics.workspace = true
 asaf-server.workspace = true
 asaf-projector.workspace = true
 asaf-console.workspace = true
+asaf-i18n.workspace = true
 gpui.workspace = true
 dirs = "6"

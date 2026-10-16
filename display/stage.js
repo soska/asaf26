@@ -54,7 +54,14 @@
     fit(next, 2.5 * vh, 7 * vh);
   }
 
-  const BLANKS = { Black: "BLACK", Background: "TEXT HIDDEN", Logo: "LOGO" };
+  function blankText(blank) {
+    switch (blank) {
+      case "Black": return __("BLACK");
+      case "Background": return __("TEXT HIDDEN");
+      case "Logo": return __("LOGO");
+      default: return null;
+    }
+  }
 
   function render(st) {
     state = st;
@@ -63,16 +70,16 @@
     let head = "";
     if (st.next) {
       fill(next, st.next.lines, !!st.next.wrap);
-      head = `Next · ${st.next.label}`;
+      head = __("Next · {slide}", { slide: st.next.label });
     } else {
       fill(next, st.up_next ? [st.up_next] : [], false);
-      head = slide ? (st.up_next ? "Up next" : "End") : "";
+      head = slide ? (st.up_next ? __("Up next") : __("End")) : "";
     }
     $("next-head").textContent = head;
     // "V1 · Blessed Assurance · …", or just "John 3:16 (KJV)" for a passage.
     const footer = slide?.footer ?? "";
     $("label").textContent = footer.startsWith(slide?.label) ? footer : [slide?.label, footer].filter(Boolean).join(" · ");
-    const blank = BLANKS[st.blank];
+    const blank = blankText(st.blank);
     $("blank").hidden = !blank;
     $("blank").textContent = blank ?? "";
     document.body.classList.toggle("blanked", !!blank);
@@ -84,7 +91,7 @@
 
   function tick() {
     const now = new Date();
-    $("clock").textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    $("clock").textContent = now.toLocaleTimeString(i18n.locale, { hour: "2-digit", minute: "2-digit" });
     setTimeout(tick, 1000 - now.getMilliseconds());
   }
   tick();
@@ -94,11 +101,13 @@
     const ws = new WebSocket(`ws://${location.host}/ws`);
     ws.onopen = () => {
       $("dot").classList.add("on");
+      if (retryMs !== 250) i18n.load(); // back after a drop: the language may have changed
       retryMs = 250;
     };
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === "state") render(msg.state);
+      else if (msg.type === "locale") i18n.update(msg.locale);
     };
     ws.onclose = () => {
       $("dot").classList.remove("on");
@@ -107,5 +116,10 @@
     };
     ws.onerror = () => ws.close();
   }
-  connect();
+  i18n.onChange(() => {
+    document.title = __("Asaf stage");
+    $("dot").title = __("Connection");
+    if (state) render(state);
+  });
+  i18n.load().then(connect);
 })();
