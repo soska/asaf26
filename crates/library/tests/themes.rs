@@ -28,8 +28,8 @@ fn themes_save_rename_and_delete() {
 
     // Names are unique, whatever the case.
     let clash = Theme { name: "SCRIPTURE".into(), ..Theme::default() };
-    assert_eq!(lib.save_theme(&clash, None).unwrap_err(), "There is already a theme called “Scripture”.");
-    assert_eq!(lib.save_theme(&clash, Some("Default")).unwrap_err(), "There is already a theme called “Scripture”.");
+    assert_eq!(lib.save_theme(&clash, None).unwrap_err().to_string(), "There is already a theme called “Scripture”.");
+    assert_eq!(lib.save_theme(&clash, Some("Default")).unwrap_err().to_string(), "There is already a theme called “Scripture”.");
 
     // Saved values are sanitized.
     let bad = Theme { name: "  Loud ".into(), color: "nope".into(), size_min_vh: 50.0, ..Theme::default() };
@@ -52,7 +52,7 @@ fn themes_save_rename_and_delete() {
     assert_eq!(names, ["Loud", "Scripture", "Sunday AM"]);
 
     // The default can't be deleted; others can.
-    assert!(lib.delete_theme("sunday am").unwrap_err().contains("is the default theme"));
+    assert!(lib.delete_theme("sunday am").unwrap_err().to_string().contains("is the default theme"));
     lib.delete_theme("Loud").unwrap();
     assert!(lib.theme("Loud").unwrap().is_none());
     assert_eq!(lib.unused_theme_name("Scripture").unwrap(), "Scripture 2");
