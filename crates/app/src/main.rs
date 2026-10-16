@@ -27,7 +27,6 @@ use asaf_core::{Song, Store, sample_song};
 use asaf_library::Library;
 use asaf_library::service::{AUTOSAVE_FILE, restore_autosave};
 use asaf_projector::Projector;
-use gpui::component::theme::{Theme as UiTheme, ThemeMode};
 use gpui::App;
 
 fn main() -> ExitCode {
@@ -240,7 +239,6 @@ fn run_app(library: Library) -> ExitCode {
 
     gpui::application().with_assets(gpui::assets::Assets).run(move |cx: &mut App| {
         gpui::init(cx);
-        UiTheme::change(ThemeMode::Dark, None, cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.bind_keys([gpui::KeyBinding::new("cmd-q", Quit, None)]);
         // In English until the console applies the language setting.

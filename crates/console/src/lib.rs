@@ -1,8 +1,9 @@
 //! The operator console: song library and Bible lookup (the sources), the
 //! service list, preview and live panes, the song editor, the theme editor
-//! and settings. It drives the core store and never draws projected output
-//! (its previews are approximations).
+//! and settings (including light or dark). It drives the core store and never
+//! draws projected output (its previews are approximations).
 
+mod appearance;
 mod bible;
 mod console;
 mod editor;
@@ -21,6 +22,7 @@ use std::sync::{Arc, Mutex};
 use asaf_library::Library;
 use gpui::{App, KeyBinding, Menu, MenuItem, actions};
 
+pub use appearance::{UiAppearance, set_appearance};
 pub use console::Console;
 pub use editor::{SongEditor, SongSaved};
 pub use i18n::{UiLanguage, set_language};

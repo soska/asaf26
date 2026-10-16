@@ -1,15 +1,31 @@
 /* Asaf remote (/remote): a phone-sized control surface. */
 :root {
-  color-scheme: dark;
-  --bg: #14141c;
-  --panel: #1e1e28;
-  --line: #2e2e3a;
-  --fg: #f2f2f5;
-  --dim: #9a9aa8;
-  --primary: #4d8dff;
-  --danger: #ff5a5a;
-  --ok: #3ddc84;
+  color-scheme: light dark;
+  --bg: #f4f4f7;
+  --panel: #ffffff;
+  --line: #d8d8e0;
+  --fg: #16161d;
+  --dim: #63636f;
+  --primary: #2f6fe4;
+  --danger: #d93636;
+  --ok: #17a35a;
+  --on-danger: #fff;
   --radius: 10px;
+}
+
+/* Follows the phone's light or dark appearance. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141c;
+    --panel: #1e1e28;
+    --line: #2e2e3a;
+    --fg: #f2f2f5;
+    --dim: #9a9aa8;
+    --primary: #4d8dff;
+    --danger: #ff5a5a;
+    --ok: #3ddc84;
+    --on-danger: #000;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -176,7 +192,7 @@ footer {
 }
 footer button { min-height: 56px; padding: 0 4px; font-weight: 600; }
 footer #prev, footer #next { font-size: 22px; }
-footer button.on { background: var(--danger); border-color: var(--danger); color: #000; }
+footer button.on { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
 
 #toast {
   position: fixed;
@@ -187,7 +203,7 @@ footer button.on { background: var(--danger); border-color: var(--danger); color
   padding: 10px 14px;
   border-radius: var(--radius);
   background: var(--danger);
-  color: #000;
+  color: var(--on-danger);
   font-weight: 600;
 }
 

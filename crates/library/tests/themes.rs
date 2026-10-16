@@ -1,6 +1,6 @@
 //! Themes, settings and imported images in the library.
 
-use asaf_core::{Align, Language, Settings, Theme, TransitionKind};
+use asaf_core::{Align, Appearance, Language, Settings, Theme, TransitionKind};
 use asaf_library::Library;
 
 #[test]
@@ -69,6 +69,7 @@ fn themes_and_settings_survive_restart() {
         port: 4600,
         default_theme: "Night".into(),
         language: Language::Spanish,
+        appearance: Appearance::Dark,
         lan: true,
         remote_pin: "2468".into(),
     };

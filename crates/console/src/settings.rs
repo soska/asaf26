@@ -1,9 +1,10 @@
-//! Settings window: the console's language, the default theme, the server
-//! port, remote access (LAN and PIN) and migration from OpenLP. Every change is saved to the library at
-//! once and announced with [`SettingsChanged`].
+//! Settings window: the console's language and appearance, the default theme,
+//! the server port, remote access (LAN and PIN) and migration from OpenLP.
+//! Every change is saved to the library at once and announced with
+//! [`SettingsChanged`].
 
 use anyhow::Result;
-use asaf_core::{Language, Settings, valid_pin};
+use asaf_core::{Appearance, Language, Settings, valid_pin};
 use asaf_projector::Projector;
 use gpui::component::button::Button;
 use gpui::component::checkbox::Checkbox;
@@ -16,6 +17,7 @@ use gpui::{
     WindowBounds, WindowOptions, div, px, size,
 };
 
+use crate::appearance::set_appearance;
 use crate::i18n::{UiLanguage, en, lang, set_language};
 use crate::{SharedLibrary, transfer};
 
@@ -130,6 +132,11 @@ impl SettingsWindow {
         set_language(language, cx);
     }
 
+    pub(crate) fn set_appearance(&mut self, appearance: Appearance, window: &mut Window, cx: &mut Context<Self>) {
+        self.change(window, cx, |s| s.appearance = appearance);
+        set_appearance(appearance, cx);
+    }
+
     pub(crate) fn save_port(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let text = self.port.read(cx).value().trim().to_string();
         match text.parse::<u16>() {
@@ -211,6 +218,22 @@ impl Render for SettingsWindow {
                             .selected(self.settings.language == language)
                             .on_click(cx.listener(move |this, _, window, cx| this.set_language(language, window, cx)))
                 }))),
+            )
+            .child(
+                section(en("Appearance"))
+                    .child(h_flex().gap_1().children(Appearance::ALL.into_iter().map(|appearance| {
+                        let label = match appearance {
+                            Appearance::System => en("System"),
+                            Appearance::Light => en("Light"),
+                            Appearance::Dark => en("Dark"),
+                        };
+                        Button::new(format!("appearance-{}", appearance.code()))
+                            .small()
+                            .label(l.t(label))
+                            .selected(self.settings.appearance == appearance)
+                            .on_click(cx.listener(move |this, _, window, cx| this.set_appearance(appearance, window, cx)))
+                    })))
+                    .child(note(en("System follows macOS and switches when it does."))),
             )
             .child(
                 section(en("Default theme"))
@@ -340,6 +363,44 @@ mod tests {
         assert_eq!(events.len(), 4);
         assert_eq!(events[2].port, 5050);
         assert_eq!((events[2].language, events[2].default_theme.as_str()), (Language::Spanish, "Night"));
+    }
+
+    #[gpui::test]
+    fn appearance_applies_at_once(cx: &mut TestAppContext) {
+        use gpui::component::theme::{Theme, ThemeMode};
+
+        cx.update(|cx| {
+            gpui::init(cx);
+            crate::init(cx);
+        });
+        let library: SharedLibrary = Arc::new(Mutex::new(Library::open_in_memory().unwrap()));
+        let (h, _) = cx.update(|cx| SettingsWindow::open(library.clone(), cx).unwrap());
+        let mode = |cx: &mut TestAppContext| cx.update(|cx| Theme::global(cx).mode);
+        assert_eq!(library.lock().unwrap().settings().unwrap().appearance, Appearance::System);
+        for (button, appearance, expected) in [
+            ("appearance-dark", Appearance::Dark, ThemeMode::Dark),
+            ("appearance-light", Appearance::Light, ThemeMode::Light),
+        ] {
+            cx.update(|cx| {
+                h.update(cx, |_, w, cx| {
+                    w.render_frame(cx);
+                    w.click(button, cx);
+                })
+                .unwrap()
+            });
+            assert_eq!(library.lock().unwrap().settings().unwrap().appearance, appearance);
+            assert_eq!(mode(cx), expected, "{button}");
+        }
+        // System: whatever macOS uses (the test platform's appearance).
+        cx.update(|cx| {
+            h.update(cx, |_, w, cx| {
+                w.render_frame(cx);
+                w.click("appearance-system", cx);
+            })
+            .unwrap()
+        });
+        let system = cx.update(|cx| ThemeMode::from(cx.window_appearance()));
+        assert_eq!(mode(cx), system);
     }
 
     #[gpui::test]

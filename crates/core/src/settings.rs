@@ -1,5 +1,5 @@
 //! App settings: which display the projector uses, the server port, the
-//! default theme, the console's language and remote access. Stored by the library as
+//! default theme, the console's language and appearance, and remote access. Stored by the library as
 //! key/value rows; see [`Settings::to_pairs`].
 
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,32 @@ impl Language {
     }
 }
 
+/// Whether the console is light or dark.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Appearance {
+    /// Follows macOS, switching when it does.
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+impl Appearance {
+    pub const ALL: [Appearance; 3] = [Appearance::System, Appearance::Light, Appearance::Dark];
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Appearance::System => "system",
+            Appearance::Light => "light",
+            Appearance::Dark => "dark",
+        }
+    }
+
+    pub fn from_code(code: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|a| a.code().eq_ignore_ascii_case(code.trim()))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     /// The display the operator chose for the projector, by its UUID (stable
@@ -49,6 +75,7 @@ pub struct Settings {
     /// Name of the theme used when an item has none of its own.
     pub default_theme: String,
     pub language: Language,
+    pub appearance: Appearance,
     /// Serve on every network interface (0.0.0.0) instead of 127.0.0.1 only,
     /// so phones on the LAN can use the remote. Applies at the next start.
     pub lan: bool,
@@ -69,6 +96,7 @@ impl Default for Settings {
             port: DEFAULT_PORT,
             default_theme: DEFAULT_THEME_NAME.into(),
             language: Language::English,
+            appearance: Appearance::System,
             lan: false,
             remote_pin: String::new(),
         }
@@ -83,6 +111,7 @@ impl Settings {
             ("port", self.port.to_string()),
             ("default_theme", self.default_theme.clone()),
             ("language", self.language.code().into()),
+            ("appearance", self.appearance.code().into()),
             ("remote_lan", if self.lan { "1" } else { "0" }.into()),
             ("remote_pin", self.remote_pin.clone()),
         ]
@@ -106,6 +135,7 @@ impl Settings {
                 }
                 "default_theme" if !value.is_empty() => s.default_theme = value.to_string(),
                 "language" => s.language = Language::from_code(value).unwrap_or_default(),
+                "appearance" => s.appearance = Appearance::from_code(value).unwrap_or_default(),
                 "remote_lan" => s.lan = value == "1",
                 "remote_pin" => s.remote_pin = value.to_string(),
                 _ => {}
@@ -126,6 +156,7 @@ mod tests {
             port: 5000,
             default_theme: "Scripture".into(),
             language: Language::Spanish,
+            appearance: Appearance::Light,
             lan: true,
             remote_pin: "2468".into(),
         };
@@ -147,10 +178,12 @@ mod tests {
             ("unknown", "x"),
             ("remote_lan", "yes"),
             ("remote_pin", "  "),
+            ("appearance", "sepia"),
         ] {
             assert_eq!(Settings::from_pairs([(key, value)]), Settings::default(), "{key}={value}");
         }
         assert_eq!(Settings::from_pairs([("language", "ES")]).language, Language::Spanish);
+        assert_eq!(Settings::from_pairs([("appearance", "Dark")]).appearance, Appearance::Dark);
     }
 
     #[test]
