@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::Serialize;
 
 /// A line on its own inside a verse that splits it across two slides.
@@ -58,6 +60,32 @@ impl Verse {
     }
 }
 
+/// Something [`Song::problems`] found. `Display` is English; the console
+/// shows its own translation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SongProblem {
+    NoTitle,
+    NoLyrics,
+    /// The tag is used by more than one verse.
+    DuplicateTag(String),
+    /// The verse with this tag has no lines.
+    EmptyVerse(String),
+    /// The verse order names a tag no verse has.
+    UnknownInOrder(String),
+}
+
+impl fmt::Display for SongProblem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SongProblem::NoTitle => write!(f, "The song needs a title."),
+            SongProblem::NoLyrics => write!(f, "The song has no lyrics."),
+            SongProblem::DuplicateTag(tag) => write!(f, "Tag [{tag}] is used more than once."),
+            SongProblem::EmptyVerse(tag) => write!(f, "[{tag}] is empty."),
+            SongProblem::UnknownInOrder(tag) => write!(f, "Verse order mentions \"{tag}\", which has no lyrics."),
+        }
+    }
+}
+
 impl Song {
     /// One slide per verse (or per split part), following `verse_order`. Tags
     /// in the order that do not match a verse are skipped; matching is
@@ -114,25 +142,25 @@ impl Song {
     }
 
     /// Problems worth showing the operator before saving. Empty means fine.
-    pub fn problems(&self) -> Vec<String> {
+    pub fn problems(&self) -> Vec<SongProblem> {
         let mut problems = Vec::new();
         if self.title.trim().is_empty() {
-            problems.push("The song needs a title.".to_string());
+            problems.push(SongProblem::NoTitle);
         }
         if self.verses.is_empty() {
-            problems.push("The song has no lyrics.".to_string());
+            problems.push(SongProblem::NoLyrics);
         }
         for (i, v) in self.verses.iter().enumerate() {
             if self.verses[..i].iter().any(|w| w.tag == v.tag) {
-                problems.push(format!("Tag [{}] is used more than once.", v.tag));
+                problems.push(SongProblem::DuplicateTag(v.tag.clone()));
             }
             if v.parts().is_empty() {
-                problems.push(format!("[{}] is empty.", v.tag));
+                problems.push(SongProblem::EmptyVerse(v.tag.clone()));
             }
         }
         for tag in &self.verse_order {
             if self.verse(tag).is_none() {
-                problems.push(format!("Verse order mentions \"{tag}\", which has no lyrics."));
+                problems.push(SongProblem::UnknownInOrder(tag.clone()));
             }
         }
         problems.dedup();
@@ -224,9 +252,10 @@ mod tests {
         s.title = " ".into();
         s.verses.push(Verse::new("v1", "dup"));
         let p = s.problems();
-        assert!(p.iter().any(|m| m.contains("title")), "{p:?}");
-        assert!(p.iter().any(|m| m.contains("v9")), "{p:?}");
-        assert!(p.iter().any(|m| m.contains("more than once")), "{p:?}");
+        assert!(p.contains(&SongProblem::NoTitle), "{p:?}");
+        assert!(p.contains(&SongProblem::UnknownInOrder("v9".into())), "{p:?}");
+        assert!(p.contains(&SongProblem::DuplicateTag("v1".into())), "{p:?}");
+        assert_eq!(SongProblem::DuplicateTag("v1".into()).to_string(), "Tag [v1] is used more than once.");
         assert!(song(&["v1", "c1"]).problems().is_empty());
     }
 

@@ -14,11 +14,11 @@ use gpui::component::{ActiveTheme as _, Selectable as _, Sizable as _, h_flex, v
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AppContext as _, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, ScrollStrategy,
-    StatefulInteractiveElement, Styled, UniformListScrollHandle, Window, div, px, uniform_list,
+    StatefulInteractiveElement, Styled, Subscription, UniformListScrollHandle, Window, div, px, uniform_list,
 };
 
 use crate::console::Console;
-use crate::i18n::lang;
+use crate::i18n::{Lang, UiLanguage, lang};
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -63,15 +63,25 @@ pub(crate) struct BibleState {
     pub layout: BibleLayout,
     /// The input text that produced `preview`: ⏎ on unchanged text goes live.
     previewed_text: Option<String>,
+    /// The console's language, for messages made where there's no `cx`.
+    lang: Lang,
+    _language: Subscription,
 }
 
 impl BibleState {
     pub fn new(window: &mut Window, cx: &mut Context<Console>) -> Self {
+        let l = lang(cx);
+        // The placeholder isn't redrawn by `render`: follow the language here.
+        let language = cx.observe_global_in::<UiLanguage>(window, |this, window, cx| {
+            let l = lang(cx);
+            this.bible.lang = l;
+            this.bible.input.update(cx, |input, cx| input.set_placeholder(search_placeholder(l), window, cx));
+        });
         Self {
             bibles: Vec::new(),
             current: None,
             names: None,
-            input: cx.new(|cx| InputState::new(window, cx).placeholder("Jn 3:16-18, Sal 23; 91:1-4, or words")),
+            input: cx.new(|cx| InputState::new(window, cx).placeholder(search_placeholder(l))),
             status: Status::Idle,
             hits: Vec::new(),
             selected_hit: None,
@@ -79,6 +89,8 @@ impl BibleState {
             preview: None,
             layout: BibleLayout::default(),
             previewed_text: None,
+            lang: l,
+            _language: language,
         }
     }
 
@@ -123,11 +135,12 @@ impl Console {
     }
 
     pub(crate) fn bible_text_changed(&mut self, cx: &mut Context<Self>) {
+        let l = lang(cx);
         let text = self.bible.input.read(cx).value().trim().to_string();
         self.bible.hits.clear();
         self.bible.selected_hit = None;
         let Some(names) = &self.bible.names else {
-            self.bible.status = Status::Error("Import a Bible first (Import… above).".into());
+            self.bible.status = Status::Error(l.t("Import a Bible first (Import… above).").into());
             cx.notify();
             return;
         };
@@ -135,9 +148,12 @@ impl Console {
             self.bible.status = Status::Idle;
         } else if is_reference(&text) {
             self.bible.status = match parse_reference(&text, names) {
-                Ok(ranges) => Status::Hint(format!("⏎ to show {}", format_reference(&ranges, names, |_, _| None))),
+                Ok(ranges) => {
+                    let reference = format_reference(&ranges, names, |_, _| None);
+                    Status::Hint(l.f("⏎ to show {reference}", &[("reference", &reference)]))
+                }
                 Err(RefError::Incomplete) => Status::Idle,
-                Err(e) => Status::Error(e.to_string()),
+                Err(e) => Status::Error(ref_error(l, &e)),
             };
         } else {
             let id = self.bible.bible().and_then(|b| b.id).unwrap_or_default();
@@ -147,9 +163,11 @@ impl Console {
             }
             let n = self.bible.hits.len();
             self.bible.status = if n == 0 {
-                Status::Error("No verses contain those words.".into())
+                Status::Error(l.t("No verses contain those words.").into())
+            } else if n == HIT_LIMIT {
+                Status::Hint(l.f("{count}+ verses", &[("count", &n.to_string())]))
             } else {
-                Status::Hint(format!("{n}{} verse{}", if n == HIT_LIMIT { "+" } else { "" }, if n == 1 { "" } else { "s" }))
+                Status::Hint(l.n(n as u64, "{count} verse", "{count} verses"))
             };
             self.select_hit((n > 0).then_some(0), cx);
         }
@@ -175,14 +193,15 @@ impl Console {
     /// Parses `text`, fetches its verses and previews them. Returns whether
     /// there is something to show.
     pub(crate) fn show_reference(&mut self, text: &str, cx: &mut Context<Self>) -> bool {
+        let l = lang(cx);
         let Some(names) = &self.bible.names else {
-            self.bible.status = Status::Error("Import a Bible first (Import… above).".into());
+            self.bible.status = Status::Error(l.t("Import a Bible first (Import… above).").into());
             return false;
         };
         let ok = match parse_reference(text, names) {
             Ok(ranges) => self.preview_ranges(ranges, cx),
             Err(e) => {
-                self.bible.status = Status::Error(e.to_string());
+                self.bible.status = Status::Error(ref_error(l, &e));
                 false
             }
         };
@@ -196,11 +215,12 @@ impl Console {
         let Some(bible) = self.bible.bible().cloned() else { return false };
         match self.lay_out_passage(&bible, ranges) {
             Ok(preview) => {
-                let (verses, slides) = (preview.verses.len(), preview.slides.len());
-                self.bible.status = Status::Hint(format!(
-                    "{verses} verse{} on {slides} slide{} · ⏎ again to go live, ⇧⏎ to add to the service",
-                    if verses == 1 { "" } else { "s" },
-                    if slides == 1 { "" } else { "s" },
+                let l = lang(cx);
+                let verses = l.n(preview.verses.len() as u64, "{count} verse", "{count} verses");
+                let slides = l.n(preview.slides.len() as u64, "{count} slide", "{count} slides");
+                self.bible.status = Status::Hint(l.f(
+                    "{verses} on {slides} · ⏎ again to go live, ⇧⏎ to add to the service",
+                    &[("verses", &verses), ("slides", &slides)],
                 ));
                 self.bible.preview = Some(preview);
                 cx.notify();
@@ -216,8 +236,9 @@ impl Console {
     }
 
     /// Fetches `ranges` from `bible` and lays them out with the current
-    /// layout. Errors are worded for the operator.
+    /// layout. Errors are worded for the operator, in the console's language.
     pub(crate) fn lay_out_passage(&self, bible: &Bible, ranges: Vec<RefRange>) -> Result<PassagePreview, String> {
+        let l = self.bible.lang;
         let names = bible.names();
         let bible_id = bible.id.unwrap_or_default();
         let verses = self
@@ -225,10 +246,10 @@ impl Console {
             .lock()
             .unwrap()
             .passage_verses(bible_id, &ranges)
-            .map_err(|e| format!("Can't read the Bible: {e}"))?;
+            .map_err(|e| l.f("Can't read the Bible: {error}", &[("error", &e.to_string())]))?;
         let reference = format_reference(&ranges, &names, |b, c| asaf_core::bible::last_verse(&verses, b, c));
         if verses.is_empty() {
-            return Err(format!("{reference} isn't in {}.", bible.abbreviation));
+            return Err(l.f("{reference} isn't in {translation}.", &[("reference", &reference), ("translation", &bible.abbreviation)]));
         }
         let slides = passage_slides(&verses, &ranges, &names, &bible.abbreviation, &self.bible.layout, &self.store.default_theme());
         Ok(PassagePreview {
@@ -561,6 +582,36 @@ impl Console {
     }
 }
 
+/// The search box's placeholder. The references are examples in both
+/// languages; only the words around them are translated.
+fn search_placeholder(l: Lang) -> &'static str {
+    l.t("Jn 3:16-18, Sal 23; 91:1-4, or words")
+}
+
+/// A reference error in the console's language (`RefError`'s `Display` is
+/// the English one, for the command line).
+pub(crate) fn ref_error(l: Lang, e: &RefError) -> String {
+    match e {
+        RefError::Empty => l.t("Type a reference, e.g. Jn 3:16").to_string(),
+        RefError::NoBook => l.t("Start with a book name, e.g. Jn 3:16").to_string(),
+        RefError::UnknownBook(b) => l.f("Unknown book \"{book}\"", &[("book", b)]),
+        RefError::AmbiguousBook(b, books) => {
+            let shown: Vec<&str> = books.iter().take(4).map(String::as_str).collect();
+            let books = format!("{}{}", shown.join(", "), if books.len() > 4 { "…" } else { "" });
+            l.f("\"{text}\" could be {books}", &[("text", b), ("books", &books)])
+        }
+        RefError::NoChapter(b) => l.f("Add a chapter: {book} 1", &[("book", b)]),
+        RefError::ChapterOutOfRange { book, chapter, chapters } => {
+            let chapters = l.n(u64::from(*chapters), "{count} chapter", "{count} chapters");
+            l.f("{book} has {chapters}, not {chapter}", &[("book", book), ("chapters", &chapters), ("chapter", &chapter.to_string())])
+        }
+        RefError::VerseZero => l.t("Chapters and verses start at 1").to_string(),
+        RefError::Backwards(r) => l.f("\"{reference}\" ends before it starts", &[("reference", r)]),
+        RefError::Unexpected(t) => l.f("Unexpected \"{text}\"", &[("text", t)]),
+        RefError::Incomplete => l.t("Incomplete reference").to_string(),
+    }
+}
+
 /// "Juan 3:16-18" → ("Juan 3", 16, 18); "Juan 3:16" → ("Juan 3", 16, 16).
 fn label_span(label: &str) -> Option<(&str, u16, u16)> {
     let (chapter, verses) = label.rsplit_once(':')?;
@@ -579,6 +630,28 @@ fn slide_with_verse_of(slides: &[Slide], old_label: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use asaf_core::Language;
+
+    #[test]
+    fn reference_errors_read_like_the_english_display() {
+        let en = Lang(Language::English);
+        let errors = [
+            RefError::Empty,
+            RefError::NoBook,
+            RefError::UnknownBook("Xyz".into()),
+            RefError::AmbiguousBook("Ju".into(), vec!["Juan".into(), "Jueces".into(), "Judas".into(), "Josué".into(), "Job".into()]),
+            RefError::NoChapter("Juan".into()),
+            RefError::ChapterOutOfRange { book: "Juan".into(), chapter: 22, chapters: 21 },
+            RefError::ChapterOutOfRange { book: "Abdías".into(), chapter: 2, chapters: 1 },
+            RefError::VerseZero,
+            RefError::Backwards("Juan 3:18-16".into()),
+            RefError::Unexpected("hola".into()),
+            RefError::Incomplete,
+        ];
+        for e in errors {
+            assert_eq!(ref_error(en, &e), e.to_string());
+        }
+    }
 
     #[test]
     fn finds_the_slide_holding_a_verse() {
