@@ -20,12 +20,6 @@ impl Catalog {
         Ok(Catalog { locale: locale.into(), messages: serde_json::from_str(json)? })
     }
 
-    /// Builds a catalog from English → translation pairs (plain text only).
-    pub fn from_pairs(locale: &str, pairs: &[(&str, &str)]) -> Self {
-        let messages = pairs.iter().map(|(en, tr)| (text_id(en, None), Message::from(*tr))).collect();
-        Catalog { locale: locale.into(), messages }
-    }
-
     pub fn locale(&self) -> &str {
         &self.locale
     }
@@ -50,10 +44,10 @@ impl Catalog {
     /// own form for `n`, else its `other`, else the English form.
     pub fn plural<'a>(&'a self, one: &'a str, other: &'a str, n: u64) -> &'a str {
         let source = Message::Plural(BTreeMap::from([(PluralForm::One, one.to_string()), (PluralForm::Other, other.to_string())]));
-        if let Some(Message::Plural(forms)) = self.messages.get(&message_id(&source, None)) {
-            if let Some(tr) = forms.get(&plural_form(&self.locale, n)).or_else(|| forms.get(&PluralForm::Other)) {
-                return tr;
-            }
+        if let Some(Message::Plural(forms)) = self.messages.get(&message_id(&source, None))
+            && let Some(tr) = forms.get(&plural_form(&self.locale, n)).or_else(|| forms.get(&PluralForm::Other))
+        {
+            return tr;
         }
         english_plural(one, other, n)
     }
@@ -134,12 +128,6 @@ mod tests {
         assert_eq!(c.text("Book", None), "Libro");
         assert_eq!(c.text("Book", Some("verb")), "Reservar");
         assert_eq!(c.text("Book", Some("noun")), "Book");
-    }
-
-    #[test]
-    fn pairs_are_keyed_by_the_english_text() {
-        let c = Catalog::from_pairs("es", &[("Songs", "Canciones")]);
-        assert_eq!(c.text("Songs", None), "Canciones");
     }
 
     #[test]

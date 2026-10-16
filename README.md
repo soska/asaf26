@@ -365,6 +365,47 @@ spelled out in English or Spanish (`[Verse 2]`, `[Chorus]`, `[Coro]`,
 a verse. The editor lists problems (unknown tags in the order, duplicate
 tags) next to the preview; a song needs a title and lyrics to be saved.
 
+## Localization
+
+The console's text is English in the code and translated from catalogs in
+[duckalization](https://github.com/soska/duckalization)'s format: the English
+text is the message, and its ID is a hash of that text.
+
+| Call | For |
+| --- | --- |
+| `l.t("Songs")` | plain text |
+| `en("Background image")` | text translated later through a variable (`l.t(label)`) |
+| `l.f("Added {title} to the service", &[("title", &name)])` | text with `{placeholders}`, filled after translating |
+| `l.n(count, "{count} song", "{count} songs")` | plurals (`{count}` is filled) |
+| `l.tc("Book", "verb")` | the same text with different meanings |
+| `__("Connect")` in `display/*.js` | the web pages (not wired up yet) |
+
+Arguments must be string literals so the extractor can find them.
+
+- `locales/en.json` and `en.meta.json` (every message, with where it's used)
+  are written by `cargo run -p asaf-i18n --bin i18n-extract`. A test fails
+  when they're out of date. **Don't run `duckalize extract`** here: it only
+  reads JS/TS and would empty the catalog.
+- `locales/es.json` is the Spanish catalog, built into the binary. Tests in
+  `asaf-i18n` fail on a missing translation, a translation of a message that
+  no longer exists, or changed placeholders. A missing one shows English.
+
+After changing the console's text, from the repo root (Node is only needed
+for translating):
+
+```sh
+cargo run -p asaf-i18n --bin i18n-extract
+npx @duckalization/cli@0.1.0 translate status
+npx @duckalization/cli@0.1.0 translate brief       # → locales/.work/es.brief.json
+# an agent translates the brief (see duckalization's llms.txt) into es.out.json
+npx @duckalization/cli@0.1.0 translate apply locales/.work/es.out.json --by claude
+npx @duckalization/cli@0.1.0 translate prune       # drop translations of removed text
+npx @duckalization/cli@0.1.0 review status         # machine / approved / edited
+```
+
+Settings are in `duckalization.config.json` (its `include` is empty on
+purpose, since the Rust extractor writes the catalog).
+
 ## Layout
 
 | Crate | Role |
@@ -376,8 +417,9 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
 | `crates/server` (`asaf-server`) | axum on 127.0.0.1 (or 0.0.0.0 with LAN access): display, OBS, stage and remote pages, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change, and the remote's PIN-protected command socket `/remote/ws` (`remote.rs`). `examples/display_demo.rs` serves one slide in a theme from a JSON file, `examples/remote_demo.rs` the remote, stage and OBS pages with a sample service (and a stand-in console), for checking output in a browser. |
 | `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
+| `crates/i18n` (`asaf-i18n`) | Localization in duckalization's format: message IDs (`id.rs`, the same hash as `@duckalization/id`), target catalogs and lookups (`catalog.rs`), plural rules (`plural.rs`), and the extractor that writes `locales/en.json` + `en.meta.json` (`extract.rs`, `bin/i18n-extract.rs`). No UI deps. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the English/Spanish string table (`i18n.rs`), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
 | `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port, LAN access, PIN and media folder from the settings; a new PIN reaches it at once), projector (remembered display) and console (the LAN address of the remote); `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
 | `packaging/macos` | `package.sh` (builds `Asaf.app`), `Info.plist.in`, the placeholder icon. |
 
@@ -457,9 +499,11 @@ tags) next to the preview; a song needs a title and lyrics to be saved.
   its previews use the same fonts.
 - **Settings are applied when they change** and need no Save button; the
   port is the exception (it applies from the next start).
-- **The console language** is a string table keyed by the English text
-  (`lang(cx).t("Songs")`); a test fails if a string used in the console has
-  no Spanish entry or the table has unused ones.
+- **The console language** uses duckalization's catalogs (keyed by a hash
+  of the English text, `lang(cx).t("Songs")`) with a Rust extractor and
+  lookup instead of its JS tooling, which can't read Rust; its CLI only
+  reads the JSON files, so translating, glossary and review work unchanged.
+  See "Localization".
 - **resvg is optimised in dev builds** (`[profile.dev.package.resvg]` and its
   rendering crates): unoptimised, the console's SVG background previews took
   seconds per frame.

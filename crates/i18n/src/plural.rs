@@ -9,7 +9,7 @@ pub fn plural_form(locale: &str, n: u64) -> PluralForm {
     match language {
         // `many` is for exact millions: "1 millón de canciones".
         "es" if n == 1 => PluralForm::One,
-        "es" if n != 0 && n % 1_000_000 == 0 => PluralForm::Many,
+        "es" if n != 0 && n.is_multiple_of(1_000_000) => PluralForm::Many,
         "es" => PluralForm::Other,
         _ if n == 1 => PluralForm::One,
         _ => PluralForm::Other,
