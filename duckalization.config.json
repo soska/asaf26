@@ -1,0 +1,6 @@
+{
+  "include": [],
+  "outDir": "locales",
+  "sourceLocale": "en",
+  "targetLocales": ["es"]
+}
