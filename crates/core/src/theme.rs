@@ -60,6 +60,17 @@ pub struct Theme {
     pub background_dim: f32,
     /// URL on the local server: `/media/<file>` (imported) or `/assets/…`.
     pub background_image: Option<String>,
+    /// A looping, muted video (`/media/<file>`) over the image.
+    pub background_video: Option<String>,
+    /// A shape behind the slide text.
+    pub panel: PanelKind,
+    pub panel_color: String,
+    /// How far the panel reaches past the text.
+    pub panel_padding_vh: f32,
+    /// Corner radius of a box.
+    pub panel_radius_vh: f32,
+    /// The text areas get a box of the panel's colour too.
+    pub panel_behind_areas: bool,
     /// Shown centred over the background when blanked to the logo.
     pub logo: Option<String>,
     pub transition: TransitionKind,
@@ -72,6 +83,29 @@ pub struct Theme {
     /// Where scripture slides put their text and how big; `None`: as
     /// lyrics (the fields above).
     pub scripture: Option<Layout>,
+}
+
+/// The shape behind the slide text.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PanelKind {
+    #[default]
+    None,
+    /// A box around the text.
+    Box,
+    /// A band across the whole screen, as high as the text.
+    Bar,
+}
+
+impl PanelKind {
+    pub const ALL: [PanelKind; 3] = [PanelKind::None, PanelKind::Box, PanelKind::Bar];
+    pub fn as_str(self) -> &'static str {
+        match self {
+            PanelKind::None => "none",
+            PanelKind::Box => "box",
+            PanelKind::Bar => "bar",
+        }
+    }
 }
 
 /// Where a text area goes: in the top or bottom margin, or nowhere.
@@ -278,6 +312,12 @@ impl Default for Theme {
             gradient_color: String::new(),
             background_dim: 0.0,
             background_image: Some("/assets/background.svg".into()),
+            background_video: None,
+            panel: PanelKind::None,
+            panel_color: "#00000099".into(),
+            panel_padding_vh: 2.5,
+            panel_radius_vh: 1.5,
+            panel_behind_areas: false,
             logo: Some("/assets/logo.svg".into()),
             transition: TransitionKind::Fade,
             transition_ms: 300,
@@ -295,6 +335,8 @@ pub const MAX_TRANSITION_MS: u32 = 5000;
 pub const LETTER_SPACING_RANGE_EM: (f32, f32) = (-0.1, 0.5);
 pub const MAX_DIM: f32 = 0.9;
 pub const AREA_SIZE_RANGE_VH: (f32, f32) = (1.0, 10.0);
+pub const MAX_PANEL_PADDING_VH: f32 = 10.0;
+pub const MAX_PANEL_RADIUS_VH: f32 = 10.0;
 
 /// An RGBA colour parsed from `#rgb`, `#rrggbb` or `#rrggbbaa`.
 pub fn parse_color(text: &str) -> Option<[u8; 4]> {
@@ -442,6 +484,20 @@ impl Theme {
             }),
             ("--bg-dim", trim_float(self.background_dim, 2)),
             ("--logo", css_url(self.logo.as_deref())),
+            // The panel: a box reaches --panel-pad past the text on every
+            // side, a bar past the screen's sides.
+            ("--panel-display", if self.panel == PanelKind::None { "none" } else { "block" }.into()),
+            ("--panel-color", css_color(&self.panel_color)),
+            ("--panel-pad", format!("{}vh", trim_float(self.panel_padding_vh, 2))),
+            ("--panel-x", match self.panel {
+                PanelKind::Bar => "100vw".into(),
+                _ => format!("{}vh", trim_float(self.panel_padding_vh, 2)),
+            }),
+            ("--panel-radius", match self.panel {
+                PanelKind::Box => format!("{}vh", trim_float(self.panel_radius_vh, 2)),
+                _ => "0".into(),
+            }),
+            ("--areas-panel", if self.panel_behind_areas { css_color(&self.panel_color) } else { "transparent".into() }),
         ];
         // Scripture slides' layer redefines --align, --justify, --valign
         // and --text-transform from these.
@@ -489,6 +545,8 @@ impl Theme {
         self.letter_spacing_em =
             clamp(self.letter_spacing_em, LETTER_SPACING_RANGE_EM.0, LETTER_SPACING_RANGE_EM.1, d.letter_spacing_em);
         self.background_dim = clamp(self.background_dim, 0.0, MAX_DIM, d.background_dim);
+        self.panel_padding_vh = clamp(self.panel_padding_vh, 0.0, MAX_PANEL_PADDING_VH, d.panel_padding_vh);
+        self.panel_radius_vh = clamp(self.panel_radius_vh, 0.0, MAX_PANEL_RADIUS_VH, d.panel_radius_vh);
         self.outline_vh = clamp(self.outline_vh, 0.0, 3.0, d.outline_vh);
         self.shadow_blur_vh = clamp(self.shadow_blur_vh, 0.0, 10.0, d.shadow_blur_vh);
         self.shadow_offset_vh = clamp(self.shadow_offset_vh, 0.0, 10.0, d.shadow_offset_vh);
@@ -500,6 +558,7 @@ impl Theme {
             (&mut self.outline_color, &d.outline_color),
             (&mut self.shadow_color, &d.shadow_color),
             (&mut self.background_color, &d.background_color),
+            (&mut self.panel_color, &d.panel_color),
         ] {
             *value = match parse_color(value) {
                 Some(_) => value.trim().to_ascii_lowercase(),
@@ -517,7 +576,7 @@ impl Theme {
                 None => default.clone(),
             };
         }
-        for url in [&mut self.background_image, &mut self.logo] {
+        for url in [&mut self.background_image, &mut self.background_video, &mut self.logo] {
             *url = url.take().map(|u| u.trim().to_string()).filter(|u| is_local_url(u));
         }
         for kind in AreaKind::ALL {
@@ -537,14 +596,25 @@ impl Theme {
 }
 
 /// Bump when [`builtin_themes`] gains a theme, so libraries get it (once).
-pub const BUILTIN_THEMES_VERSION: u32 = 1;
+pub const BUILTIN_THEMES_VERSION: u32 = 2;
+
+/// The [`BUILTIN_THEMES_VERSION`] that added a built-in theme, so a library
+/// seeded before gets only the newer ones.
+pub fn builtin_theme_version(name: &str) -> u32 {
+    match name {
+        "Panel" => 2,
+        _ => 1,
+    }
+}
 
 /// The built-in logo in dark ink, for light backgrounds.
 const DARK_LOGO: &str = "/assets/logo-dark.svg";
 
 /// The curated themes every library gets, besides "Default": four dark
-/// gradients, two light ones (for bright rooms), one for scripture and one
-/// for big, bold lyrics. Names read the same in English and Spanish.
+/// gradients, two light ones (for bright rooms), one for scripture, one for
+/// big, bold lyrics and (since version 2) one with a bar behind the text,
+/// for busy pictures and lower thirds. Names read the same in English and
+/// Spanish.
 pub fn builtin_themes() -> Vec<Theme> {
     let base = Theme { background_image: None, ..Theme::default() };
     let shadow = |color: &str, blur: f32, offset: f32| (color.to_string(), blur, offset);
@@ -645,6 +715,16 @@ pub fn builtin_themes() -> Vec<Theme> {
             t.title_area = top_title("#d4af37", 2.2);
             t.scripture = Some(Layout { text_case: TextCase::Normal, ..t.layout(SlideKind::Lyrics) });
         }),
+        themed("Panel", &|t| {
+            // The default picture, under a dark bar across the bottom.
+            t.background_image = Some("/assets/background.svg".into());
+            (t.font_weight, t.size_min_vh, t.size_max_vh, t.outline_vh) = (600, 3.5, 7.5, 0.0);
+            set_shadow(t, shadow("#00000000", 0.0, 0.0));
+            (t.valign, t.margin_y_pct) = (VAlign::Bottom, 12.0);
+            (t.panel, t.panel_color, t.panel_padding_vh) = (PanelKind::Bar, "#000000b3".into(), 3.0);
+            t.panel_behind_areas = true;
+            (t.background_color, t.gradient_color) = ("#101018".into(), "#312e81".into());
+        }),
     ]
 }
 
@@ -722,6 +802,16 @@ mod tests {
             ("--em-color", |_| {}, "inherit"),
             ("--em-color", |t| t.em_color = "#0f0".into(), "rgb(0, 255, 0)"),
             ("--title-size", |_| {}, "2.2vh"),
+            ("--panel-display", |_| {}, "none"),
+            ("--panel-display", |t| t.panel = PanelKind::Box, "block"),
+            ("--panel-color", |_| {}, "rgba(0, 0, 0, 0.6)"),
+            ("--panel-pad", |t| t.panel_padding_vh = 4.0, "4vh"),
+            ("--panel-x", |t| t.panel = PanelKind::Box, "2.5vh"),
+            ("--panel-x", |t| t.panel = PanelKind::Bar, "100vw"),
+            ("--panel-radius", |t| t.panel = PanelKind::Box, "1.5vh"),
+            ("--panel-radius", |t| t.panel = PanelKind::Bar, "0"),
+            ("--areas-panel", |_| {}, "transparent"),
+            ("--areas-panel", |t| t.panel_behind_areas = true, "rgba(0, 0, 0, 0.6)"),
             ("--title-color", |_| {}, "inherit"),
             ("--credits-color", |t| t.credits_area.color = "#aabbcc".into(), "rgb(170, 187, 204)"),
             ("--reference-transform", |t| t.reference_area.text_case = TextCase::Upper, "uppercase"),
@@ -770,6 +860,10 @@ mod tests {
             margin_x_pct: 80.0,
             transition_ms: 60_000,
             background_image: Some("https://example.com/x.jpg".into()),
+            background_video: Some("//cdn.example.com/loop.mp4".into()),
+            panel_color: "nope".into(),
+            panel_padding_vh: -2.0,
+            panel_radius_vh: 99.0,
             logo: Some("/media/../../etc/passwd".into()),
             ..Theme::default()
         }
@@ -785,7 +879,8 @@ mod tests {
         assert_eq!((t.letter_spacing_em, t.background_dim, t.gradient_color.as_str()), (0.5, 0.0, ""));
         assert_eq!((t.outline_vh, t.shadow_blur_vh, t.margin_x_pct), (3.0, 0.0, 40.0));
         assert_eq!(t.transition_ms, MAX_TRANSITION_MS);
-        assert_eq!((t.background_image, t.logo), (None, None));
+        assert_eq!((t.background_image, t.background_video, t.logo), (None, None, None));
+        assert_eq!((t.panel_color.as_str(), t.panel_padding_vh, t.panel_radius_vh), ("#00000099", 0.0, MAX_PANEL_RADIUS_VH));
         assert_eq!(Theme::default().sanitized(), Theme::default());
     }
 
@@ -820,7 +915,7 @@ mod tests {
     #[test]
     fn builtin_themes_are_valid_and_distinct() {
         let themes = builtin_themes();
-        assert_eq!(themes.len(), 8);
+        assert_eq!(themes.len(), 9);
         for t in &themes {
             assert_eq!(&t.clone().sanitized(), t, "{} is already in range", t.name);
             assert!(crate::theme::parse_color(&t.gradient_color).is_some(), "{} has a gradient", t.name);
@@ -828,6 +923,8 @@ mod tests {
             let light = parse_color(&t.background_color).unwrap().iter().take(3).map(|&c| u32::from(c)).sum::<u32>() > 600;
             assert_eq!(t.logo.as_deref() == Some(DARK_LOGO), light, "{}: the logo shows on its background", t.name);
         }
+        assert!(themes.iter().all(|t| (1..=BUILTIN_THEMES_VERSION).contains(&builtin_theme_version(&t.name))));
+        assert!(themes.iter().any(|t| builtin_theme_version(&t.name) == BUILTIN_THEMES_VERSION), "the version is bumped");
         let mut names: Vec<_> = themes.iter().map(|t| t.name.to_lowercase()).collect();
         names.dedup();
         assert_eq!(names.len(), themes.len());

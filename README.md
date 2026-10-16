@@ -45,7 +45,7 @@ packaging/macos/package.sh [--zip]     # release build of Asaf.app (see "Packagi
 - The library lives at `~/Library/Application Support/Asaf/asaf.sqlite` on
   macOS (the OS data dir elsewhere), with imported theme images in `media/`
   next to it. `ASAF_DATA_DIR=/some/dir` uses another folder. A new library
-  starts with one public-domain hymn, the Default theme and eight built-in
+  starts with one public-domain hymn, the Default theme and nine built-in
   themes.
 - The current service is autosaved next to it as `autosave.asaf-service` and
   restored on every start (a damaged one is renamed `….corrupt`, or
@@ -143,13 +143,23 @@ alignment share one line, separated by " · ", so a theme from before text
 areas (all three at the bottom, like the text) keeps its one footer line. The
 OBS page puts top areas just above its band of text.
 
-Besides Default, every library comes with eight built-in themes: Aurora,
+A panel behind the slide text keeps it readable over a busy picture or
+video: a box around the text (with its padding and corner radius) or a bar
+across the whole screen, in its own colour (usually translucent), and
+optionally a matching box behind the title, reference and credits. On the
+OBS page a theme's panel replaces the default shade, so a bar makes a lower
+third. A background video (mp4, m4v, mov or webm, imported into the media
+folder like images, up to 1 GB) loops muted over the image, under the
+darkening; the console's own approximations show the image instead.
+
+Besides Default, every library comes with nine built-in themes: Aurora,
 Jade, Coral and Gala (dark gradients; Coral and Gala in capitals, with verses
 as typed), Lava (big condensed capitals near the bottom, verses smaller in the
 middle), Sepia (a serif, left-aligned, for scripture, the reference on top),
-and Oasis and Polar (light, for bright rooms, with the logo in
-dark ink). Existing libraries get them once, when they're first opened by a
-version that has them; they're ordinary themes from then on, to edit or
+Panel (the default picture under a dark bar, for busy pictures and lower
+thirds), and Oasis and Polar (light, for bright rooms, with the logo in
+dark ink). Existing libraries get each one once, when they're first opened by a
+version that has it; they're ordinary themes from then on, to edit or
 delete (a deleted one doesn't come back), and a theme of your own with the
 same name is left alone.
 

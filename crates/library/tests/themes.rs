@@ -111,10 +111,21 @@ fn builtin_themes_come_once_and_never_replace_a_theme() {
     conn.execute("INSERT INTO themes (name, data) VALUES ('jade', '{\"color\":\"#00ff00\"}')", []).unwrap();
     drop(conn);
     let lib = Library::open(&path).unwrap();
-    assert_eq!(lib.themes().unwrap().len(), 9);
+    assert_eq!(lib.themes().unwrap().len(), 1 + builtin_themes().len());
     assert_eq!(lib.theme("Jade").unwrap().unwrap().color, "#00ff00", "the library's own Jade is kept");
     assert_eq!(lib.theme("Aurora").unwrap().unwrap(), builtin_themes()[0]);
     assert_eq!(lib.settings().unwrap(), Settings::default(), "the marker isn't a setting");
+    drop(lib);
+
+    // A library seeded with the first set, Aurora since deleted: an update
+    // brings only the themes added after it.
+    let conn = rusqlite::Connection::open(&path).unwrap();
+    conn.execute("UPDATE settings SET value = '1' WHERE key = 'builtin_themes'", []).unwrap();
+    conn.execute("DELETE FROM themes WHERE name IN ('Aurora', 'Panel')", []).unwrap();
+    drop(conn);
+    let lib = Library::open(&path).unwrap();
+    assert!(lib.theme("Aurora").unwrap().is_none(), "a deleted first-set theme stays deleted");
+    assert!(lib.theme("Panel").unwrap().is_some(), "the newer theme arrives");
 }
 
 #[test]

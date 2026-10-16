@@ -1,6 +1,6 @@
-//! Background and logo images, copied into the data folder's `media`
-//! directory so a theme never depends on where the original file was. The
-//! server serves them at `/media/<file>`.
+//! Background and logo images and background videos, copied into the data
+//! folder's `media` directory so a theme never depends on where the original
+//! file was. The server serves them at `/media/<file>`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +9,16 @@ use crate::Library;
 
 /// Image types the display page can show, by extension.
 pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp", "svg"];
+
+/// Video types the display page can loop, by extension.
+pub const VIDEO_EXTENSIONS: &[&str] = &["mp4", "m4v", "mov", "webm"];
+
+/// Larger files aren't imported: they'd be read into memory whole.
+pub const MAX_MEDIA_BYTES: u64 = 1 << 30;
+
+fn is_media_extension(ext: &str) -> bool {
+    IMAGE_EXTENSIONS.contains(&ext) || VIDEO_EXTENSIONS.contains(&ext)
+}
 
 /// URL prefix the server serves media under.
 pub const MEDIA_URL_PREFIX: &str = "/media/";
@@ -24,7 +34,7 @@ impl Library {
         self.media_dir = dir;
     }
 
-    /// Copies an image into the media folder and returns its URL
+    /// Copies an image or video into the media folder and returns its URL
     /// (`/media/sunrise-3f9a1c0b.jpg`). The name carries a hash of the
     /// contents, so importing the same file twice reuses one copy and two
     /// different files never overwrite each other.
@@ -34,11 +44,18 @@ impl Library {
             .extension()
             .and_then(|e| e.to_str())
             .map(str::to_ascii_lowercase)
-            .filter(|e| IMAGE_EXTENSIONS.contains(&e.as_str()))
-            .ok_or_else(|| format!("{} isn't an image Asaf can show (use {}).", path.display(), IMAGE_EXTENSIONS.join(", ")))?;
+            .filter(|e| is_media_extension(e))
+            .ok_or_else(|| {
+                let types = [IMAGE_EXTENSIONS, VIDEO_EXTENSIONS].concat().join(", ");
+                format!("{} isn't an image or video Asaf can show (use {types}).", path.display())
+            })?;
+        let size = fs::metadata(path).map_err(|e| format!("Can't read {}: {e}", path.display()))?.len();
+        if size > MAX_MEDIA_BYTES {
+            return Err(format!("{} is larger than {} MB.", path.display(), MAX_MEDIA_BYTES >> 20));
+        }
         let bytes = fs::read(path).map_err(|e| format!("Can't read {}: {e}", path.display()))?;
         let stem = path.file_stem().and_then(|s| s.to_str()).map(slug).unwrap_or_default();
-        let stem = if stem.is_empty() { "image".to_string() } else { stem };
+        let stem = if stem.is_empty() { "media".to_string() } else { stem };
         let name = format!("{stem}-{:08x}.{ext}", fnv1a(&bytes) as u32);
         fs::create_dir_all(dir).map_err(|e| format!("Can't create {}: {e}", dir.display()))?;
         let target = dir.join(&name);
@@ -56,12 +73,12 @@ impl Library {
 }
 
 /// A name the server may serve from the media folder: no path separators,
-/// no hidden files, a known image extension.
+/// no hidden files, a known image or video extension.
 pub fn is_media_file_name(name: &str) -> bool {
     !name.is_empty()
         && !name.starts_with('.')
         && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
-        && name.rsplit_once('.').is_some_and(|(_, ext)| IMAGE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
+        && name.rsplit_once('.').is_some_and(|(_, ext)| is_media_extension(&ext.to_ascii_lowercase()))
 }
 
 /// Lowercase ASCII letters, digits and dashes: "Cruz al Atardecer (2)" → "cruz-al-atardecer-2".
@@ -110,6 +127,8 @@ mod tests {
             ("x/y.png", false),
             (".hidden.png", false),
             ("notes.txt", false),
+            ("loop-00ff.MP4", true),
+            ("clip.webm", true),
             ("", false),
             ("a b.jpg", false),
         ] {

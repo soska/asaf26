@@ -8,12 +8,12 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use asaf_core::{
-    Align, AreaKind, Blank, DEFAULT_THEME_NAME, DisplayState, Layout, Place, Slide, SlideKind, TextCase, Theme,
+    Align, AreaKind, Blank, DEFAULT_THEME_NAME, DisplayState, Layout, PanelKind, Place, Slide, SlideKind, TextCase, Theme,
     TransitionKind, VAlign, parse_color, sample_song,
 };
 use asaf_fonts::FONTS;
 use asaf_library::ThemeError;
-use asaf_library::media::IMAGE_EXTENSIONS;
+use asaf_library::media::{IMAGE_EXTENSIONS, VIDEO_EXTENSIONS};
 use asaf_projector::EmbeddedPage;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
@@ -38,6 +38,37 @@ pub struct ThemesChanged {
     /// `(old, new)` when a theme was renamed.
     pub renamed: Option<(String, String)>,
     pub deleted: Option<String>,
+}
+
+/// The theme's files: background image and video, and logo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MediaSlot {
+    Background,
+    Video,
+    Logo,
+}
+
+impl MediaSlot {
+    fn extensions(self) -> &'static [&'static str] {
+        if self == MediaSlot::Video { VIDEO_EXTENSIONS } else { IMAGE_EXTENSIONS }
+    }
+
+    fn url(self, t: &mut Theme) -> &mut Option<String> {
+        match self {
+            MediaSlot::Background => &mut t.background_image,
+            MediaSlot::Video => &mut t.background_video,
+            MediaSlot::Logo => &mut t.logo,
+        }
+    }
+
+    /// For element ids.
+    fn key(self) -> &'static str {
+        match self {
+            MediaSlot::Background => "bg",
+            MediaSlot::Video => "video",
+            MediaSlot::Logo => "logo",
+        }
+    }
 }
 
 /// The text fields of the form, each tied to one theme setting.
@@ -72,10 +103,13 @@ pub(crate) enum Field {
     /// Used only while the theme has a scripture layout of its own.
     ScriptureSizeMin,
     ScriptureSizeMax,
+    PanelColor,
+    PanelPadding,
+    PanelRadius,
 }
 
 impl Field {
-    pub const ALL: [Field; 28] = [
+    pub const ALL: [Field; 31] = [
         Field::Name,
         Field::Font,
         Field::SizeMin,
@@ -104,6 +138,9 @@ impl Field {
         Field::CreditsColor,
         Field::ScriptureSizeMin,
         Field::ScriptureSizeMax,
+        Field::PanelColor,
+        Field::PanelPadding,
+        Field::PanelRadius,
     ];
 
     fn index(self) -> usize {
@@ -154,6 +191,9 @@ impl Field {
             Field::TitleColor | Field::ReferenceColor | Field::CreditsColor => t.area(self.area().unwrap()).color.clone(),
             Field::ScriptureSizeMin => t.layout(SlideKind::Scripture).size_min_vh.to_string(),
             Field::ScriptureSizeMax => t.layout(SlideKind::Scripture).size_max_vh.to_string(),
+            Field::PanelColor => t.panel_color.clone(),
+            Field::PanelPadding => t.panel_padding_vh.to_string(),
+            Field::PanelRadius => t.panel_radius_vh.to_string(),
         }
     }
 
@@ -206,6 +246,9 @@ impl Field {
                 let v = number(1.0, 40.0)?;
                 if self == Field::ScriptureSizeMin { l.size_min_vh = v } else { l.size_max_vh = v }
             }
+            Field::PanelColor => t.panel_color = colour()?,
+            Field::PanelPadding => t.panel_padding_vh = number(0.0, asaf_core::theme::MAX_PANEL_PADDING_VH)?,
+            Field::PanelRadius => t.panel_radius_vh = number(0.0, asaf_core::theme::MAX_PANEL_RADIUS_VH)?,
         }
         Ok(())
     }
@@ -240,6 +283,9 @@ impl Field {
             Field::CreditsColor => en("Credits color"),
             Field::ScriptureSizeMin => en("Smallest scripture text (%)"),
             Field::ScriptureSizeMax => en("Largest scripture text (%)"),
+            Field::PanelColor => en("Panel color"),
+            Field::PanelPadding => en("Panel padding"),
+            Field::PanelRadius => en("Corner radius"),
         }
     }
 }
@@ -555,8 +601,8 @@ impl ThemeEditor {
         .detach();
     }
 
-    /// Imports an image into the media folder for the background or the logo.
-    fn choose_image(&mut self, logo: bool, window: &mut Window, cx: &mut Context<Self>) {
+    /// Imports an image or video into the media folder for `slot`.
+    fn choose_media(&mut self, slot: MediaSlot, window: &mut Window, cx: &mut Context<Self>) {
         let paths = cx.prompt_for_paths(PathPromptOptions {
             files: true,
             directories: false,
@@ -566,26 +612,27 @@ impl ThemeEditor {
         cx.spawn_in(window, async move |this, cx| {
             let Ok(Ok(Some(mut paths))) = paths.await else { return };
             let Some(path) = paths.pop() else { return };
-            let _ = this.update_in(cx, |this, window, cx| this.set_image_file(logo, &path, window, cx));
+            let _ = this.update_in(cx, |this, window, cx| this.set_media_file(slot, &path, window, cx));
         })
         .detach();
     }
 
-    pub(crate) fn set_image_file(&mut self, logo: bool, path: &std::path::Path, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_media_file(&mut self, slot: MediaSlot, path: &std::path::Path, window: &mut Window, cx: &mut Context<Self>) {
+        let ext = path.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
+        if !slot.extensions().contains(&ext.as_str()) {
+            let (file, types) = (path.display().to_string(), slot.extensions().join(", "));
+            let note = if slot == MediaSlot::Video {
+                lang(cx).f("{file} isn't a video Asaf can play (use {types}).", &[("file", &file), ("types", &types)])
+            } else {
+                lang(cx).f("{file} isn't an image Asaf can show (use {types}).", &[("file", &file), ("types", &types)])
+            };
+            return window.push_notification(Notification::error(note), cx);
+        }
         let result = self.library.lock().unwrap().import_media(path);
         match result {
             Ok(url) => {
-                if logo {
-                    self.choice.logo = Some(url);
-                } else {
-                    self.choice.background_image = Some(url);
-                }
+                *slot.url(&mut self.choice) = Some(url);
                 cx.notify();
-            }
-            Err(_) if !is_image_file(path) => {
-                let (file, types) = (path.display().to_string(), IMAGE_EXTENSIONS.join(", "));
-                let note = lang(cx).f("{file} isn't an image Asaf can show (use {types}).", &[("file", &file), ("types", &types)]);
-                window.push_notification(Notification::error(note), cx)
             }
             Err(e) => window.push_notification(Notification::error(e), cx),
         }
@@ -756,30 +803,28 @@ impl Render for ThemeEditor {
             choice(format!("transition-{}", k.as_str()).into(), l.t(label), draft.transition == k)
                     .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.transition = k)))
         }));
-        let image_row = |logo: bool, url: &Option<String>, cx: &mut Context<Self>| {
-            let builtin = if logo { "/assets/logo.svg" } else { "/assets/background.svg" };
+        let image_row = |slot: MediaSlot, url: &Option<String>, cx: &mut Context<Self>| {
+            let (label, builtin) = match slot {
+                MediaSlot::Background => (en("Background image"), Some("/assets/background.svg")),
+                MediaSlot::Video => (en("Background video"), None),
+                MediaSlot::Logo => (en("Logo (blank to logo)"), Some("/assets/logo.svg")),
+            };
+            let key = slot.key();
             h_flex()
                 .gap_1()
-                .child(
-                    div()
-                        .w(px(120.))
-                        .text_xs()
-                        .text_color(muted)
-                        .child(l.t(if logo { en("Logo (blank to logo)") } else { en("Background image") })),
-                )
+                .child(div().w(px(120.)).text_xs().text_color(muted).child(l.t(label)))
                 .child(div().flex_1().min_w_0().truncate().text_xs().child(image_name(url, l)))
-                .child(Button::new(if logo { "logo-choose" } else { "bg-choose" })
+                .child(Button::new(SharedString::from(format!("{key}-choose")))
                         .xsmall()
                         .label(l.t("Choose…"))
-                        .on_click(cx.listener(move |this, _, window, cx| this.choose_image(logo, window, cx))))
-                .child(Button::new(if logo { "logo-builtin" } else { "bg-builtin" }).xsmall().ghost().label(l.t("Built in")).on_click(cx.listener(move |this, _, _, cx| {
-                        this.set_choice(cx, |t| {
-                            let url = Some(builtin.to_string());
-                            if logo { t.logo = url } else { t.background_image = url }
-                        })
-                    })))
-                .child(Button::new(if logo { "logo-clear" } else { "bg-clear" }).xsmall().ghost().label(l.t("None")).on_click(cx.listener(move |this, _, _, cx| {
-                        this.set_choice(cx, |t| if logo { t.logo = None } else { t.background_image = None })
+                        .on_click(cx.listener(move |this, _, window, cx| this.choose_media(slot, window, cx))))
+                .children(builtin.map(|builtin| {
+                    Button::new(SharedString::from(format!("{key}-builtin"))).xsmall().ghost().label(l.t("Built in")).on_click(cx.listener(move |this, _, _, cx| {
+                        this.set_choice(cx, |t| *slot.url(t) = Some(builtin.to_string()))
+                    }))
+                }))
+                .child(Button::new(SharedString::from(format!("{key}-clear"))).xsmall().ghost().label(l.t("None")).on_click(cx.listener(move |this, _, _, cx| {
+                        this.set_choice(cx, |t| *slot.url(t) = None)
                     })))
         };
         let small_label = |text: &'static str, width: f32| div().w(px(width)).flex_none().text_xs().text_color(muted).child(l.t(text));
@@ -877,8 +922,36 @@ impl Render for ThemeEditor {
                 .child(h_flex().gap_3().child(field(Field::ScriptureSizeMin, 190.)).child(field(Field::ScriptureSizeMax, 190.)))
         });
 
-        let bg_row = image_row(false, &draft.background_image, cx);
-        let logo_row = image_row(true, &draft.logo, cx);
+        let bg_row = image_row(MediaSlot::Background, &draft.background_image, cx);
+        let video_row = image_row(MediaSlot::Video, &draft.background_video, cx);
+        let logo_row = image_row(MediaSlot::Logo, &draft.logo, cx);
+
+        let panels = h_flex().gap_1().children(PanelKind::ALL.into_iter().map(|k| {
+            let label = match k {
+                PanelKind::None => en("None"),
+                PanelKind::Box => en("Box"),
+                PanelKind::Bar => en("Bar across"),
+            };
+            choice(format!("panel-{}", k.as_str()).into(), l.t(label), draft.panel == k)
+                .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.panel = k)))
+        }));
+        let panel_areas = h_flex().gap_1().children([(false, en("Text only")), (true, en("Text and small lines"))].map(|(on, label)| {
+            choice(if on { "panel-areas-on" } else { "panel-areas-off" }.into(), l.t(label), draft.panel_behind_areas == on)
+                .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.panel_behind_areas = on)))
+        }));
+        let panel_settings = (draft.panel != PanelKind::None).then(|| {
+            v_flex()
+                .gap_2()
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .child(field(Field::PanelColor, 120.))
+                        .child(swatch(&draft.panel_color))
+                        .child(field(Field::PanelPadding, 110.))
+                        .when(draft.panel == PanelKind::Box, |d| d.child(field(Field::PanelRadius, 110.))),
+                )
+                .child(h_flex().gap_2().child(small_label(en("Behind"), 70.)).child(panel_areas))
+        });
 
         let form = v_flex()
             .id("theme-form")
@@ -935,6 +1008,9 @@ impl Render for ThemeEditor {
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Across"))).child(aligns))
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Down"))).child(valigns))
             .child(h_flex().gap_3().child(field(Field::MarginX, 150.)).child(field(Field::MarginY, 190.)))
+            .child(heading(en("Panel")))
+            .child(h_flex().gap_2().child(small_label(en("Shape"), 70.)).child(panels))
+            .children(panel_settings)
             .child(heading(en("Scripture")))
             .child(h_flex().gap_2().child(small_label(en("Placement and size"), 120.)).child(scripture_modes))
             .children(scripture_layout)
@@ -952,6 +1028,7 @@ impl Render for ThemeEditor {
                     .child(field(Field::Dim, 90.)),
             )
             .child(bg_row)
+            .child(video_row)
             .child(logo_row)
             .child(heading(en("Transition")))
             .child(h_flex().gap_3().items_end().child(transitions).child(field(Field::TransitionMs, 110.)));
@@ -1067,11 +1144,6 @@ impl Render for ThemeEditor {
     }
 }
 
-/// Whether `path` has an extension the display page can show.
-fn is_image_file(path: &std::path::Path) -> bool {
-    let ext = path.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
-    ext.is_some_and(|e| IMAGE_EXTENSIONS.contains(&e.as_str()))
-}
 
 /// Why a theme couldn't be saved or deleted, in the console's language.
 fn theme_error(l: Lang, e: &ThemeError) -> String {
@@ -1287,6 +1359,55 @@ mod tests {
         // Back to the lyrics' layout.
         with(cx, h, |w, cx| editor.update(cx, |e, cx| e.set_own_scripture_layout(false, w, cx)));
         assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.scripture.clone()), None);
+    }
+
+    #[gpui::test]
+    fn panels_and_background_videos(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(&dir.path().join("asaf.sqlite")).unwrap();
+        let (library, editor, h, _) = open(cx, lib);
+        with(cx, h, |w, cx| {
+            scroll_form(w, cx, 500.);
+            w.click("panel-box", cx);
+            w.render_frame(cx);
+            w.click("panel-areas-on", cx);
+        });
+        set_field(cx, h, &editor, Field::PanelRadius, "3");
+        set_field(cx, h, &editor, Field::PanelColor, "#1e3a8acc");
+        let (draft, bad) = cx.update(|cx| editor.read(cx).draft(cx));
+        assert!(bad.is_empty(), "{bad:?}");
+        assert_eq!(
+            (draft.panel, draft.panel_behind_areas, draft.panel_radius_vh, draft.panel_color.as_str()),
+            (PanelKind::Box, true, 3.0, "#1e3a8acc")
+        );
+        set_field(cx, h, &editor, Field::PanelPadding, "40");
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).1), [Field::PanelPadding]);
+        set_field(cx, h, &editor, Field::PanelPadding, "2");
+
+        // A video goes in the video slot; an image doesn't.
+        let still = dir.path().join("still.png");
+        let clip = dir.path().join("Olas del mar.mp4");
+        std::fs::write(&still, b"png").unwrap();
+        std::fs::write(&clip, b"mp4 bytes").unwrap();
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.set_media_file(MediaSlot::Video, &still, w, cx)));
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.background_video), None);
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.set_media_file(MediaSlot::Video, &clip, w, cx)));
+        let video = cx.update(|cx| editor.read(cx).draft(cx).0.background_video).unwrap();
+        assert!(video.starts_with("/media/olas-del-mar-") && video.ends_with(".mp4"), "{video}");
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.set_media_file(MediaSlot::Background, &clip, w, cx)));
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.background_image).as_deref(), Some("/assets/background.svg"));
+
+        with(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.press("cmd-s", cx);
+        });
+        let saved = library.lock().unwrap().default_theme().unwrap();
+        assert_eq!((saved.background_video, saved.panel), (Some(video), PanelKind::Box));
+        with(cx, h, |w, cx| {
+            scroll_form_down(w, cx);
+            w.click("video-clear", cx);
+        });
+        assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.background_video), None);
     }
 
     #[gpui::test]

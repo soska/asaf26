@@ -42,6 +42,26 @@
     return true;
   }
 
+  // A looping background video, when the theme has one. Muted, so it may
+  // play without a click.
+  const bg = document.getElementById("bg");
+  function applyVideo(url) {
+    let video = bg.querySelector("video");
+    if (!url) {
+      video?.remove();
+      return;
+    }
+    if (video?.getAttribute("src") === url) return;
+    if (!video) {
+      video = document.createElement("video");
+      Object.assign(video, { muted: true, loop: true, autoplay: true, playsInline: true });
+      video.setAttribute("muted", "");
+      bg.append(video);
+    }
+    video.src = url;
+    video.play?.().catch(() => {});
+  }
+
   // ---- auto-fit -------------------------------------------------------------
 
   // Largest font size in [min, max] at which the text fits the safe area.
@@ -149,12 +169,15 @@
       }
       const slot = document.createElement("div");
       slot.className = `slot ${side}`;
+      const line = document.createElement("span");
+      line.className = "line";
       areas.forEach(([name, text], i) => {
         const span = document.createElement("span");
         span.className = `area ${name}`;
         span.textContent = i > 0 ? ` · ${text}` : text;
-        slot.append(span);
+        line.append(span);
       });
+      slot.append(line);
       band.append(slot);
     }
   }
@@ -175,6 +198,8 @@
     state = next;
     // A new font, size range or margin changes what fits: refit both layers.
     if (applyTheme(state.css_vars ?? [])) refitSoon();
+    applyVideo(obs ? null : state.theme.background_video);
+    root.classList.toggle("panel", state.theme.panel !== "none");
     // The text areas may have moved (their places aren't CSS variables).
     const areasKey = JSON.stringify([state.theme.title_area, state.theme.reference_area, state.theme.credits_area, state.theme.scripture?.align, state.theme.align]);
     if (areasKey !== shownAreas) {

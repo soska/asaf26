@@ -15,7 +15,7 @@ use asaf_core::{DisplayState, RemoteState, Store};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
 use serde::Serialize;
@@ -47,7 +47,7 @@ pub struct Config {
     /// Listen on every interface (0.0.0.0), not just 127.0.0.1, so the remote
     /// works from phones on the LAN.
     pub lan: bool,
-    /// Imported theme images, served at `/media/<file>`.
+    /// Imported theme images and videos, served at `/media/<file>`.
     pub media_dir: Option<PathBuf>,
     /// The remote's PIN; empty: none.
     pub pin: String,
@@ -122,14 +122,14 @@ struct AppState {
     /// Held while a wrong PIN is answered (after a delay), so guesses are
     /// slow however many connections try at once.
     pin_failures: Arc<AsyncMutex<()>>,
-    /// Imported theme images, served at `/media/<file>`.
+    /// Imported theme images and videos, served at `/media/<file>`.
     media_dir: Option<Arc<PathBuf>>,
     /// Shared with the handle, so it lives as long as the server does.
     locale: Arc<watch::Sender<String>>,
 }
 
 /// Binds 127.0.0.1:`port` synchronously (so a busy port is reported to the
-/// caller) and serves on a background thread. Images in `media_dir` are
+/// caller) and serves on a background thread. Images and videos in `media_dir` are
 /// served at `/media/<file>`.
 pub fn start(store: Arc<Store>, port: u16, media_dir: Option<PathBuf>) -> std::io::Result<ServerHandle> {
     start_with(store, Config { port, media_dir, ..Config::default() })
@@ -239,21 +239,79 @@ async fn font(Path(file): Path<String>) -> Response {
     StatusCode::NOT_FOUND.into_response()
 }
 
-/// An imported image. Names carry a hash of the contents, so they never change.
-async fn media(State(state): State<AppState>, Path(file): Path<String>) -> Response {
+/// An imported image or video. Names carry a hash of the contents, so they
+/// never change. Byte ranges are served too: WebKit plays video only from a
+/// server that does.
+async fn media(State(state): State<AppState>, Path(file): Path<String>, headers: HeaderMap) -> Response {
     let Some(dir) = state.media_dir else { return StatusCode::NOT_FOUND.into_response() };
     let Some(content_type) = media_type(&file) else { return StatusCode::NOT_FOUND.into_response() };
     let path = dir.join(&file);
-    match tokio::task::spawn_blocking(move || std::fs::read(path)).await {
-        Ok(Ok(bytes)) => {
-            ([(header::CONTENT_TYPE, content_type), (header::CACHE_CONTROL, "max-age=31536000, immutable")], bytes)
+    let range = headers.get(header::RANGE).and_then(|v| v.to_str().ok()).map(String::from);
+    let read = tokio::task::spawn_blocking(move || read_media(&path, range.as_deref())).await;
+    let cache = (header::CACHE_CONTROL, "max-age=31536000, immutable");
+    let ranges = (header::ACCEPT_RANGES, "bytes");
+    match read {
+        Ok(Ok(MediaRead::Whole(bytes))) => ([(header::CONTENT_TYPE, content_type), cache, ranges], bytes).into_response(),
+        Ok(Ok(MediaRead::Part { bytes, start, total })) => {
+            let content_range = format!("bytes {start}-{}/{total}", start + bytes.len() as u64 - 1);
+            (
+                StatusCode::PARTIAL_CONTENT,
+                [(header::CONTENT_TYPE, content_type), cache, ranges],
+                [(header::CONTENT_RANGE, content_range)],
+                bytes,
+            )
                 .into_response()
+        }
+        Ok(Ok(MediaRead::Unsatisfiable(total))) => {
+            (StatusCode::RANGE_NOT_SATISFIABLE, [(header::CONTENT_RANGE, format!("bytes */{total}"))]).into_response()
         }
         _ => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
-/// The content type of an image the media folder may serve, or `None` for
+enum MediaRead {
+    Whole(Vec<u8>),
+    Part { bytes: Vec<u8>, start: u64, total: u64 },
+    Unsatisfiable(u64),
+}
+
+/// Open-ended ranges (`bytes=100-`) get at most this much, so a video
+/// streams in pieces.
+const MAX_RANGE_BYTES: u64 = 4 << 20;
+
+fn read_media(path: &std::path::Path, range: Option<&str>) -> std::io::Result<MediaRead> {
+    use std::io::{Read, Seek, SeekFrom};
+    let Some(range) = range else { return std::fs::read(path).map(MediaRead::Whole) };
+    let mut file = std::fs::File::open(path)?;
+    let total = file.metadata()?.len();
+    let Some((start, end)) = parse_range(range, total) else { return Ok(MediaRead::Unsatisfiable(total)) };
+    let end = end.min(start + MAX_RANGE_BYTES - 1);
+    file.seek(SeekFrom::Start(start))?;
+    let mut bytes = Vec::with_capacity((end - start + 1) as usize);
+    file.take(end - start + 1).read_to_end(&mut bytes)?;
+    Ok(MediaRead::Part { bytes, start, total })
+}
+
+/// The inclusive byte range a single-range `Range` header asks of a file
+/// of `total` bytes: `bytes=0-99`, `bytes=100-` or `bytes=-100` (the last
+/// 100). `None` if it can't be served.
+fn parse_range(header: &str, total: u64) -> Option<(u64, u64)> {
+    let spec = header.trim().strip_prefix("bytes=")?;
+    let (from, to) = spec.split_once('-')?;
+    let (from, to) = (from.trim(), to.trim());
+    let (start, end) = match (from.is_empty(), to.is_empty()) {
+        (false, true) => (from.parse().ok()?, total.checked_sub(1)?),
+        (false, false) => (from.parse().ok()?, to.parse::<u64>().ok()?.min(total.checked_sub(1)?)),
+        (true, false) => {
+            let n: u64 = to.parse().ok()?;
+            (total.checked_sub(n.min(total))?, total.checked_sub(1)?)
+        }
+        (true, true) => return None,
+    };
+    (start <= end && start < total).then_some((start, end))
+}
+
+/// The content type of an image or video the media folder may serve, or `None` for
 /// any other name (path separators, hidden files, other extensions).
 fn media_type(file: &str) -> Option<&'static str> {
     let safe = !file.starts_with('.') && file.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'));
@@ -264,6 +322,9 @@ fn media_type(file: &str) -> Option<&'static str> {
         "gif" => "image/gif",
         "webp" => "image/webp",
         "svg" => "image/svg+xml",
+        "mp4" | "m4v" => "video/mp4",
+        "mov" => "video/quicktime",
+        "webm" => "video/webm",
         _ => return None,
     };
     safe.then_some(content_type)
@@ -333,5 +394,29 @@ async fn push_state(mut socket: WebSocket, mut rx: watch::Receiver<DisplayState>
                 Some(Ok(_)) => {}
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_ranges() {
+        for (header, want) in [
+            ("bytes=0-99", Some((0, 99))),
+            ("bytes=100-", Some((100, 999))),
+            ("bytes=-100", Some((900, 999))),
+            ("bytes=-5000", Some((0, 999))),
+            ("bytes=990-5000", Some((990, 999))),
+            ("bytes=1000-", None),
+            ("bytes=5-2", None),
+            ("bytes=-", None),
+            ("bytes=0-1,5-6", None),
+            ("items=0-1", None),
+        ] {
+            assert_eq!(parse_range(header, 1000), want, "{header}");
+        }
+        assert_eq!(parse_range("bytes=0-", 0), None);
     }
 }

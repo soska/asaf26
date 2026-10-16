@@ -2,7 +2,7 @@
 //! fields added later read back with their defaults; the `name` column is the
 //! key and wins over the name inside the JSON.
 
-use asaf_core::theme::BUILTIN_THEMES_VERSION;
+use asaf_core::theme::{BUILTIN_THEMES_VERSION, builtin_theme_version};
 use asaf_core::{DEFAULT_THEME_NAME, Settings, Theme, builtin_themes};
 use rusqlite::{OptionalExtension, params};
 
@@ -149,7 +149,7 @@ impl Library {
     }
 
     /// A new library has the default theme; every library gets the
-    /// built-in themes it hasn't had yet ([`BUILTIN_THEMES_VERSION`]), once:
+    /// built-in themes added since it was last seeded ([`BUILTIN_THEMES_VERSION`]), once:
     /// a deleted one doesn't come back, and a theme already using a
     /// built-in's name is left alone.
     pub(crate) fn seed_themes(&mut self) -> Result<()> {
@@ -165,7 +165,7 @@ impl Library {
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
         if seeded < BUILTIN_THEMES_VERSION {
-            for theme in builtin_themes() {
+            for theme in builtin_themes().into_iter().filter(|t| builtin_theme_version(&t.name) > seeded) {
                 let json = serde_json::to_string(&theme).expect("serialize theme");
                 tx.execute("INSERT OR IGNORE INTO themes (name, data) VALUES (?1, ?2)", params![theme.name, json])?;
             }

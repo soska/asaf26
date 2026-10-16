@@ -13,7 +13,7 @@ html.obs, html.obs body {
 }
 
 /* A soft shade behind the text, fading with it, keeps it readable over any
-   picture. */
+   picture; a theme with a panel brings its own. */
 .obs .layer::before {
   content: "";
   position: absolute;
@@ -23,6 +23,8 @@ html.obs, html.obs body {
   height: 40vh;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55) 45%, rgba(0, 0, 0, 0.7));
 }
+
+.obs.panel .layer::before { display: none; }
 
 .obs .safe {
   inset: auto var(--mx) 8vh;

@@ -37,6 +37,12 @@
   --credits-size: 2.2vh;
   --credits-color: inherit;
   --credits-transform: none;
+  --panel-display: none;
+  --panel-color: rgba(0, 0, 0, 0.6);
+  --panel-pad: 2.5vh;
+  --panel-x: 2.5vh;
+  --panel-radius: 0;
+  --areas-panel: transparent;
 }
 
 html, body {
@@ -54,9 +60,17 @@ html.embedded, html.embedded body { cursor: default; }
   inset: 0;
 }
 
-/* The image over the gradient over the colour, then darkened by --bg-dim. */
+/* The video over the image over the gradient over the colour, then
+   darkened by --bg-dim. */
 #bg {
   background: var(--bg-image) center / cover no-repeat, var(--bg-gradient) var(--bg-color);
+}
+#bg video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 #bg::after {
   content: "";
@@ -75,6 +89,8 @@ html.embedded, html.embedded body { cursor: default; }
 .layer.on { opacity: 1; transform: none; }
 .layer.out { transform: translateY(calc(-1 * var(--shift))); }
 .layer.instant { transition: none; }
+/* A bar panel reaches past the screen's sides. */
+.layer { overflow: hidden; }
 
 /* Scripture slides have their own placement (the theme's scripture layout,
    the same as lyrics unless it has one). */
@@ -106,10 +122,24 @@ html.embedded, html.embedded body { cursor: default; }
 }
 
 .text {
+  /* Its own stacking context keeps the panel (z-index -1) above the
+     background. */
+  position: relative;
+  isolation: isolate;
   line-height: var(--line-height);
   letter-spacing: var(--letter-spacing);
   text-transform: var(--text-transform);
   white-space: nowrap;
+}
+/* The theme's panel: a box around the text, or a bar across the screen. */
+.text::before {
+  content: "";
+  display: var(--panel-display);
+  position: absolute;
+  inset: calc(-1 * var(--panel-pad)) calc(-1 * var(--panel-x));
+  background: var(--panel-color);
+  border-radius: var(--panel-radius);
+  z-index: -1;
 }
 /* Emphasis in lyrics (**strong**, __em__). */
 .text strong {
@@ -151,6 +181,18 @@ html.embedded, html.embedded body { cursor: default; }
 .slot.left { text-align: left; }
 .slot.center { text-align: center; }
 .slot.right { text-align: right; }
+/* The text areas' own box, when the theme puts the panel behind them. */
+.slot > .line {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  padding: 0.35em 0.8em;
+  border-radius: var(--panel-radius);
+  background: var(--areas-panel);
+}
 .area.title {
   font-size: var(--title-size);
   color: var(--title-color);

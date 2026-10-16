@@ -7,7 +7,7 @@
 
 use std::sync::{Arc, LazyLock};
 
-use asaf_core::{Align, AreaKind, Layout, Place, Slide, SlideKind, TextCase, Theme, VAlign, markup, parse_color};
+use asaf_core::{Align, AreaKind, Layout, PanelKind, Place, Slide, SlideKind, TextCase, Theme, VAlign, markup, parse_color};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AnyElement, Background, Div, FontStyle, FontWeight, HighlightStyle, Hsla, Image, ImageFormat, ImageSource,
@@ -186,6 +186,35 @@ pub(crate) fn screen(theme: &Theme, slide: Option<&Slide>, background: Option<Im
     };
 
     let mut layers: Vec<AnyElement> = Vec::new();
+    // The panel: an invisible copy of the text with the panel as its
+    // background, so it takes the text's size.
+    let pad = theme.panel_padding_vh * vh;
+    let panel = color(&theme.panel_color);
+    let clear = Rgba { a: 0., ..panel };
+    match theme.panel {
+        PanelKind::None => {}
+        PanelKind::Box if !lines.is_empty() => {
+            let boxed = div().p(px(pad)).m(px(-pad)).rounded(px(theme.panel_radius_vh * vh)).bg(panel).child(text(clear, false));
+            layers.push(area(0.0, 0.0, boxed.into_any_element()).into_any_element());
+        }
+        PanelKind::Bar if !lines.is_empty() => {
+            let bar = div()
+                .absolute()
+                .top(px(h * theme.margin_y_pct / 100.0))
+                .bottom(px(h * theme.margin_y_pct / 100.0))
+                .left_0()
+                .right_0()
+                .flex()
+                .map(|d| match layout.valign {
+                    VAlign::Top => d.items_start(),
+                    VAlign::Middle => d.items_center(),
+                    VAlign::Bottom => d.items_end(),
+                })
+                .child(div().w_full().py(px(pad)).my(px(-pad)).bg(panel).child(text(clear, false)));
+            layers.push(bar.into_any_element());
+        }
+        _ => {}
+    }
     if theme.shadow_blur_vh > 0.0 || theme.shadow_offset_vh > 0.0 {
         let mut c = color(&theme.shadow_color);
         c.a *= 0.6;
@@ -233,7 +262,13 @@ pub(crate) fn screen(theme: &Theme, slide: Option<&Slide>, background: Option<Im
             .whitespace_nowrap()
             .font_family(theme.font_family.clone())
             .font_weight(FontWeight::MEDIUM)
-            .opacity(0.9)
+            .opacity(0.9);
+        let spans = div()
+            .flex()
+            .items_end()
+            .when(theme.panel_behind_areas && theme.panel != PanelKind::None, |d| {
+                d.px(px(0.8 * 2.2 * vh)).py(px(0.35 * 2.2 * vh)).rounded(px(theme.panel_radius_vh * vh)).bg(panel)
+            })
             .children(areas.into_iter().enumerate().map(|(i, (kind, text))| {
                 let a = theme.area(kind);
                 let text = if i > 0 { format!(" · {text}") } else { text.to_string() };
@@ -246,7 +281,7 @@ pub(crate) fn screen(theme: &Theme, slide: Option<&Slide>, background: Option<Im
                         TextCase::Upper => text.to_uppercase(),
                     })
             }));
-        layers.push(line.into_any_element());
+        layers.push(line.child(spans).into_any_element());
     }
 
     div()

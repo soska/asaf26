@@ -31,6 +31,6 @@ pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};
 pub use settings::{Appearance, DEFAULT_PORT, Language, Settings, valid_pin};
 pub use theme::{
-    Align, AreaKind, DEFAULT_THEME_NAME, Layout, Place, TextArea, TextCase, Theme, TransitionKind, VAlign, builtin_themes,
+    Align, AreaKind, DEFAULT_THEME_NAME, Layout, PanelKind, Place, TextArea, TextCase, Theme, TransitionKind, VAlign, builtin_themes,
     parse_color,
 };

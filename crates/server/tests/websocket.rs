@@ -66,10 +66,15 @@ async fn clients_get_state_on_connect_and_every_change() {
 
 /// GET `path`: the status line, the headers (lowercased) and the body.
 async fn get(port: u16, path: &str) -> (String, String, Vec<u8>) {
+    get_with(port, path, "").await
+}
+
+/// `extra` is more request header lines, each ending in CRLF.
+async fn get_with(port: u16, path: &str, extra: &str) -> (String, String, Vec<u8>) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
     stream
-        .write_all(format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n").as_bytes())
+        .write_all(format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n{extra}\r\n").as_bytes())
         .await
         .unwrap();
     let mut buf = Vec::new();
@@ -118,7 +123,7 @@ async fn serves_bundled_fonts_with_their_licenses() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn serves_imported_images_and_nothing_else() {
+async fn serves_imported_images_and_videos_and_nothing_else() {
     let dir = tempfile::tempdir().unwrap();
     let media = dir.path().join("media");
     std::fs::create_dir(&media).unwrap();
@@ -127,13 +132,28 @@ async fn serves_imported_images_and_nothing_else() {
     std::fs::write(media.join("notes.txt"), b"private").unwrap();
     std::fs::write(dir.path().join("asaf.sqlite"), b"secret").unwrap();
     let store = Store::new(sample_song(), Theme::default());
-    let port = asaf_server::start(store, 0, Some(media)).unwrap().addr.port();
+    let port = asaf_server::start(store, 0, Some(media.clone())).unwrap().addr.port();
 
     let (status, headers, body) = get(port, "/media/sky-0011aabb.jpg").await;
     assert!(status.ends_with("200 OK"), "{status}");
     assert!(headers.contains("content-type: image/jpeg"));
     assert_eq!(body, b"jpeg bytes");
     assert!(get(port, "/media/logo-1.svg").await.1.contains("image/svg+xml"));
+
+    // Videos, in byte ranges as WebKit asks for them.
+    let video: Vec<u8> = (0..=255u8).collect();
+    std::fs::write(media.join("loop-1.mp4"), &video).unwrap();
+    let (status, headers, body) = get(port, "/media/loop-1.mp4").await;
+    assert!(status.ends_with("200 OK") && headers.contains("content-type: video/mp4"), "{status}");
+    assert!(headers.contains("accept-ranges: bytes") && body == video);
+    let (status, headers, body) = get_with(port, "/media/loop-1.mp4", "Range: bytes=10-19\r\n").await;
+    assert!(status.ends_with("206 Partial Content"), "{status}");
+    assert!(headers.contains("content-range: bytes 10-19/256"), "{headers}");
+    assert_eq!(body, &video[10..20]);
+    let (_, headers, body) = get_with(port, "/media/loop-1.mp4", "Range: bytes=250-\r\n").await;
+    assert!(headers.contains("content-range: bytes 250-255/256") && body == video[250..]);
+    let (status, headers, _) = get_with(port, "/media/loop-1.mp4", "Range: bytes=300-\r\n").await;
+    assert!(status.ends_with("416 Range Not Satisfiable") && headers.contains("content-range: bytes */256"), "{status}");
     for path in [
         "/media/notes.txt",
         "/media/missing.png",
