@@ -24,7 +24,7 @@ pub use service::{
     AutosaveInfo, ItemContent, SERVICE_EXTENSION, SERVICE_FORMAT, SERVICE_VERSION, Service, ServiceFileError,
     ServiceItem, service_from_json, service_to_json,
 };
-pub use song::{SPLIT_MARKER, Slide, Song, Verse};
+pub use song::{SPLIT_MARKER, Slide, Song, SongProblem, Verse};
 pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};
 pub use settings::{DEFAULT_PORT, Language, Settings, valid_pin};
