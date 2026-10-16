@@ -335,6 +335,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1hii77tzvjf": {
+    "status": "machine",
+    "translatedHash": "37mgx0lqxj",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1hlo8k9xo3x": {
     "status": "approved",
     "translatedHash": "9vtso51ypx",
@@ -825,6 +831,14 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "255y30e68wq": {
+    "status": "machine",
+    "translatedHash": "14qjq98v9nq",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Modo claro (masculino, concuerda con 'modo')."
+  },
   "256vn5z2tdv": {
     "status": "approved",
     "translatedHash": "2dtj3zhvdoh",
@@ -963,6 +977,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "2cwdszru8kc": {
+    "status": "machine",
+    "translatedHash": "20na5oozv28",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "2d1tgphjtee": {
     "status": "approved",
     "translatedHash": "9bl98y8clj",
@@ -1070,6 +1090,14 @@
     "translatedHash": "1ubsgeblkm7",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "5visy0kfrp": {
+    "status": "machine",
+    "translatedHash": "n6mk3jq9su",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Modo oscuro."
   },
   "6o2ah1zui8": {
     "status": "approved",
@@ -1474,6 +1502,12 @@
     "translatedHash": "tzx7svj2ys",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "oupwk6przu": {
+    "status": "machine",
+    "translatedHash": "1on2fru9ag4",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "pqxfkyyz3z": {
     "status": "approved",

@@ -27,5 +27,5 @@ pub use service::{
 pub use song::{SPLIT_MARKER, Slide, Song, SongProblem, Verse};
 pub use state::{Blank, DisplayState, Transition};
 pub use store::{LiveSnapshot, Store};
-pub use settings::{DEFAULT_PORT, Language, Settings, valid_pin};
+pub use settings::{Appearance, DEFAULT_PORT, Language, Settings, valid_pin};
 pub use theme::{Align, DEFAULT_THEME_NAME, Theme, TransitionKind, VAlign, parse_color};

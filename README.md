@@ -158,6 +158,9 @@ Settings (`⌘,`, Settings… in the live pane, or the Asaf menu), all saved in
 the library as soon as they change:
 
 - **Language**: English or Español for the console. It switches at once.
+- **Appearance**: System, Light or Dark for the console. System follows
+  macOS and switches when it does. (The remote page follows the phone's own
+  light or dark setting.)
 - **Default theme**.
 - **Projector display**: chosen in the live pane, remembered by the
   display's UUID across restarts, and the projector returns to it when it's
@@ -430,7 +433,7 @@ purpose, since the Rust extractor writes the catalog).
 | `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
 | `crates/i18n` (`asaf-i18n`) | Localization in duckalization's format: message IDs (`id.rs`, the same hash as `@duckalization/id`), target catalogs and lookups (`catalog.rs`), plural rules (`plural.rs`), and the extractor that writes `locales/en.json` + `en.meta.json` (`extract.rs`, `bin/i18n-extract.rs`). No UI deps. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs) and light/dark appearance (`appearance.rs`), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
 | `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port, LAN access, PIN and media folder from the settings; a new PIN reaches it at once), projector (remembered display) and console (the LAN address of the remote); `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
 | `packaging/macos` | `package.sh` (builds `Asaf.app`), `Info.plist.in`, the placeholder icon. |
 

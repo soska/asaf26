@@ -111,11 +111,12 @@ impl Console {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        // The console speaks the language from the settings, and the projector
-        // starts in the library's default theme.
+        // The console speaks the language and has the appearance from the
+        // settings, and the projector starts in the library's default theme.
         let settings = library.lock().unwrap().settings().unwrap_or_default();
         cx.set_global(UiLanguage(settings.language));
         crate::set_menus(cx);
+        crate::set_appearance(settings.appearance, cx);
         if let Ok(theme) = library.lock().unwrap().default_theme() {
             store.set_default_theme(theme);
         }
@@ -144,6 +145,8 @@ impl Console {
             }),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
             cx.observe_global_in::<UiLanguage>(window, |this, window, cx| this.language_changed(window, cx)),
+            // macOS switched between light and dark.
+            cx.observe_window_appearance(window, |_, window, cx| crate::appearance::system_appearance_changed(window, cx)),
             // Don't lose the last half second of changes on ⌘Q.
             cx.on_app_quit(|this, _| {
                 this.service.flush_autosave();
