@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use asaf_i18n::Message;
 
 /// The languages the console ships, by catalog file name.
-const TARGETS: [&str; 1] = ["es"];
+const TARGETS: [&str; 1] = ["es-MX"];
 
 fn locales() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../locales")

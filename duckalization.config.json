@@ -2,5 +2,9 @@
   "include": [],
   "outDir": "locales",
   "sourceLocale": "en",
-  "targetLocales": ["es"]
+  "targetLocales": ["es-MX"],
+  "glossary": "locales/glossary.json",
+  "style": {
+    "es-MX": "./locales/style/es-MX.md"
+  }
 }

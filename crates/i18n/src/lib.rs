@@ -2,7 +2,7 @@
 //! (<https://github.com/soska/duckalization>): the English text is the
 //! message, and its ID is a hash of that text. `locales/en.json` and
 //! `en.meta.json` are written by the extractor; target catalogs
-//! (`locales/es.json`) are made with `duckalize translate` and read here at
+//! (`locales/es-MX.json`) are made with `duckalize translate` and read here at
 //! runtime. No UI deps.
 //!
 //! The calls the extractor finds and the console's `Lang` provides (string

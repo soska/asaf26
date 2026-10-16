@@ -386,9 +386,15 @@ Arguments must be string literals so the extractor can find them.
   are written by `cargo run -p asaf-i18n --bin i18n-extract`. A test fails
   when they're out of date. **Don't run `duckalize extract`** here: it only
   reads JS/TS and would empty the catalog.
-- `locales/es.json` is the Spanish catalog, built into the binary. Tests in
-  `asaf-i18n` fail on a missing translation, a translation of a message that
-  no longer exists, or changed placeholders. A missing one shows English.
+- `locales/es-MX.json` is the Spanish (Mexico) catalog, built into the
+  binary. Tests in `asaf-i18n` fail on a missing translation, a translation
+  of a message that no longer exists, or changed placeholders. A missing one
+  shows English.
+- `locales/glossary.json` fixes how Asaf's terms are translated (servicio,
+  proyectar, diapositiva…) and which names stay as they are (OpenLP, PIN…);
+  `locales/style/es-MX.md` is the style guide (Mexican Spanish, tú, short
+  labels). Briefs include both, and `translate lint` warns when a
+  translation doesn't use a glossary term.
 
 After changing the console's text, from the repo root (Node is only needed
 for translating):
@@ -396,9 +402,10 @@ for translating):
 ```sh
 cargo run -p asaf-i18n --bin i18n-extract
 npx @duckalization/cli@0.1.0 translate status
-npx @duckalization/cli@0.1.0 translate brief       # → locales/.work/es.brief.json
-# an agent translates the brief (see duckalization's llms.txt) into es.out.json
-npx @duckalization/cli@0.1.0 translate apply locales/.work/es.out.json --by claude
+npx @duckalization/cli@0.1.0 translate brief       # → locales/.work/es-MX.brief.json
+# an agent translates the brief (see duckalization's llms.txt) into es-MX.out.json
+npx @duckalization/cli@0.1.0 translate apply locales/.work/es-MX.out.json --by claude
+npx @duckalization/cli@0.1.0 translate lint        # glossary, placeholders
 npx @duckalization/cli@0.1.0 translate prune       # drop translations of removed text
 npx @duckalization/cli@0.1.0 review status         # machine / approved / edited
 ```

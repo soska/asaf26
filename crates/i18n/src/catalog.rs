@@ -1,4 +1,4 @@
-//! A target-language catalog (`locales/es.json`) and lookups by English text.
+//! A target-language catalog (`locales/es-MX.json`) and lookups by English text.
 //! A message that isn't in the catalog comes back in English.
 
 use std::collections::{BTreeMap, HashMap};

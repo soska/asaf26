@@ -38,7 +38,7 @@ pub const fn en(text: &'static str) -> &'static str {
 
 // Built into the binary, so an installed app reads nothing from disk.
 static SPANISH_CATALOG: LazyLock<Catalog> = LazyLock::new(|| {
-    Catalog::from_json("es", include_str!("../../../locales/es.json")).expect("locales/es.json is a valid catalog")
+    Catalog::from_json("es-MX", include_str!("../../../locales/es-MX.json")).expect("locales/es-MX.json is a valid catalog")
 });
 
 impl Lang {
