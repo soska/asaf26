@@ -19,6 +19,7 @@ use gpui::{
 
 use crate::appearance::set_appearance;
 use crate::i18n::{UiLanguage, en, lang, set_language};
+use crate::icons::IconName;
 use crate::{SharedLibrary, transfer};
 
 /// The settings were changed (and saved).
@@ -227,7 +228,13 @@ impl Render for SettingsWindow {
                             Appearance::Light => en("Light"),
                             Appearance::Dark => en("Dark"),
                         };
+                        let icon = match appearance {
+                            Appearance::System => IconName::Monitor,
+                            Appearance::Light => IconName::Sun,
+                            Appearance::Dark => IconName::Moon,
+                        };
                         Button::new(format!("appearance-{}", appearance.code()))
+                            .icon(icon)
                             .small()
                             .label(l.t(label))
                             .selected(self.settings.appearance == appearance)
@@ -292,7 +299,7 @@ impl Render for SettingsWindow {
             .child(
                 section(en("Migrate from OpenLP"))
                     .child(note(en("Imports every song and Bible from an OpenLP data folder in one step. OpenLP's files aren't changed; songs and Bibles already here are skipped.")))
-                    .child(h_flex().child(Button::new("openlp-import").small().label(l.t("Import from OpenLP…")).on_click(cx.listener(|this, _, window, cx| {
+                    .child(h_flex().child(Button::new("openlp-import").icon(IconName::Download).small().label(l.t("Import from OpenLP…")).on_click(cx.listener(|this, _, window, cx| {
                             transfer::import_openlp(this.library.clone(), window, cx, |_, cx| cx.emit(LibraryChanged))
                         })))),
             )

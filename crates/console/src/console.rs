@@ -6,7 +6,7 @@ use asaf_library::SongSummary;
 use asaf_projector::Projector;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
-use gpui::component::{ActiveTheme as _, Disableable as _, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
+use gpui::component::{ActiveTheme as _, Disableable as _, Icon, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
 use gpui::component::notification::Notification;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
@@ -20,6 +20,7 @@ use gpui::{
 use crate::bible::BibleState;
 use crate::editor::{SongEditor, SongSaved};
 use crate::i18n::{UiLanguage, lang};
+use crate::icons::IconName;
 use crate::settings::{LibraryChanged, SettingsChanged, SettingsWindow};
 use crate::theme_editor::{ThemeEditor, ThemesChanged};
 use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState, restore_problem_notice};
@@ -545,8 +546,9 @@ impl Console {
     fn left_column(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let l = lang(cx);
         let theme = cx.theme();
-        let tab = |id: &'static str, label: &'static str, mode: Mode, tip: &'static str, cx: &mut Context<Self>| {
+        let tab = |id: &'static str, icon: IconName, label: &'static str, mode: Mode, tip: &'static str, cx: &mut Context<Self>| {
             Button::new(id)
+                .icon(icon)
                 .small()
                 .ghost()
                 .label(label)
@@ -565,8 +567,8 @@ impl Console {
                     .gap_1()
                     .px_3()
                     .pt_3()
-                    .child(tab("tab-songs", l.t("Songs"), Mode::Songs, l.t("Songs (⌘1)"), cx))
-                    .child(tab("tab-bible", l.t("Bible"), Mode::Bible, l.t("Bible (⌘2)"), cx)),
+                    .child(tab("tab-songs", IconName::Music, l.t("Songs"), Mode::Songs, l.t("Songs (⌘1)"), cx))
+                    .child(tab("tab-bible", IconName::BookOpen, l.t("Bible"), Mode::Bible, l.t("Bible (⌘2)"), cx)),
             )
             .child(match self.mode {
                 Mode::Songs => self.library_column(window, cx).into_any_element(),
@@ -591,6 +593,7 @@ impl Console {
                             .child(div().flex_1().font_weight(FontWeight::BOLD).child(l.t("Songs")))
                             .child(
                                 Button::new("new-song")
+                                    .icon(IconName::Plus)
                                     .small()
                                     .label(l.t("New"))
                                     .tooltip(l.t("New song (⌘N)"))
@@ -598,20 +601,20 @@ impl Console {
                             )
                             .child(
                                 Button::new("import")
+                                    .icon(IconName::Download)
                                     .small()
-                                    .label(l.t("Import…"))
                                     .tooltip(l.t("Import OpenLyrics files or folders"))
                                     .on_click(cx.listener(|_, _, window, cx| transfer::import(window, cx))),
                             )
                             .child(
                                 Button::new("export-all")
+                                    .icon(IconName::Upload)
                                     .small()
-                                    .label(l.t("Export…"))
                                     .tooltip(l.t("Export every song as OpenLyrics into a folder"))
                                     .on_click(cx.listener(|_, _, window, cx| transfer::export_all(window, cx))),
                             ),
                     )
-                    .child(div().key_context("SongSearch").child(Input::new(&self.search).cleanable(true))),
+                    .child(div().key_context("SongSearch").child(Input::new(&self.search).prefix(Icon::new(IconName::Search).text_color(theme.muted_foreground)).cleanable(true))),
             )
             .child(
                 uniform_list(
@@ -728,14 +731,14 @@ impl Console {
                             .child(div().truncate().text_base().font_weight(FontWeight::BOLD).child(song.title.clone()))
                             .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(subtitle)),
                     )
-                    .child(Button::new("export-song").small().ghost().label(l.t("Export…")).on_click(cx.listener(
+                    .child(Button::new("export-song").icon(IconName::Upload).small().ghost().label(l.t("Export…")).on_click(cx.listener(
                         |this, _, window, cx| {
                             if let Some(song) = this.preview.clone() {
                                 transfer::export_song(song, window, cx);
                             }
                         },
                     )))
-                    .child(Button::new("edit-song").small().ghost().label(l.t("Edit")).tooltip(l.t("Edit song (⌘E)")).on_click(
+                    .child(Button::new("edit-song").icon(IconName::Pencil).small().ghost().label(l.t("Edit")).tooltip(l.t("Edit song (⌘E)")).on_click(
                         cx.listener(|this, _, window, cx| {
                             if let Some(song) = this.preview.clone() {
                                 this.edit(song, window, cx);
@@ -744,6 +747,7 @@ impl Console {
                     ))
                     .child(
                         Button::new("add-song")
+                            .icon(IconName::ListPlus)
                             .small()
                             .label(l.t("Add"))
                             .tooltip(l.t("Add to the service (⇧⏎ in search)"))
@@ -751,6 +755,7 @@ impl Console {
                     )
                     .child(
                         Button::new("go-live")
+                            .icon(IconName::Play)
                             .small()
                             .primary()
                             .label(l.t("Go live"))
@@ -899,6 +904,7 @@ impl Console {
                                     .child(div().flex_1().min_w_0().truncate().child(self.display_url.clone()))
                                     .child(
                                         Button::new("open-themes")
+                                            .icon(IconName::Palette)
                                             .xsmall()
                                             .ghost()
                                             .label(l.t("Themes…"))
@@ -907,6 +913,7 @@ impl Console {
                                     )
                                     .child(
                                         Button::new("open-settings")
+                                            .icon(IconName::Settings)
                                             .xsmall()
                                             .ghost()
                                             .label(l.t("Settings…"))
@@ -931,31 +938,36 @@ impl Console {
             .border_color(theme.border)
             .child(
                 Button::new("prev")
-                    .label(l.t("◀  Previous"))
+                    .icon(IconName::ChevronLeft)
+                    .label(l.t("Previous"))
                     .disabled(at_start)
                     .on_click(cx.listener(|this, _, _, cx| this.command(Command::Previous, cx))),
             )
             .child(
                 Button::new("next")
-                    .label(l.t("Next  ▶"))
+                    .label(l.t("Next"))
+                    .child(Icon::new(IconName::ChevronRight))
                     .disabled(at_end)
                     .on_click(cx.listener(|this, _, _, cx| this.command(Command::Next, cx))),
             )
             .child(div().flex_1())
             .child(
                 Button::new("hide-text")
+                    .icon(IconName::EyeOff)
                     .label(l.t("Hide text"))
                     .when(live.blank == Blank::Background, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Background }, cx))),
             )
             .child(
                 Button::new("logo")
+                    .icon(IconName::Image)
                     .label(l.t("Logo"))
                     .when(live.blank == Blank::Logo, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Logo }, cx))),
             )
             .child(
                 Button::new("blank")
+                    .icon(IconName::MonitorOff)
                     .label(l.t("Blank"))
                     .when(live.blank == Blank::Black, |b| b.danger())
                     .on_click(cx.listener(|this, _, _, cx| this.command(Command::ToggleBlank { mode: Blank::Black }, cx))),

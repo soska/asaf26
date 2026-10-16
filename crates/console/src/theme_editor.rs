@@ -21,6 +21,7 @@ use gpui::{
 };
 
 use crate::i18n::{Lang, en, lang};
+use crate::icons::IconName;
 use crate::preview::{color, image_source, screen};
 use crate::{SaveTheme, SharedLibrary};
 
@@ -691,18 +692,21 @@ impl Render for ThemeEditor {
                     .py_3()
                     .border_t_1()
                     .border_color(theme.border)
-                    .child(Button::new("theme-new").small().label(l.t("New")).on_click(cx.listener(|this, _, w, cx| this.add(false, w, cx))))
+                    .child(Button::new("theme-new").icon(IconName::Plus).small().label(l.t("New")).on_click(cx.listener(|this, _, w, cx| this.add(false, w, cx))))
                     .child(Button::new("theme-duplicate")
+                            .icon(IconName::Copy)
                             .small()
                             .label(l.t("Duplicate"))
                             .on_click(cx.listener(|this, _, w, cx| this.add(true, w, cx))))
                     .child(Button::new("theme-delete")
+                            .icon(IconName::Trash)
                             .small()
                             .ghost()
                             .label(l.t("Delete…"))
                             .disabled(is_default)
                             .on_click(cx.listener(|this, _, w, cx| this.delete(w, cx))))
                     .child(Button::new("theme-default")
+                            .icon(IconName::Star)
                             .small()
                             .ghost()
                             .label(if is_default { l.t("The default theme") } else { l.t("Make default") })
@@ -710,6 +714,7 @@ impl Render for ThemeEditor {
                             .on_click(cx.listener(|this, _, w, cx| this.make_default(w, cx))))
                     .child(div().flex_1().text_xs().text_color(muted).when(dirty, |d| d.child(l.t("Unsaved changes"))))
                     .child(Button::new("theme-save")
+                            .icon(IconName::Save)
                             .small()
                             .primary()
                             .label(l.t("Save  ⌘S"))

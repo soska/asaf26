@@ -20,7 +20,8 @@ use asaf_library::service::{
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
-use gpui::component::{ActiveTheme as _, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
+use gpui::component::tooltip::Tooltip;
+use gpui::component::{ActiveTheme as _, Icon, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AppContext as _, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, PathPromptOptions,
@@ -30,6 +31,7 @@ use gpui::{
 
 use crate::console::{Console, PreviewSource};
 use crate::i18n::{Lang, lang};
+use crate::icons::IconName;
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -616,8 +618,10 @@ impl Console {
             let ghost = DraggedItem { key: item.key, title: title.clone() };
             h_flex()
                 .id(("service-item", i))
+                .group("service-item")
                 .gap_2()
-                .px_2()
+                .pl_0p5()
+                .pr_2()
                 .py_1p5()
                 .rounded_md()
                 .border_1()
@@ -639,6 +643,13 @@ impl Console {
                 .child(
                     div()
                         .flex_none()
+                        .opacity(0.)
+                        .group_hover("service-item", |s| s.opacity(1.))
+                        .child(Icon::new(IconName::GripVertical).xsmall().text_color(theme.muted_foreground)),
+                )
+                .child(
+                    div()
+                        .flex_none()
                         .w(px(18.))
                         .text_xs()
                         .text_color(if live { theme.danger } else { theme.muted_foreground })
@@ -657,13 +668,24 @@ impl Console {
                             d.child(div().truncate().text_xs().text_color(theme.muted_foreground).child(extra))
                         }),
                 )
-                .child(
+                .child({
+                    let (icon, kind) = if item.is_song() { (IconName::Music, l.t("Song")) } else { (IconName::BookOpen, l.t("Bible")) };
                     div()
+                        .id(("item-kind", i))
                         .flex_none()
-                        .text_xs()
-                        .text_color(theme.muted_foreground)
-                        .child(if item.is_song() { l.t("Song") } else { l.t("Bible") }),
-                )
+                        .child(Icon::new(icon).small().text_color(theme.muted_foreground))
+                        .tooltip(move |window, cx| Tooltip::new(kind).build(window, cx))
+                })
+                .when(cued, |d| {
+                    d.child(
+                        Button::new(("remove-item", i))
+                            .icon(IconName::Close)
+                            .xsmall()
+                            .ghost()
+                            .tooltip(l.t("Remove from the service (⌘⌫)"))
+                            .on_click(cx.listener(|this, _, _, cx| this.remove_cued_item(cx))),
+                    )
+                })
                 .test_support()
         });
 
@@ -688,14 +710,15 @@ impl Console {
                                     .font_weight(FontWeight::BOLD)
                                     .child(state.title()),
                             )
-                            .child(Button::new("service-new").xsmall().ghost().label(l.t("New")).tooltip(l.t("New service (⇧⌘N)")).on_click(
+                            .child(Button::new("service-new").icon(IconName::FilePlus).xsmall().ghost().label(l.t("New")).tooltip(l.t("New service (⇧⌘N)")).on_click(
                                 cx.listener(|this, _, window, cx| this.new_service(window, cx)),
                             ))
-                            .child(Button::new("service-open").xsmall().ghost().label(l.t("Open…")).tooltip(l.t("Open a service (⌘O)")).on_click(
+                            .child(Button::new("service-open").icon(IconName::FolderOpen).xsmall().ghost().label(l.t("Open…")).tooltip(l.t("Open a service (⌘O)")).on_click(
                                 cx.listener(|this, _, window, cx| this.open_service(window, cx)),
                             ))
                             .child(
                                 Button::new("service-save")
+                                    .icon(IconName::Save)
                                     .xsmall()
                                     .label(l.t("Save"))
                                     .tooltip(l.t("Save (⌘S), Save As (⇧⌘S)"))
@@ -842,6 +865,7 @@ impl Console {
                     )
                     .child(
                         Button::new("cue-go-live")
+                            .icon(IconName::Play)
                             .small()
                             .primary()
                             .label(l.t("Go live"))
