@@ -25,6 +25,9 @@ pub struct Theme {
     pub size_min_vh: f32,
     pub size_max_vh: f32,
     pub line_height: f32,
+    /// Extra space between letters, in em (negative tightens).
+    pub letter_spacing_em: f32,
+    pub text_case: TextCase,
     /// Colours are `#rgb`, `#rrggbb` or `#rrggbbaa`.
     pub color: String,
     /// `**strong**` words in lyrics: bolder, in this colour (empty: the
@@ -47,6 +50,12 @@ pub struct Theme {
     pub margin_x_pct: f32,
     pub margin_y_pct: f32,
     pub background_color: String,
+    /// Empty for a solid background; else it fades from `background_color`
+    /// at the top left to this colour at the bottom right.
+    pub gradient_color: String,
+    /// How much the background (colour, gradient and image) is darkened,
+    /// 0 to [`MAX_DIM`], so text stands out on a busy picture.
+    pub background_dim: f32,
     /// URL on the local server: `/media/<file>` (imported) or `/assets/…`.
     pub background_image: Option<String>,
     /// Shown centred over the background when blanked to the logo.
@@ -62,6 +71,27 @@ pub enum Align {
     #[default]
     Center,
     Right,
+}
+
+/// How the slide text's letters are cased on screen (the lyrics keep theirs).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TextCase {
+    /// As typed.
+    #[default]
+    Normal,
+    /// ALL CAPS.
+    Upper,
+}
+
+impl TextCase {
+    pub const ALL: [TextCase; 2] = [TextCase::Normal, TextCase::Upper];
+    pub fn css(self) -> &'static str {
+        match self {
+            TextCase::Normal => "none",
+            TextCase::Upper => "uppercase",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -137,6 +167,8 @@ impl Default for Theme {
             size_min_vh: 4.0,
             size_max_vh: 11.0,
             line_height: 1.2,
+            letter_spacing_em: 0.0,
+            text_case: TextCase::Normal,
             color: "#ffffff".into(),
             strong_color: "#ffd166".into(),
             em_color: String::new(),
@@ -150,6 +182,8 @@ impl Default for Theme {
             margin_x_pct: 6.0,
             margin_y_pct: 8.0,
             background_color: "#101018".into(),
+            gradient_color: String::new(),
+            background_dim: 0.0,
             background_image: Some("/assets/background.svg".into()),
             logo: Some("/assets/logo.svg".into()),
             transition: TransitionKind::Fade,
@@ -161,6 +195,8 @@ impl Default for Theme {
 /// Limits the editor and [`Theme::sanitized`] enforce.
 pub const SIZE_RANGE_VH: (f32, f32) = (1.0, 40.0);
 pub const MAX_TRANSITION_MS: u32 = 5000;
+pub const LETTER_SPACING_RANGE_EM: (f32, f32) = (-0.1, 0.5);
+pub const MAX_DIM: f32 = 0.9;
 
 /// An RGBA colour parsed from `#rgb`, `#rrggbb` or `#rrggbbaa`.
 pub fn parse_color(text: &str) -> Option<[u8; 4]> {
@@ -251,6 +287,8 @@ impl Theme {
             ("--font-family", format!("{}, system-ui, sans-serif", css_string(&self.font_family))),
             ("--font-weight", self.font_weight.to_string()),
             ("--line-height", trim_float(self.line_height, 2)),
+            ("--letter-spacing", format!("{}em", trim_float(self.letter_spacing_em, 3))),
+            ("--text-transform", self.text_case.css().into()),
             ("--color", css_color(&self.color)),
             ("--strong-color", or_text_color(&self.strong_color)),
             ("--em-color", or_text_color(&self.em_color)),
@@ -266,6 +304,15 @@ impl Theme {
             ("--my", format!("{}vh", trim_float(self.margin_y_pct, 2))),
             ("--bg-color", css_color(&self.background_color)),
             ("--bg-image", css_url(self.background_image.as_deref())),
+            ("--bg-gradient", match parse_color(&self.gradient_color) {
+                Some(_) => format!(
+                    "linear-gradient(135deg, {}, {})",
+                    css_color(&self.background_color),
+                    css_color(&self.gradient_color)
+                ),
+                None => "none".into(),
+            }),
+            ("--bg-dim", trim_float(self.background_dim, 2)),
             ("--logo", css_url(self.logo.as_deref())),
         ]
     }
@@ -288,6 +335,9 @@ impl Theme {
         self.size_min_vh = clamp(self.size_min_vh, SIZE_RANGE_VH.0, SIZE_RANGE_VH.1, d.size_min_vh);
         self.size_max_vh = clamp(self.size_max_vh, self.size_min_vh, SIZE_RANGE_VH.1, d.size_max_vh.max(self.size_min_vh));
         self.line_height = clamp(self.line_height, 0.8, 3.0, d.line_height);
+        self.letter_spacing_em =
+            clamp(self.letter_spacing_em, LETTER_SPACING_RANGE_EM.0, LETTER_SPACING_RANGE_EM.1, d.letter_spacing_em);
+        self.background_dim = clamp(self.background_dim, 0.0, MAX_DIM, d.background_dim);
         self.outline_vh = clamp(self.outline_vh, 0.0, 3.0, d.outline_vh);
         self.shadow_blur_vh = clamp(self.shadow_blur_vh, 0.0, 10.0, d.shadow_blur_vh);
         self.shadow_offset_vh = clamp(self.shadow_offset_vh, 0.0, 10.0, d.shadow_offset_vh);
@@ -305,7 +355,11 @@ impl Theme {
                 None => default.clone(),
             };
         }
-        for (value, default) in [(&mut self.strong_color, &d.strong_color), (&mut self.em_color, &d.em_color)] {
+        for (value, default) in [
+            (&mut self.strong_color, &d.strong_color),
+            (&mut self.em_color, &d.em_color),
+            (&mut self.gradient_color, &d.gradient_color),
+        ] {
             *value = match parse_color(value) {
                 Some(_) => value.trim().to_ascii_lowercase(),
                 None if value.trim().is_empty() => String::new(),
@@ -317,6 +371,93 @@ impl Theme {
         }
         self
     }
+}
+
+/// Bump when [`builtin_themes`] gains a theme, so libraries get it (once).
+pub const BUILTIN_THEMES_VERSION: u32 = 1;
+
+/// The built-in logo in dark ink, for light backgrounds.
+const DARK_LOGO: &str = "/assets/logo-dark.svg";
+
+/// The curated themes every library gets, besides "Default": four dark
+/// gradients, two light ones (for bright rooms), one for scripture and one
+/// for big, bold lyrics. Names read the same in English and Spanish.
+pub fn builtin_themes() -> Vec<Theme> {
+    let base = Theme { background_image: None, ..Theme::default() };
+    let shadow = |color: &str, blur: f32, offset: f32| (color.to_string(), blur, offset);
+    let themed = |name: &str, f: &dyn Fn(&mut Theme)| {
+        let mut t = Theme { name: name.into(), ..base.clone() };
+        f(&mut t);
+        t
+    };
+    let set_shadow = |t: &mut Theme, (color, blur, offset): (String, f32, f32)| {
+        (t.shadow_color, t.shadow_blur_vh, t.shadow_offset_vh) = (color, blur, offset);
+    };
+    vec![
+        themed("Aurora", &|t| {
+            (t.font_family, t.font_weight) = ("Montserrat".into(), 600);
+            (t.size_max_vh, t.line_height, t.letter_spacing_em) = (10.0, 1.25, 0.01);
+            (t.strong_color, t.outline_vh) = ("#fcd34d".into(), 0.0);
+            set_shadow(t, shadow("#0000008c", 1.5, 0.3));
+            (t.background_color, t.gradient_color) = ("#0b1026".into(), "#5b21b6".into());
+            t.transition_ms = 400;
+        }),
+        themed("Jade", &|t| {
+            t.font_weight = 600;
+            (t.color, t.strong_color, t.outline_vh) = ("#f0fdf4".into(), "#6ee7b7".into(), 0.0);
+            set_shadow(t, shadow("#00000080", 1.2, 0.3));
+            (t.background_color, t.gradient_color) = ("#022c22".into(), "#0f766e".into());
+        }),
+        themed("Coral", &|t| {
+            (t.font_family, t.font_weight, t.text_case) = ("Montserrat".into(), 700, TextCase::Upper);
+            (t.size_min_vh, t.size_max_vh, t.line_height, t.letter_spacing_em) = (3.5, 8.5, 1.3, 0.05);
+            (t.color, t.strong_color, t.outline_vh) = ("#fff7ed".into(), "#fdba74".into(), 0.0);
+            set_shadow(t, shadow("#00000066", 1.0, 0.2));
+            (t.background_color, t.gradient_color) = ("#3f0d1f".into(), "#be123c".into());
+            (t.transition, t.transition_ms) = (TransitionKind::Slide, 450);
+        }),
+        themed("Sepia", &|t| {
+            (t.font_family, t.font_weight) = ("Lora".into(), 500);
+            (t.size_min_vh, t.size_max_vh, t.line_height) = (3.5, 8.0, 1.4);
+            (t.color, t.strong_color, t.outline_vh) = ("#f5ead6".into(), "#e9b872".into(), 0.0);
+            set_shadow(t, shadow("#00000099", 1.0, 0.2));
+            (t.align, t.margin_x_pct, t.margin_y_pct) = (Align::Left, 10.0, 12.0);
+            (t.background_color, t.gradient_color) = ("#1a120b".into(), "#3d2b1f".into());
+            t.transition_ms = 500;
+        }),
+        themed("Lava", &|t| {
+            (t.font_family, t.font_weight, t.text_case) = ("Oswald".into(), 600, TextCase::Upper);
+            (t.size_min_vh, t.size_max_vh, t.line_height, t.letter_spacing_em) = (5.0, 13.0, 1.1, 0.03);
+            (t.strong_color, t.outline_color, t.outline_vh) = ("#ff8a3d".into(), "#000000".into(), 0.3);
+            set_shadow(t, shadow("#000000cc", 1.5, 0.4));
+            (t.valign, t.margin_y_pct) = (VAlign::Bottom, 12.0);
+            (t.background_color, t.gradient_color) = ("#0a0a0a".into(), "#3b0d02".into());
+            t.transition = TransitionKind::Slide;
+        }),
+        themed("Oasis", &|t| {
+            (t.font_family, t.font_weight, t.line_height) = ("Lora".into(), 600, 1.3);
+            (t.color, t.strong_color, t.outline_vh) = ("#1f2937".into(), "#b45309".into(), 0.0);
+            set_shadow(t, shadow("#00000000", 0.0, 0.0));
+            (t.background_color, t.gradient_color) = ("#fbf7ef".into(), "#eadcc2".into());
+            t.logo = Some(DARK_LOGO.into());
+            t.transition_ms = 350;
+        }),
+        themed("Polar", &|t| {
+            t.font_weight = 600;
+            (t.color, t.strong_color, t.outline_vh) = ("#0f172a".into(), "#0369a1".into(), 0.0);
+            set_shadow(t, shadow("#00000000", 0.0, 0.0));
+            (t.background_color, t.gradient_color) = ("#f8fafc".into(), "#dbeafe".into());
+            t.logo = Some(DARK_LOGO.into());
+        }),
+        themed("Gala", &|t| {
+            (t.font_family, t.font_weight, t.text_case) = ("Montserrat".into(), 400, TextCase::Upper);
+            (t.size_min_vh, t.size_max_vh, t.line_height, t.letter_spacing_em) = (3.5, 8.0, 1.5, 0.12);
+            (t.color, t.strong_color, t.outline_vh) = ("#f5f5f5".into(), "#d4af37".into(), 0.0);
+            set_shadow(t, shadow("#000000b3", 1.0, 0.0));
+            (t.background_color, t.gradient_color) = ("#050505".into(), "#1c1917".into());
+            t.transition_ms = 700;
+        }),
+    ]
 }
 
 /// Theme images must come from the local server (`/media/…`, `/assets/…`),
@@ -380,6 +521,14 @@ mod tests {
             ("--shift", |_| {}, "0vh"),
             ("--shift", |t| t.transition = TransitionKind::Slide, "6vh"),
             ("--justify", |t| t.align = Align::Right, "flex-end"),
+            ("--letter-spacing", |_| {}, "0em"),
+            ("--letter-spacing", |t| t.letter_spacing_em = 0.08, "0.08em"),
+            ("--text-transform", |_| {}, "none"),
+            ("--text-transform", |t| t.text_case = TextCase::Upper, "uppercase"),
+            ("--bg-gradient", |_| {}, "none"),
+            ("--bg-gradient", |t| t.gradient_color = "#4c1d95".into(), "linear-gradient(135deg, rgb(16, 16, 24), rgb(76, 29, 149))"),
+            ("--bg-dim", |_| {}, "0"),
+            ("--bg-dim", |t| t.background_dim = 0.35, "0.35"),
             ("--strong-color", |_| {}, "rgb(255, 209, 102)"),
             ("--strong-color", |t| t.strong_color = " ".into(), "inherit"),
             ("--em-color", |_| {}, "inherit"),
@@ -411,6 +560,9 @@ mod tests {
             color: "red".into(),
             outline_color: "#ABCDEF".into(),
             strong_color: "gold".into(),
+            letter_spacing_em: 2.0,
+            background_dim: -1.0,
+            gradient_color: "nope".into(),
             em_color: " ".into(),
             outline_vh: 99.0,
             shadow_blur_vh: -1.0,
@@ -429,10 +581,27 @@ mod tests {
         assert_eq!(t.color, "#ffffff");
         assert_eq!(t.outline_color, "#abcdef");
         assert_eq!((t.strong_color.as_str(), t.em_color.as_str()), ("#ffd166", ""));
+        assert_eq!((t.letter_spacing_em, t.background_dim, t.gradient_color.as_str()), (0.5, 0.0, ""));
         assert_eq!((t.outline_vh, t.shadow_blur_vh, t.margin_x_pct), (3.0, 0.0, 40.0));
         assert_eq!(t.transition_ms, MAX_TRANSITION_MS);
         assert_eq!((t.background_image, t.logo), (None, None));
         assert_eq!(Theme::default().sanitized(), Theme::default());
+    }
+
+    #[test]
+    fn builtin_themes_are_valid_and_distinct() {
+        let themes = builtin_themes();
+        assert_eq!(themes.len(), 8);
+        for t in &themes {
+            assert_eq!(&t.clone().sanitized(), t, "{} is already in range", t.name);
+            assert!(crate::theme::parse_color(&t.gradient_color).is_some(), "{} has a gradient", t.name);
+            assert_ne!(t.name, DEFAULT_THEME_NAME);
+            let light = parse_color(&t.background_color).unwrap().iter().take(3).map(|&c| u32::from(c)).sum::<u32>() > 600;
+            assert_eq!(t.logo.as_deref() == Some(DARK_LOGO), light, "{}: the logo shows on its background", t.name);
+        }
+        let mut names: Vec<_> = themes.iter().map(|t| t.name.to_lowercase()).collect();
+        names.dedup();
+        assert_eq!(names.len(), themes.len());
     }
 
     #[test]

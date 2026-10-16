@@ -1070,7 +1070,7 @@ pub(crate) mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let mut lib = Library::open_in_memory().unwrap();
+        let mut lib = crate::test_library();
         prepare(&mut lib);
         lib.save(&sample_song()).unwrap();
         lib.save(&Song {
@@ -1519,7 +1519,7 @@ pub(crate) mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let mut lib = Library::open_in_memory().unwrap();
+        let mut lib = crate::test_library();
         lib.save(&sample_song()).unwrap();
         lib.save(&Song { title: "Cuán Grande Es Él".into(), verses: vec![Verse::new("v1", "Señor mi Dios")], ..Default::default() })
             .unwrap();

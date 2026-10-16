@@ -6,10 +6,11 @@
 
 use std::sync::{Arc, LazyLock};
 
-use asaf_core::{Align, Theme, VAlign, markup, parse_color};
+use asaf_core::{Align, TextCase, Theme, VAlign, markup, parse_color};
 use gpui::{
-    AnyElement, Div, FontStyle, FontWeight, HighlightStyle, Hsla, Image, ImageFormat, ImageSource, IntoElement,
-    ObjectFit, ParentElement, Pixels, Rgba, Styled, StyledImage as _, StyledText, TextAlign, div, img, px, relative,
+    AnyElement, Background, Div, FontStyle, FontWeight, HighlightStyle, Hsla, Image, ImageFormat, ImageSource,
+    IntoElement, ObjectFit, ParentElement, Pixels, Rgba, Styled, StyledImage as _, StyledText, TextAlign, div, img,
+    linear_color_stop, linear_gradient, px, relative,
 };
 
 use crate::SharedLibrary;
@@ -19,6 +20,9 @@ static BACKGROUND_SVG: LazyLock<Arc<Image>> = LazyLock::new(|| {
 });
 static LOGO_SVG: LazyLock<Arc<Image>> =
     LazyLock::new(|| Arc::new(Image::from_bytes(ImageFormat::Svg, include_bytes!("../../../display/logo.svg").to_vec())));
+static LOGO_DARK_SVG: LazyLock<Arc<Image>> = LazyLock::new(|| {
+    Arc::new(Image::from_bytes(ImageFormat::Svg, include_bytes!("../../../display/logo-dark.svg").to_vec()))
+});
 
 /// A theme colour for GPUI (black if it doesn't parse).
 pub(crate) fn color(text: &str) -> Rgba {
@@ -32,8 +36,23 @@ pub(crate) fn image_source(url: Option<&str>, library: &SharedLibrary) -> Option
     match url? {
         "/assets/background.svg" => Some(BACKGROUND_SVG.clone().into()),
         "/assets/logo.svg" => Some(LOGO_SVG.clone().into()),
+        "/assets/logo-dark.svg" => Some(LOGO_DARK_SVG.clone().into()),
         url => library.lock().unwrap().media_path(url).map(ImageSource::from),
     }
+}
+
+/// A theme's background colour, or its gradient (as display.css draws it).
+pub(crate) fn background_fill(theme: &Theme) -> Background {
+    let from = color(&theme.background_color);
+    match parse_color(&theme.gradient_color) {
+        Some(_) => linear_gradient(135., linear_color_stop(from, 0.), linear_color_stop(color(&theme.gradient_color), 1.)),
+        None => from.into(),
+    }
+}
+
+/// The theme's darkening over its background, if any.
+pub(crate) fn dim_overlay(theme: &Theme) -> Option<Div> {
+    (theme.background_dim > 0.0).then(|| div().absolute().inset_0().bg(Rgba { r: 0., g: 0., b: 0., a: theme.background_dim }))
 }
 
 /// A theme's optional colour (empty: the text's).
@@ -53,13 +72,21 @@ fn bolder(weight: FontWeight) -> FontWeight {
 /// One lyric line without its markup, its `**strong**` words bolder than
 /// `weight` and `__em__` ones italic, each in its colour when given (else the
 /// surrounding text's).
-pub(crate) fn styled_line(line: &str, weight: FontWeight, strong: Option<Hsla>, em: Option<Hsla>) -> StyledText {
-    let (text, highlights) = highlighted(line, weight, strong, em);
+/// `case` is the theme's (ALL CAPS changes the text, not just the look).
+pub(crate) fn styled_line(
+    line: &str,
+    case: TextCase,
+    weight: FontWeight,
+    strong: Option<Hsla>,
+    em: Option<Hsla>,
+) -> StyledText {
+    let (text, highlights) = highlighted(line, case, weight, strong, em);
     StyledText::new(text).with_highlights(highlights)
 }
 
 fn highlighted(
     line: &str,
+    case: TextCase,
     weight: FontWeight,
     strong: Option<Hsla>,
     em: Option<Hsla>,
@@ -68,7 +95,10 @@ fn highlighted(
     let mut highlights = Vec::new();
     for run in markup::parse(line) {
         let start = text.len();
-        text.push_str(&run.text);
+        match case {
+            TextCase::Normal => text.push_str(&run.text),
+            TextCase::Upper => text.push_str(&run.text.to_uppercase()),
+        }
         if run.strong || run.em {
             let style = HighlightStyle {
                 font_weight: run.strong.then(|| bolder(weight)),
@@ -119,7 +149,7 @@ pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSo
                 Align::Center => TextAlign::Center,
                 Align::Right => TextAlign::Right,
             })
-            .children(lines.iter().map(|l| div().child(styled_line(l, weight, strong, em))))
+            .children(lines.iter().map(|l| div().child(styled_line(l, theme.text_case, weight, strong, em))))
             .into_any_element()
     };
     // The safe area, placed like display.css places it.
@@ -166,8 +196,9 @@ pub(crate) fn screen(theme: &Theme, lines: &[String], background: Option<ImageSo
         .h(px(h))
         .overflow_hidden()
         .rounded_md()
-        .bg(color(&theme.background_color))
+        .bg(background_fill(theme))
         .children(background.map(|src| img(src).absolute().size_full().object_fit(ObjectFit::Cover)))
+        .children(dim_overlay(theme))
         .children(layers)
 }
 
@@ -178,7 +209,7 @@ mod tests {
     #[test]
     fn styled_line_drops_markers_and_marks_runs() {
         let gold: Hsla = color("#ffd166").into();
-        let (text, marks) = highlighted("**Santo**, __santo__", FontWeight(700.), Some(gold), None);
+        let (text, marks) = highlighted("**Santo**, __santo__", TextCase::Normal, FontWeight(700.), Some(gold), None);
         assert_eq!(text, "Santo, santo");
         assert_eq!(marks.len(), 2);
         assert_eq!((marks[0].0.clone(), marks[0].1.font_weight, marks[0].1.color), (0..5, Some(FontWeight(900.)), Some(gold)));
@@ -186,6 +217,8 @@ mod tests {
         assert_eq!(bolder(FontWeight(700.)), FontWeight(900.));
         assert_eq!(bolder(FontWeight(300.)), FontWeight(400.));
         assert_eq!(optional_color(""), None);
+        let (upper, marks) = highlighted("**straße** x", TextCase::Upper, FontWeight(400.), None, None);
+        assert_eq!((upper.as_str(), marks[0].0.clone()), ("STRASSE X", 0..7));
     }
 
     #[test]

@@ -2,7 +2,8 @@
 //! fields added later read back with their defaults; the `name` column is the
 //! key and wins over the name inside the JSON.
 
-use asaf_core::{DEFAULT_THEME_NAME, Settings, Theme};
+use asaf_core::theme::BUILTIN_THEMES_VERSION;
+use asaf_core::{DEFAULT_THEME_NAME, Settings, Theme, builtin_themes};
 use rusqlite::{OptionalExtension, params};
 
 use crate::{Library, Result};
@@ -147,14 +148,34 @@ impl Library {
         tx.commit()
     }
 
-    /// A new library has the built-in default theme.
-    pub(crate) fn ensure_a_theme(&mut self) -> Result<()> {
-        let count: i64 = self.conn.query_row("SELECT count(*) FROM themes", [], |r| r.get(0))?;
+    /// A new library has the default theme; every library gets the
+    /// built-in themes it hasn't had yet ([`BUILTIN_THEMES_VERSION`]), once:
+    /// a deleted one doesn't come back, and a theme already using a
+    /// built-in's name is left alone.
+    pub(crate) fn seed_themes(&mut self) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let count: i64 = tx.query_row("SELECT count(*) FROM themes", [], |r| r.get(0))?;
         if count == 0 {
             let json = serde_json::to_string(&Theme::default()).expect("serialize theme");
-            self.conn.execute("INSERT INTO themes (name, data) VALUES (?1, ?2)", params![DEFAULT_THEME_NAME, json])?;
+            tx.execute("INSERT INTO themes (name, data) VALUES (?1, ?2)", params![DEFAULT_THEME_NAME, json])?;
         }
-        Ok(())
+        let seeded: u32 = tx
+            .query_row("SELECT value FROM settings WHERE key = 'builtin_themes'", [], |r| r.get::<_, String>(0))
+            .optional()?
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        if seeded < BUILTIN_THEMES_VERSION {
+            for theme in builtin_themes() {
+                let json = serde_json::to_string(&theme).expect("serialize theme");
+                tx.execute("INSERT OR IGNORE INTO themes (name, data) VALUES (?1, ?2)", params![theme.name, json])?;
+            }
+            tx.execute(
+                "INSERT INTO settings (key, value) VALUES ('builtin_themes', ?1)
+                 ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+                [BUILTIN_THEMES_VERSION.to_string()],
+            )?;
+        }
+        tx.commit()
     }
 }
 

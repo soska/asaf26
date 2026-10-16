@@ -28,6 +28,7 @@ const DISPLAY_CSS: &str = include_str!("../../../display/display.css");
 const DISPLAY_JS: &str = include_str!("../../../display/display.js");
 const BACKGROUND_SVG: &str = include_str!("../../../display/background.svg");
 const LOGO_SVG: &str = include_str!("../../../display/logo.svg");
+const LOGO_DARK_SVG: &str = include_str!("../../../display/logo-dark.svg");
 const OBS_HTML: &str = include_str!("../../../display/obs.html");
 const OBS_CSS: &str = include_str!("../../../display/obs.css");
 const STAGE_HTML: &str = include_str!("../../../display/stage.html");
@@ -205,6 +206,7 @@ fn router(state: AppState) -> Router {
         .route("/assets/display.js", get(|| async { asset("text/javascript; charset=utf-8", DISPLAY_JS) }))
         .route("/assets/background.svg", get(|| async { asset("image/svg+xml", BACKGROUND_SVG) }))
         .route("/assets/logo.svg", get(|| async { asset("image/svg+xml", LOGO_SVG) }))
+        .route("/assets/logo-dark.svg", get(|| async { asset("image/svg+xml", LOGO_DARK_SVG) }))
         .route("/assets/fonts.css", get(|| async { asset("text/css; charset=utf-8", FONTS_CSS.as_str()) }))
         .route("/obs", get(|| async { asset("text/html; charset=utf-8", OBS_HTML) }))
         .route("/assets/obs.css", get(|| async { asset("text/css; charset=utf-8", OBS_CSS) }))

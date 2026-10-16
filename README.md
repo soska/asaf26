@@ -45,7 +45,8 @@ packaging/macos/package.sh [--zip]     # release build of Asaf.app (see "Packagi
 - The library lives at `~/Library/Application Support/Asaf/asaf.sqlite` on
   macOS (the OS data dir elsewhere), with imported theme images in `media/`
   next to it. `ASAF_DATA_DIR=/some/dir` uses another folder. A new library
-  starts with one public-domain hymn and the Default theme.
+  starts with one public-domain hymn, the Default theme and eight built-in
+  themes.
 - The current service is autosaved next to it as `autosave.asaf-service` and
   restored on every start (a damaged one is renamed `….corrupt`, or
   `….corrupt-2` and so on, and reported, never deleted).
@@ -122,12 +123,23 @@ carries on with the service.
 A theme sets the font (one of the bundled ones, Source Sans 3, Montserrat,
 Oswald and Lora, or any font installed on the machine showing the output),
 the weight, the auto-fit size range and line spacing (in % of the screen
-height), text colour, the colours of `**strong**` and `__emphasis__` words in
-lyrics (empty: the text colour), outline colour and width, shadow colour, blur and
-offset, horizontal and vertical alignment, side and top/bottom margins, the
-background colour and image, the logo shown by "blank to logo", and the
-transition between slides (fade, slide up or cut) and its duration. Colours
-are `#rrggbb` or `#rrggbbaa` (alpha).
+height), letter spacing (in em) and letters as typed or ALL CAPS, text colour,
+the colours of `**strong**` and `__emphasis__` words in lyrics (empty: the
+text colour), outline colour and width, shadow colour, blur and offset,
+horizontal and vertical alignment, side and top/bottom margins, the background
+colour (optionally a diagonal gradient to a second colour) and image, how much
+to darken the background (so text reads over a busy picture), the logo shown
+by "blank to logo", and the transition between slides (fade, slide up or cut)
+and its duration. Colours are `#rrggbb` or `#rrggbbaa` (alpha).
+
+Besides Default, every library comes with eight built-in themes: Aurora,
+Jade, Coral and Gala (dark gradients; Coral and Gala in capitals), Lava (big
+condensed capitals near the bottom), Sepia (a serif, left-aligned, for
+scripture), and Oasis and Polar (light, for bright rooms, with the logo in
+dark ink). Existing libraries get them once, when they're first opened by a
+version that has them; they're ordinary themes from then on, to edit or
+delete (a deleted one doesn't come back), and a theme of your own with the
+same name is left alone.
 
 The theme editor (`⌘T`, or Themes… in the live pane) lists the themes on the
 left (New, Duplicate, Delete…, Make default), the settings in the middle and
@@ -445,7 +457,7 @@ purpose, since the Rust extractor writes the catalog).
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders; bold and italic formatting tags map to `**strong**` and `__em__`. |
 | `crates/server` (`asaf-server`) | axum on 127.0.0.1 (or 0.0.0.0 with LAN access): display, OBS, stage and remote pages, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change, and the remote's PIN-protected command socket `/remote/ws` (`remote.rs`). `examples/display_demo.rs` serves one slide in a theme from a JSON file, `examples/remote_demo.rs` the remote, stage and OBS pages with a sample service (and a stand-in console), for checking output in a browser. |
-| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); `?monitor` and `?preview` are the console's webviews (a visible pointer; a click hands keyboard focus back to the console); `?preview` also takes its state from the console (`asafPreview(state)`) instead of the websocket; the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
+| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder) and `logo-dark.svg` (the same in dark ink, for light themes); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); `?monitor` and `?preview` are the console's webviews (a visible pointer; a click hands keyboard focus back to the console); `?preview` also takes its state from the console (`asafPreview(state)`) instead of the websocket; the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
 | `crates/i18n` (`asaf-i18n`) | Localization in duckalization's format: message IDs (`id.rs`, the same hash as `@duckalization/id`), target catalogs and lookups (`catalog.rs`), plural rules (`plural.rs`), and the extractor that writes `locales/en.json` + `en.meta.json` (`extract.rs`, `bin/i18n-extract.rs`). No UI deps. |
 | `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. Also `EmbeddedPage` (`embed.rs`): a webview placed by GPUI layout inside a console window, for the console's live monitor and the theme editor's preview. |
 | `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`, previewing with the display page) and the approximate preview it falls back to (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs) light/dark appearance (`appearance.rs`) and its Lucide icons (`icons.rs`: gpui-kit embeds only its own components' icons, so any other `IconName` used must be listed in `ExtraIcons`; a test checks), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |

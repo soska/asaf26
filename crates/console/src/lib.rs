@@ -140,3 +140,14 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("cmd-s", SaveTheme, Some("ThemeEditor")),
     ]);
 }
+
+/// An empty in-memory library with only the default theme (no built-ins),
+/// so tests can count and name themes.
+#[cfg(test)]
+pub(crate) fn test_library() -> asaf_library::Library {
+    let mut lib = asaf_library::Library::open_in_memory().unwrap();
+    for theme in asaf_core::builtin_themes() {
+        lib.delete_theme(&theme.name).unwrap();
+    }
+    lib
+}

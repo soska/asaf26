@@ -56,7 +56,7 @@ impl Library {
         conn.pragma_update(None, "foreign_keys", "ON")?;
         let mut lib = Self { conn, media_dir };
         migrations::run(&mut lib.conn)?;
-        lib.ensure_a_theme()?;
+        lib.seed_themes()?;
         Ok(lib)
     }
 

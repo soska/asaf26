@@ -7,7 +7,9 @@
 use std::rc::Rc;
 
 use anyhow::Result;
-use asaf_core::{Align, Blank, DEFAULT_THEME_NAME, DisplayState, Slide, Theme, TransitionKind, VAlign, parse_color, sample_song};
+use asaf_core::{
+    Align, Blank, DEFAULT_THEME_NAME, DisplayState, Slide, TextCase, Theme, TransitionKind, VAlign, parse_color, sample_song,
+};
 use asaf_fonts::FONTS;
 use asaf_library::ThemeError;
 use asaf_library::media::IMAGE_EXTENSIONS;
@@ -26,7 +28,7 @@ use gpui::{
 
 use crate::i18n::{Lang, en, lang};
 use crate::icons::IconName;
-use crate::preview::{color, image_source, screen};
+use crate::preview::{background_fill, color, image_source, screen};
 use crate::{SaveTheme, SharedLibrary};
 
 /// Emitted after themes were saved, renamed, deleted or a new default chosen.
@@ -45,6 +47,7 @@ pub(crate) enum Field {
     SizeMin,
     SizeMax,
     LineHeight,
+    LetterSpacing,
     Color,
     StrongColor,
     EmColor,
@@ -56,16 +59,19 @@ pub(crate) enum Field {
     MarginX,
     MarginY,
     Background,
+    Gradient,
+    Dim,
     TransitionMs,
 }
 
 impl Field {
-    pub const ALL: [Field; 17] = [
+    pub const ALL: [Field; 20] = [
         Field::Name,
         Field::Font,
         Field::SizeMin,
         Field::SizeMax,
         Field::LineHeight,
+        Field::LetterSpacing,
         Field::Color,
         Field::StrongColor,
         Field::EmColor,
@@ -77,6 +83,8 @@ impl Field {
         Field::MarginX,
         Field::MarginY,
         Field::Background,
+        Field::Gradient,
+        Field::Dim,
         Field::TransitionMs,
     ];
 
@@ -92,6 +100,7 @@ impl Field {
             Field::SizeMin => t.size_min_vh.to_string(),
             Field::SizeMax => t.size_max_vh.to_string(),
             Field::LineHeight => t.line_height.to_string(),
+            Field::LetterSpacing => t.letter_spacing_em.to_string(),
             Field::Color => t.color.clone(),
             Field::StrongColor => t.strong_color.clone(),
             Field::EmColor => t.em_color.clone(),
@@ -103,6 +112,8 @@ impl Field {
             Field::MarginX => t.margin_x_pct.to_string(),
             Field::MarginY => t.margin_y_pct.to_string(),
             Field::Background => t.background_color.clone(),
+            Field::Gradient => t.gradient_color.clone(),
+            Field::Dim => (t.background_dim * 100.0).round().to_string(),
             Field::TransitionMs => t.transition_ms.to_string(),
         }
     }
@@ -124,6 +135,10 @@ impl Field {
             Field::SizeMin => t.size_min_vh = number(1.0, 40.0)?,
             Field::SizeMax => t.size_max_vh = number(1.0, 40.0)?,
             Field::LineHeight => t.line_height = number(0.8, 3.0)?,
+            Field::LetterSpacing => {
+                let (lo, hi) = asaf_core::theme::LETTER_SPACING_RANGE_EM;
+                t.letter_spacing_em = number(lo, hi)?
+            }
             Field::Color => t.color = colour()?,
             Field::StrongColor => t.strong_color = optional_colour()?,
             Field::EmColor => t.em_color = optional_colour()?,
@@ -135,6 +150,8 @@ impl Field {
             Field::MarginX => t.margin_x_pct = number(0.0, 40.0)?,
             Field::MarginY => t.margin_y_pct = number(0.0, 40.0)?,
             Field::Background => t.background_color = colour()?,
+            Field::Gradient => t.gradient_color = optional_colour()?,
+            Field::Dim => t.background_dim = number(0.0, asaf_core::theme::MAX_DIM * 100.0)? / 100.0,
             Field::TransitionMs => {
                 t.transition_ms = text.parse::<u32>().ok().filter(|v| *v <= asaf_core::theme::MAX_TRANSITION_MS).ok_or("number")?
             }
@@ -149,6 +166,7 @@ impl Field {
             Field::SizeMin => en("Smallest text (% of height)"),
             Field::SizeMax => en("Largest text (% of height)"),
             Field::LineHeight => en("Line spacing"),
+            Field::LetterSpacing => en("Letter spacing (em)"),
             Field::Color => en("Text color"),
             Field::StrongColor => en("Strong color (**word**)"),
             Field::EmColor => en("Emphasis color (__word__)"),
@@ -160,6 +178,8 @@ impl Field {
             Field::MarginX => en("Side margins (%)"),
             Field::MarginY => en("Top and bottom margins (%)"),
             Field::Background => en("Background color"),
+            Field::Gradient => en("Gradient to (empty: none)"),
+            Field::Dim => en("Darken (%)"),
             Field::TransitionMs => en("Duration (ms)"),
         }
     }
@@ -504,7 +524,7 @@ impl Focusable for ThemeEditor {
 fn image_name(url: &Option<String>, l: Lang) -> String {
     match url.as_deref() {
         None => l.t("None").to_string(),
-        Some("/assets/background.svg") | Some("/assets/logo.svg") => l.t("Built in").to_string(),
+        Some("/assets/background.svg" | "/assets/logo.svg" | "/assets/logo-dark.svg") => l.t("Built in").to_string(),
         Some(u) => u.rsplit('/').next().unwrap_or(u).to_string(),
     }
 }
@@ -543,6 +563,7 @@ impl Render for ThemeEditor {
                 .child(Input::new(&self.inputs[f.index()]).small())
         };
         let or_text = |c: &str| if c.trim().is_empty() { draft.color.clone() } else { c.to_string() };
+        let or_bg = |c: &str| if c.trim().is_empty() { draft.background_color.clone() } else { c.to_string() };
         let swatch = |c: &str| {
             div()
                 .flex_none()
@@ -580,7 +601,7 @@ impl Render for ThemeEditor {
                     .when(i == self.selected, |d| d.bg(theme.list_active))
                     .when(i != self.selected, |d| d.hover(|s| s.bg(theme.list_hover)))
                     .on_click(cx.listener(move |this, _, window, cx| this.select(i, window, cx)))
-                    .child(div().size(px(14.)).flex_none().rounded_sm().bg(color(&t.background_color)))
+                    .child(div().size(px(14.)).flex_none().rounded_sm().bg(background_fill(t)))
                     .child(div().flex_1().min_w_0().truncate().child(t.name.clone()))
                     .when(is_default, |d| d.child(div().text_xs().text_color(muted).child(l.t("default"))))
             }));
@@ -594,6 +615,14 @@ impl Render for ThemeEditor {
         let weights = h_flex().gap_1().children([300u16, 400, 500, 600, 700, 800, 900].into_iter().map(|w| {
             choice(format!("weight-{w}").into(), &w.to_string(), draft.font_weight == w)
                     .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.font_weight = w)))
+        }));
+        let cases = h_flex().gap_1().children(TextCase::ALL.into_iter().map(|c| {
+            let label = match c {
+                TextCase::Normal => en("As typed"),
+                TextCase::Upper => en("ALL CAPS"),
+            };
+            choice(format!("case-{}", c.css()).into(), l.t(label), draft.text_case == c)
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_choice(cx, |t| t.text_case = c)))
         }));
         let aligns = h_flex().gap_1().children(Align::ALL.into_iter().map(|a| {
             let label = match a {
@@ -670,6 +699,13 @@ impl Render for ThemeEditor {
                     .child(field(Field::SizeMax, 150.))
                     .child(field(Field::LineHeight, 110.)),
             )
+            .child(
+                h_flex()
+                    .gap_3()
+                    .items_end()
+                    .child(field(Field::LetterSpacing, 150.))
+                    .child(h_flex().gap_2().pb_1().child(div().text_xs().text_color(muted).child(l.t("Letters"))).child(cases)),
+            )
             .child(h_flex().gap_2().child(field(Field::Color, 110.)).child(swatch(&draft.color)))
             .child(
                 h_flex()
@@ -700,7 +736,15 @@ impl Render for ThemeEditor {
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Down"))).child(valigns))
             .child(h_flex().gap_3().child(field(Field::MarginX, 150.)).child(field(Field::MarginY, 190.)))
             .child(heading(en("Background")))
-            .child(h_flex().gap_2().child(field(Field::Background, 110.)).child(swatch(&draft.background_color)))
+            .child(
+                h_flex()
+                    .gap_2()
+                    .child(field(Field::Background, 110.))
+                    .child(swatch(&draft.background_color))
+                    .child(field(Field::Gradient, 170.))
+                    .child(swatch(&or_bg(&draft.gradient_color)))
+                    .child(field(Field::Dim, 90.)),
+            )
             .child(bg_row)
             .child(logo_row)
             .child(heading(en("Transition")))
@@ -874,7 +918,15 @@ mod tests {
 
     #[test]
     fn fields_round_trip_and_reject_bad_text() {
-        let t = Theme { size_min_vh: 3.5, outline_vh: 0.25, transition_ms: 450, ..Theme::default() };
+        let t = Theme {
+            size_min_vh: 3.5,
+            outline_vh: 0.25,
+            transition_ms: 450,
+            letter_spacing_em: 0.05,
+            gradient_color: "#5b21b6".into(),
+            background_dim: 0.35,
+            ..Theme::default()
+        };
         for f in Field::ALL {
             let mut back = Theme { name: "x".into(), font_family: "y".into(), ..Theme::default() };
             f.set(&mut back, &f.get(&t)).unwrap();
@@ -895,6 +947,10 @@ mod tests {
             (Field::TransitionMs, "-1", false),
             (Field::TransitionMs, "99999", false),
             (Field::LineHeight, "1.4", true),
+            (Field::LetterSpacing, "0.9", false),
+            (Field::Dim, "95", false),
+            (Field::Dim, "40", true),
+            (Field::Gradient, "", true),
         ] {
             assert_eq!(f.set(&mut t, text).is_ok(), ok, "{f:?} {text:?}");
         }
@@ -904,7 +960,7 @@ mod tests {
 
     #[gpui::test]
     fn editing_and_saving_a_theme(cx: &mut TestAppContext) {
-        let (library, editor, h, events) = open(cx, Library::open_in_memory().unwrap());
+        let (library, editor, h, events) = open(cx, crate::test_library());
         with(cx, h, |w, cx| w.render_frame(cx));
         assert!(!cx.update(|cx| editor.read(cx).is_dirty(cx)));
 
@@ -951,7 +1007,7 @@ mod tests {
 
     #[gpui::test]
     fn new_duplicate_default_and_delete(cx: &mut TestAppContext) {
-        let (library, editor, h, events) = open(cx, Library::open_in_memory().unwrap());
+        let (library, editor, h, events) = open(cx, crate::test_library());
         with(cx, h, |w, cx| {
             w.render_frame(cx);
             w.click("theme-duplicate", cx);
@@ -985,7 +1041,7 @@ mod tests {
 
     #[gpui::test]
     fn switching_themes_with_unsaved_changes_asks(cx: &mut TestAppContext) {
-        let mut lib = Library::open_in_memory().unwrap();
+        let mut lib = crate::test_library();
         lib.save_theme(&Theme { name: "Night".into(), ..Theme::default() }, None).unwrap();
         let (_, editor, h, _) = open(cx, lib);
         with(cx, h, |w, cx| w.render_frame(cx));

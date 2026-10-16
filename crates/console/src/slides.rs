@@ -9,7 +9,7 @@ use gpui::prelude::FluentBuilder as _;
 use gpui::{App, Div, ElementId, FontWeight, InteractiveElement, ParentElement, Stateful, Styled, div, px};
 use gpui::component::h_flex;
 
-use crate::preview::{color, optional_color, styled_line};
+use crate::preview::{background_fill, color, optional_color, styled_line};
 
 /// A card for `slide` in `look`; `on_air` highlights the slide on screen.
 /// The caller adds the click handler.
@@ -47,7 +47,7 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                 .px_3()
                 .py_2()
                 .rounded_sm()
-                .bg(color(&look.background_color))
+                .bg(background_fill(look))
                 .text_color(color(&look.color))
                 .text_xs()
                 .font_family(look.font_family.clone())
@@ -60,7 +60,7 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                 })
                 .children(slide.lines.iter().map(|l| {
                     let weight = FontWeight(f32::from(look.font_weight));
-                    div().child(styled_line(l, weight, optional_color(&look.strong_color), optional_color(&look.em_color)))
+                    div().child(styled_line(l, look.text_case, weight, optional_color(&look.strong_color), optional_color(&look.em_color)))
                 })),
         )
 }

@@ -134,7 +134,6 @@ mod tests {
     use std::time::Duration;
 
     use asaf_core::{Blank, BookNames, Service, ServiceItem, Song, Store, Verse, parse_reference, sample_song};
-    use asaf_library::Library;
     use gpui::test::TestWindowExt as _;
     use gpui::{AnyWindowHandle, Entity, TestAppContext};
 
@@ -150,7 +149,7 @@ mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let mut lib = Library::open_in_memory().unwrap();
+        let mut lib = crate::test_library();
         with_bibles(&mut lib);
         lib.save(&sample_song()).unwrap();
         lib.save(&Song { title: "Cuán Grande Es Él".into(), verses: vec![Verse::new("v1", "Señor mi Dios")], ..Default::default() })

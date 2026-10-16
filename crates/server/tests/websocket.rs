@@ -90,6 +90,7 @@ async fn serves_display_page_and_assets() {
         "/assets/display.js",
         "/assets/background.svg",
         "/assets/logo.svg",
+        "/assets/logo-dark.svg",
         "/assets/fonts.css",
     ] {
         let (status, _, _) = get(port, path).await;

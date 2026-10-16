@@ -2,7 +2,7 @@
 //! slide preview. Saving writes to the library and emits [`SongSaved`].
 
 use anyhow::Result;
-use asaf_core::{Song, SongProblem, format_lyrics, parse_lyrics};
+use asaf_core::{Song, SongProblem, TextCase, format_lyrics, parse_lyrics};
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState, Textarea, TextareaState};
 use gpui::component::notification::Notification;
@@ -335,7 +335,7 @@ impl Render for SongEditor {
                                             .child(slide.label.clone()),
                                     )
                                     .children(slide.lines.iter().map(|l| {
-                                        div().child(styled_line(l, FontWeight::NORMAL, None, None))
+                                        div().child(styled_line(l, TextCase::Normal, FontWeight::NORMAL, None, None))
                                     }))
                             })),
                     ),
@@ -394,7 +394,6 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use asaf_core::sample_song;
-    use asaf_library::Library;
     use gpui::TestAppContext;
     use gpui::test::TestWindowExt as _;
 
@@ -405,7 +404,7 @@ mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let library: SharedLibrary = Arc::new(Mutex::new(Library::open_in_memory().unwrap()));
+        let library: SharedLibrary = Arc::new(Mutex::new(crate::test_library()));
         let lib = library.clone();
         let (h, editor) = cx.update(|cx| SongEditor::open(song, lib, cx).unwrap());
         let saved = Rc::new(RefCell::new(Vec::new()));

@@ -11,6 +11,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "10dnlfnigaj": {
+    "status": "machine",
+    "translatedHash": "uih83kswb3",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "10kcjzmc48r": {
     "status": "approved",
     "translatedHash": "1ez6j3y70mb",
@@ -1022,6 +1028,18 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "2eay772l4ht": {
+    "status": "machine",
+    "translatedHash": "1ngk40ycrtt",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Normal",
+      "Tal cual"
+    ],
+    "note": "Text case option: letters as typed in the lyrics, versus ALL CAPS."
+  },
   "2em5lsa6fd3": {
     "status": "approved",
     "translatedHash": "18md42clhxv",
@@ -1137,6 +1155,17 @@
     "translatedHash": "a1emg06d4a",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "7a8nmls28r": {
+    "status": "machine",
+    "translatedHash": "2odcbear8w",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Degradado a (vacío: sin degradado)"
+    ],
+    "note": "Second colour of a background gradient; empty means a solid background."
   },
   "7gqysfvinh": {
     "status": "approved",
@@ -1738,6 +1767,12 @@
     "confidence": "high",
     "note": "Same as the previous '◀  Anterior'; the arrow is now an icon."
   },
+  "vxndiy108": {
+    "status": "machine",
+    "translatedHash": "2bgkivkspxq",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "wf2vhke9pu": {
     "status": "approved",
     "translatedHash": "jmrcpgo4f3",
@@ -1774,6 +1809,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "zc5rnww340": {
+    "status": "machine",
+    "translatedHash": "lqxqvzjs82",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "zcel97o727": {
     "status": "approved",
     "translatedHash": "1sr5u9p66oz",
@@ -1785,6 +1826,12 @@
     "translatedHash": "2djked103xj",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "zw3eevefpb": {
+    "status": "machine",
+    "translatedHash": "1x6ydvsmm1i",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "zwgsvylkv6": {
     "status": "approved",

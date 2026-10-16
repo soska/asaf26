@@ -6,6 +6,8 @@
   --font-family: "Source Sans 3", system-ui, sans-serif;
   --font-weight: 700;
   --line-height: 1.2;
+  --letter-spacing: 0em;
+  --text-transform: none;
   --color: #fff;
   --strong-color: inherit;
   --em-color: inherit;
@@ -19,6 +21,8 @@
   --my: 8vh;
   --bg-color: #101018;
   --bg-image: none;
+  --bg-gradient: none;
+  --bg-dim: 0;
   --logo: none;
 }
 
@@ -37,8 +41,15 @@ html.embedded, html.embedded body { cursor: default; }
   inset: 0;
 }
 
+/* The image over the gradient over the colour, then darkened by --bg-dim. */
 #bg {
-  background: var(--bg-color) var(--bg-image) center / cover no-repeat;
+  background: var(--bg-image) center / cover no-repeat, var(--bg-gradient) var(--bg-color);
+}
+#bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, var(--bg-dim));
 }
 
 /* A hidden layer waits below its place (by --shift, 0 unless the theme's
@@ -74,6 +85,8 @@ html.embedded, html.embedded body { cursor: default; }
 
 .text {
   line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  text-transform: var(--text-transform);
   white-space: nowrap;
 }
 /* Emphasis in lyrics (**strong**, __em__). */

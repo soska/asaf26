@@ -312,7 +312,6 @@ mod tests {
     use std::rc::Rc;
     use std::sync::{Arc, Mutex};
 
-    use asaf_library::Library;
     use gpui::TestAppContext;
     use gpui::test::TestWindowExt as _;
 
@@ -324,7 +323,7 @@ mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let mut lib = Library::open_in_memory().unwrap();
+        let mut lib = crate::test_library();
         lib.save_theme(&asaf_core::Theme { name: "Night".into(), ..Default::default() }, None).unwrap();
         let library: SharedLibrary = Arc::new(Mutex::new(lib));
         let (h, view) = cx.update(|cx| SettingsWindow::open(library.clone(), cx).unwrap());
@@ -380,7 +379,7 @@ mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let library: SharedLibrary = Arc::new(Mutex::new(Library::open_in_memory().unwrap()));
+        let library: SharedLibrary = Arc::new(Mutex::new(crate::test_library()));
         let (h, _) = cx.update(|cx| SettingsWindow::open(library.clone(), cx).unwrap());
         let mode = |cx: &mut TestAppContext| cx.update(|cx| Theme::global(cx).mode);
         assert_eq!(library.lock().unwrap().settings().unwrap().appearance, Appearance::System);
@@ -416,7 +415,7 @@ mod tests {
             gpui::init(cx);
             crate::init(cx);
         });
-        let library: SharedLibrary = Arc::new(Mutex::new(Library::open_in_memory().unwrap()));
+        let library: SharedLibrary = Arc::new(Mutex::new(crate::test_library()));
         let (h, view) = cx.update(|cx| SettingsWindow::open(library.clone(), cx).unwrap());
         let events = Rc::new(RefCell::new(Vec::new()));
         let sink = events.clone();

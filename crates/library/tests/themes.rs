@@ -1,12 +1,21 @@
 //! Themes, settings and imported images in the library.
 
-use asaf_core::{Align, Appearance, Language, Settings, Theme, TransitionKind};
+use asaf_core::{Align, Appearance, Language, Settings, Theme, TransitionKind, builtin_themes};
 use asaf_library::Library;
 
+/// Theme names that aren't built in.
+fn own_names(lib: &Library) -> Vec<String> {
+    let builtin: Vec<String> = builtin_themes().into_iter().map(|t| t.name).collect();
+    lib.themes().unwrap().into_iter().map(|t| t.name).filter(|n| !builtin.contains(n)).collect()
+}
+
 #[test]
-fn a_new_library_has_the_default_theme() {
+fn a_new_library_has_the_default_and_builtin_themes() {
     let lib = Library::open_in_memory().unwrap();
-    assert_eq!(lib.themes().unwrap(), [Theme::default()]);
+    let mut want = builtin_themes();
+    want.push(Theme::default());
+    want.sort_by_key(|t| t.name.to_lowercase());
+    assert_eq!(lib.themes().unwrap(), want);
     assert_eq!(lib.default_theme().unwrap(), Theme::default());
     assert_eq!(lib.settings().unwrap(), Settings::default());
 }
@@ -48,8 +57,7 @@ fn themes_save_rename_and_delete() {
     // Renaming another theme leaves the default alone.
     lib.save_theme(&scripture, Some("Scripture")).unwrap();
     assert_eq!(lib.settings().unwrap().default_theme, "Sunday AM");
-    let names: Vec<_> = lib.themes().unwrap().into_iter().map(|t| t.name).collect();
-    assert_eq!(names, ["Loud", "Scripture", "Sunday AM"]);
+    assert_eq!(own_names(&lib), ["Loud", "Scripture", "Sunday AM"]);
 
     // The default can't be deleted; others can.
     assert!(lib.delete_theme("sunday am").unwrap_err().to_string().contains("is the default theme"));
@@ -81,7 +89,32 @@ fn themes_and_settings_survive_restart() {
     let lib = Library::open(&path).unwrap();
     assert_eq!(lib.settings().unwrap(), settings);
     assert_eq!(lib.default_theme().unwrap(), theme);
-    assert_eq!(lib.themes().unwrap().len(), 2);
+    assert_eq!(own_names(&lib), ["Default", "Night"]);
+}
+
+#[test]
+fn builtin_themes_come_once_and_never_replace_a_theme() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("asaf.sqlite");
+    {
+        let mut lib = Library::open(&path).unwrap();
+        lib.delete_theme("Aurora").unwrap();
+    }
+    let lib = Library::open(&path).unwrap();
+    assert!(lib.theme("Aurora").unwrap().is_none(), "a deleted built-in stays deleted");
+    drop(lib);
+
+    // A library from before built-ins, with a theme of its own called Jade.
+    let conn = rusqlite::Connection::open(&path).unwrap();
+    conn.execute("DELETE FROM settings WHERE key = 'builtin_themes'", []).unwrap();
+    conn.execute("DELETE FROM themes WHERE name <> 'Default'", []).unwrap();
+    conn.execute("INSERT INTO themes (name, data) VALUES ('jade', '{\"color\":\"#00ff00\"}')", []).unwrap();
+    drop(conn);
+    let lib = Library::open(&path).unwrap();
+    assert_eq!(lib.themes().unwrap().len(), 9);
+    assert_eq!(lib.theme("Jade").unwrap().unwrap().color, "#00ff00", "the library's own Jade is kept");
+    assert_eq!(lib.theme("Aurora").unwrap().unwrap(), builtin_themes()[0]);
+    assert_eq!(lib.settings().unwrap(), Settings::default(), "the marker isn't a setting");
 }
 
 #[test]
