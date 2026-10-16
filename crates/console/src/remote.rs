@@ -86,7 +86,7 @@ impl Console {
                         None => l.t("Import a Bible first.").into(),
                     });
                 };
-                let ranges = parse_reference(&reference, &bible.names()).map_err(|e| e.to_string())?;
+                let ranges = parse_reference(&reference, &bible.names()).map_err(|e| crate::bible::ref_error(l, &e))?;
                 let p = self.lay_out_passage(&bible, ranges)?;
                 if live {
                     self.store.load_passage(p.passage.clone(), p.title(), p.slides.clone(), 0);

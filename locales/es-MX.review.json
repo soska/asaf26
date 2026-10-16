@@ -1,4 +1,10 @@
 {
+  "103ypm2czzf": {
+    "status": "machine",
+    "translatedHash": "us8sf94j99",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "108owe9wt0w": {
     "status": "approved",
     "translatedHash": "1sfeatwss62",
@@ -23,21 +29,57 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "12lewi7lj6d": {
+    "status": "machine",
+    "translatedHash": "hzwyn9hukr",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "12pkt0z0xgr": {
+    "status": "machine",
+    "translatedHash": "2f11stlxdl1",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "139ft6k1v1b": {
+    "status": "machine",
+    "translatedHash": "bn4rvdfs0h",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "13cvicqx5w3": {
+    "status": "machine",
+    "translatedHash": "104f4rgjlrc",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "140wt5x11tw": {
+    "status": "machine",
+    "translatedHash": "1o1llg2mswt",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1465dizhpgb": {
+    "status": "machine",
+    "translatedHash": "2fw1mkq38d4",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "14ctkt31xkn": {
     "status": "approved",
     "translatedHash": "xqdr1hoqth",
     "at": "2026-10-16",
     "by": "armando"
   },
+  "14xvcizn3rj": {
+    "status": "machine",
+    "translatedHash": "1pav80c1ktn",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "15j2tbe8i28": {
     "status": "approved",
     "translatedHash": "wo6kpzddx8",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
-  "15oh0esxi2p": {
-    "status": "approved",
-    "translatedHash": "1bdjkaezbhp",
     "at": "2026-10-16",
     "by": "armando"
   },
@@ -47,17 +89,29 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "161xe0ajgzu": {
-    "status": "approved",
-    "translatedHash": "1rrt6xbf0km",
+  "15v9h7l2h4g": {
+    "status": "machine",
+    "translatedHash": "2g2osf7k6lc",
     "at": "2026-10-16",
-    "by": "armando"
+    "by": "claude"
+  },
+  "161ya7958l0": {
+    "status": "machine",
+    "translatedHash": "mantuji6j1",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "16l9m8zki7f": {
     "status": "approved",
     "translatedHash": "278duawyfq7",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "16ohek5rhcb": {
+    "status": "machine",
+    "translatedHash": "ipuu0yssxp",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "16rgavl4r2z": {
     "status": "approved",
@@ -71,6 +125,18 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "17ugwztue1r": {
+    "status": "machine",
+    "translatedHash": "nvh2aliwkl",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "181k3mnn64c": {
+    "status": "machine",
+    "translatedHash": "jkhyf9e8p3",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "181powe3aqk": {
     "status": "approved",
     "translatedHash": "nhr0jmni8q",
@@ -83,23 +149,39 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "18cu1oo8u2a": {
-    "status": "approved",
-    "translatedHash": "4h15uat9o1",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
   "18gipka4xzw": {
     "status": "approved",
     "translatedHash": "17iukttt1lo",
     "at": "2026-10-16",
     "by": "armando"
   },
-  "195x9bnyduq": {
-    "status": "approved",
-    "translatedHash": "2fscliv38sv",
+  "18nrznktee8": {
+    "status": "machine",
+    "translatedHash": "8s03t72fz0",
     "at": "2026-10-16",
-    "by": "armando"
+    "by": "claude"
+  },
+  "18xqt9ok0n1": {
+    "status": "machine",
+    "translatedHash": "1wqfchodg6q",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "No se esperaba “{text}”"
+    ]
+  },
+  "1919lkfjw5q": {
+    "status": "machine",
+    "translatedHash": "1r6s65auesp",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "194otjr9nxw": {
+    "status": "machine",
+    "translatedHash": "m5aquggics",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "198ld7kgx1q": {
     "status": "approved",
@@ -112,6 +194,12 @@
     "translatedHash": "2azxrhrydwi",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "19o7ukmmegs": {
+    "status": "machine",
+    "translatedHash": "1tbu6kycxdn",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1a1finnyrai": {
     "status": "approved",
@@ -130,6 +218,12 @@
     "translatedHash": "9j0waoul7o",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1bo8ksxeevn": {
+    "status": "machine",
+    "translatedHash": "11tqj7fxlgm",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1brd9iu3rkj": {
     "status": "approved",
@@ -167,6 +261,36 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1deknw8bj6t": {
+    "status": "machine",
+    "translatedHash": "21fgs8xr8dy",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1eio3zz1gui": {
+    "status": "machine",
+    "translatedHash": "uq8w185tbv",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1f5sihl6h3i": {
+    "status": "machine",
+    "translatedHash": "z3tyiw5dd2",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1gj0vp1z1az": {
+    "status": "machine",
+    "translatedHash": "26qggjiolc9",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1gj3nbxokdr": {
+    "status": "machine",
+    "translatedHash": "kxe90ox8bw",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1gw49ft1ahw": {
     "status": "approved",
     "translatedHash": "y6pj4syfax",
@@ -179,11 +303,29 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1i4ss0x763p": {
+    "status": "machine",
+    "translatedHash": "fv854e9rmz",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1iholfyazkd": {
+    "status": "machine",
+    "translatedHash": "aj2oj6b5cx",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1iroy2vgw8w": {
     "status": "approved",
     "translatedHash": "6qs1ce40vc",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1j7ts657b2g": {
+    "status": "machine",
+    "translatedHash": "qnu5056ac1",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1jd7l4ijtux": {
     "status": "approved",
@@ -209,6 +351,42 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1jpp8qowoqe": {
+    "status": "machine",
+    "translatedHash": "2f1dwz81k3i",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1jq5al3wxp7": {
+    "status": "machine",
+    "translatedHash": "1qo3ae3tefc",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1jswzl9jc0q": {
+    "status": "machine",
+    "translatedHash": "15pl4np70fd",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1k3eci6ptwj": {
+    "status": "machine",
+    "translatedHash": "1dbzy4anb13",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1k7yas7ciia": {
+    "status": "machine",
+    "translatedHash": "1eieuf2d9px",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1kg70vfiprz": {
+    "status": "machine",
+    "translatedHash": "263v03g6t91",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1kmxz3amydy": {
     "status": "approved",
     "translatedHash": "y7wwraxf0",
@@ -221,11 +399,43 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1kyq74h0mt0": {
+    "status": "machine",
+    "translatedHash": "2a6ryn6ln4f",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1lkgrf799my": {
+    "status": "machine",
+    "translatedHash": "24qwfrkcuws",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "note": "Shown when the search is capped; 'Más de N' reads more naturally than 'N+'."
+  },
+  "1lkta3hllnp": {
+    "status": "machine",
+    "translatedHash": "2f2ds5qz3nk",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1mge26ozluc": {
     "status": "approved",
     "translatedHash": "kw7xyqz6bj",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1nb6jwpabt8": {
+    "status": "machine",
+    "translatedHash": "1ym2j234z66",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1p0ywqa3omi": {
+    "status": "machine",
+    "translatedHash": "27dh4ycrtac",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1qu5zkod4cu": {
     "status": "approved",
@@ -263,17 +473,17 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "1rn5c4kfggs": {
-    "status": "approved",
-    "translatedHash": "ulycr0bv5c",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
   "1rx6wafgf27": {
     "status": "approved",
     "translatedHash": "12cyhz873r7",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1rxcrm1t1fv": {
+    "status": "machine",
+    "translatedHash": "1l6ww4v18b6",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1ryzkpay2by": {
     "status": "approved",
@@ -286,6 +496,24 @@
     "translatedHash": "1wmqzodlxz",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1tm5xuw8tup": {
+    "status": "machine",
+    "translatedHash": "15gjm0f59sa",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1to9omnxvke": {
+    "status": "machine",
+    "translatedHash": "zd5qdmx6do",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1u5ynms5tfh": {
+    "status": "machine",
+    "translatedHash": "1bhjhswqh2a",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1u8m41q0q1j": {
     "status": "approved",
@@ -317,6 +545,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1vm0l79bq70": {
+    "status": "machine",
+    "translatedHash": "1mkaptk88v2",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "1w2bb0aqr9g": {
     "status": "approved",
     "translatedHash": "ic8utvzq7h",
@@ -340,6 +574,18 @@
     "translatedHash": "14uthay81y0",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1xeovcbn85p": {
+    "status": "machine",
+    "translatedHash": "1b7vodiadzy",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "1yenyinotzi": {
+    "status": "machine",
+    "translatedHash": "2a6pxxjrke3",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "1yi1eprb816": {
     "status": "approved",
@@ -389,6 +635,18 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "20hxjyzptb1": {
+    "status": "machine",
+    "translatedHash": "27n3cd7ecni",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "21cc1d4k7ci": {
+    "status": "machine",
+    "translatedHash": "29vsqfnaef9",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "21dmt9g48s": {
     "status": "approved",
     "translatedHash": "1k7dbk9b6s6",
@@ -400,6 +658,12 @@
     "translatedHash": "midcrc1c2v",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "21dzvvnew8x": {
+    "status": "machine",
+    "translatedHash": "d2aom0yw1h",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "21jeer7mcdp": {
     "status": "approved",
@@ -413,11 +677,31 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "22d0i688ptf": {
+    "status": "machine",
+    "translatedHash": "1lwebstl0qx",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Name of a duplicated theme; Spanish puts 'Copia de' first."
+  },
   "22wr0pbngsh": {
     "status": "approved",
     "translatedHash": "wtsqqtq4p0",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "237xkpqu7wt": {
+    "status": "machine",
+    "translatedHash": "2bx36qplg11",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "24okzy9sqof": {
+    "status": "machine",
+    "translatedHash": "1cn7a50ye6n",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "254ff2tgkup": {
     "status": "approved",
@@ -425,11 +709,29 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "256vn5z2tdv": {
+    "status": "machine",
+    "translatedHash": "2dtj3zhvdoh",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "25dk1atjmtm": {
     "status": "approved",
     "translatedHash": "t8ij6jur6j",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "25dpoatwc1": {
+    "status": "machine",
+    "translatedHash": "18js7mjm6f3",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "275zw8wjybp": {
+    "status": "machine",
+    "translatedHash": "1sne6oyzt3a",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "27adjwkztai": {
     "status": "approved",
@@ -461,11 +763,23 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "298nx5vvcpw": {
+    "status": "machine",
+    "translatedHash": "1wyir3klsib",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "29khu4kxkkv": {
     "status": "approved",
     "translatedHash": "2ehuzphjhdb",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "29oskgjeiuz": {
+    "status": "machine",
+    "translatedHash": "lhz6cy27yu",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "29t20xtc8dz": {
     "status": "approved",
@@ -479,11 +793,41 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "2ajg2gpvy1e": {
+    "status": "machine",
+    "translatedHash": "fnivvpuash",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "2ajlsnj7gco": {
+    "status": "machine",
+    "translatedHash": "27ykl8grxyo",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "2aptcultjjr": {
     "status": "approved",
     "translatedHash": "xs8floacf2",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "2buua6vdei9": {
+    "status": "machine",
+    "translatedHash": "119wyxabs5",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "2c55l469czg": {
+    "status": "machine",
+    "translatedHash": "w705kn48v9",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "2crgn2ypp16": {
+    "status": "machine",
+    "translatedHash": "2d8zbyzogzv",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "2ctz9q6z7z3": {
     "status": "approved",
@@ -509,6 +853,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "2ezjwq9k481": {
+    "status": "machine",
+    "translatedHash": "2002k56ebgq",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "2fqekqwo5qe": {
     "status": "approved",
     "translatedHash": "13292lz653w",
@@ -530,12 +880,6 @@
   "2hl4pgcp8o": {
     "status": "approved",
     "translatedHash": "22ny26dgvlo",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
-  "2i1dltvn2u": {
-    "status": "approved",
-    "translatedHash": "1sdwxdn0wa9",
     "at": "2026-10-16",
     "by": "armando"
   },
@@ -581,6 +925,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "6vtvfmhxim": {
+    "status": "machine",
+    "translatedHash": "a1emg06d4a",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "7gqysfvinh": {
     "status": "approved",
     "translatedHash": "15ldzvbyd8b",
@@ -599,17 +949,17 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "89jij4vxze": {
-    "status": "approved",
-    "translatedHash": "k03g7psrd0",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
   "8vxab5babl": {
     "status": "approved",
     "translatedHash": "10kaswj1wvp",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "9ftp746757": {
+    "status": "machine",
+    "translatedHash": "g9i62ks5kt",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "9p81pgo8pm": {
     "status": "approved",
@@ -623,6 +973,18 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "9xylbo6x6k": {
+    "status": "machine",
+    "translatedHash": "1py8i917r3i",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "a0kc85m4xw": {
+    "status": "machine",
+    "translatedHash": "smgruarq4o",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "a46vpxbw57": {
     "status": "approved",
     "translatedHash": "19gm0hd6k3k",
@@ -635,11 +997,53 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "aw7xoffaa": {
+    "status": "machine",
+    "translatedHash": "3z90exr058",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "bknnu4gv4j": {
+    "status": "machine",
+    "translatedHash": "7m8h1a9odx",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "c4yf8or77f": {
+    "status": "machine",
+    "translatedHash": "nne0enqtts",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "c7o8s5ires": {
+    "status": "machine",
+    "translatedHash": "1bwi6uxpec6",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "c8r8zueex6": {
+    "status": "machine",
+    "translatedHash": "a5bc1yf1ub",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "c9lwh5obvc": {
     "status": "approved",
     "translatedHash": "221x0ibulji",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "cvw477di5z": {
+    "status": "machine",
+    "translatedHash": "2jqz5hvfzd",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "d4jbup3wov": {
+    "status": "machine",
+    "translatedHash": "j0gxd2gcgo",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "d5920flkwz": {
     "status": "approved",
@@ -653,11 +1057,23 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "dlbcuuyj70": {
+    "status": "machine",
+    "translatedHash": "11ie1w8682r",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "dsj5duvebs": {
     "status": "approved",
     "translatedHash": "qqdlt4ofs1",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "e433ewmape": {
+    "status": "machine",
+    "translatedHash": "1e161w7xew8",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "ecdxv9bzf7": {
     "status": "approved",
@@ -665,17 +1081,35 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "erjb0mea9f": {
+    "status": "machine",
+    "translatedHash": "aqtvw6nxgs",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "f16f8ceiio": {
     "status": "approved",
     "translatedHash": "6w1vgxerd",
     "at": "2026-10-16",
     "by": "armando"
   },
+  "f981rxihsr": {
+    "status": "machine",
+    "translatedHash": "88q9jjgbxi",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "fnz9d402kd": {
     "status": "approved",
     "translatedHash": "1nepme8zxws",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "g4gf1fzu1c": {
+    "status": "machine",
+    "translatedHash": "s4d8a06td8",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "g65p2xhor2": {
     "status": "approved",
@@ -695,11 +1129,23 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "gqap9kquqa": {
+    "status": "machine",
+    "translatedHash": "99ttjzbuf0",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "h0lgupyuht": {
     "status": "approved",
     "translatedHash": "1sdxwsdn8ov",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "hc20nskwyz": {
+    "status": "machine",
+    "translatedHash": "24mn5pknhsk",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "hq12sk0vvc": {
     "status": "approved",
@@ -713,17 +1159,29 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "ilnq3m2kx7": {
-    "status": "approved",
-    "translatedHash": "2c9aa26tbf8",
+  "ioslrsmlkf": {
+    "status": "machine",
+    "translatedHash": "6f1xi185gk",
     "at": "2026-10-16",
-    "by": "armando"
+    "by": "claude"
+  },
+  "j1lvgdcoi8": {
+    "status": "machine",
+    "translatedHash": "8091tekys0",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "j7vv1nk82x": {
     "status": "approved",
     "translatedHash": "3p4exh9zla",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "k48onzr97l": {
+    "status": "machine",
+    "translatedHash": "9shqov9pae",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "katlmiwzbn": {
     "status": "approved",
@@ -749,17 +1207,41 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "lw6i0l6umk": {
-    "status": "approved",
-    "translatedHash": "7sg3bcq42k",
+  "lbk9juhbhj": {
+    "status": "machine",
+    "translatedHash": "1r7ukvocik",
     "at": "2026-10-16",
-    "by": "armando"
+    "by": "claude"
+  },
+  "lypsgm9x0p": {
+    "status": "machine",
+    "translatedHash": "287ryemmade",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "m2heui2atv": {
     "status": "approved",
     "translatedHash": "2aggnoaj5tl",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "mhvs651ohl": {
+    "status": "machine",
+    "translatedHash": "1bpoq0qsrd7",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "ms7xi4pdht": {
+    "status": "machine",
+    "translatedHash": "ifzehg3jqy",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "n26uqpccc1": {
+    "status": "machine",
+    "translatedHash": "1mprbip649g",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "nc51nvezgp": {
     "status": "approved",
@@ -785,6 +1267,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "oqg5fphuy8": {
+    "status": "machine",
+    "translatedHash": "tzx7svj2ys",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "pqxfkyyz3z": {
     "status": "approved",
     "translatedHash": "1jndihhnzll",
@@ -796,6 +1284,12 @@
     "translatedHash": "2bjcxyjs58h",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "qaq6v4znaw": {
+    "status": "machine",
+    "translatedHash": "26f7kktvwag",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "qqr9u9goft": {
     "status": "approved",
@@ -833,11 +1327,17 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "rrusbj3fvp": {
-    "status": "approved",
-    "translatedHash": "p3mhgim8ic",
+  "rm0almrl05": {
+    "status": "machine",
+    "translatedHash": "j2kkmcemch",
     "at": "2026-10-16",
-    "by": "armando"
+    "by": "claude"
+  },
+  "ru3vt6k6dd": {
+    "status": "machine",
+    "translatedHash": "umr2j457t4",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "rz6712kzgp": {
     "status": "approved",
@@ -857,6 +1357,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "sy45vluzr6": {
+    "status": "machine",
+    "translatedHash": "18ar4w6nplc",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "t0tw3ac5h7": {
     "status": "approved",
     "translatedHash": "mcau54t4uh",
@@ -874,6 +1380,18 @@
     "translatedHash": "11uiz97s42i",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "t4tf7v25fy": {
+    "status": "machine",
+    "translatedHash": "gag0ejbaps",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "tfkxfo1n7k": {
+    "status": "machine",
+    "translatedHash": "1cflne7ncjm",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "tjcaurs5c0": {
     "status": "approved",
@@ -899,17 +1417,47 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "ubt0r7iu3g": {
+    "status": "machine",
+    "translatedHash": "2egq8y39iab",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "va2t15vl3a": {
+    "status": "machine",
+    "translatedHash": "18rvq88n9xa",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "vhkvwmltny": {
     "status": "approved",
     "translatedHash": "ioeixgsz3t",
     "at": "2026-10-16",
     "by": "armando"
   },
+  "wf2vhke9pu": {
+    "status": "machine",
+    "translatedHash": "jmrcpgo4f3",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
+  "wlz8vvf7yd": {
+    "status": "machine",
+    "translatedHash": "2drzs9z2acg",
+    "at": "2026-10-16",
+    "by": "claude"
+  },
   "x5mf57rgr2": {
     "status": "approved",
     "translatedHash": "ibsxadfuof",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "xbnzz9ugsf": {
+    "status": "machine",
+    "translatedHash": "28u7fnz91zo",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "y646yut1xb": {
     "status": "approved",
@@ -928,5 +1476,11 @@
     "translatedHash": "2djked103xj",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "zwgsvylkv6": {
+    "status": "machine",
+    "translatedHash": "vldvgqq96p",
+    "at": "2026-10-16",
+    "by": "claude"
   }
 }
