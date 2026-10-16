@@ -58,10 +58,32 @@ pub fn write_autosave(path: &Path, service: &Service, info: &AutosaveInfo) -> io
     write_atomic(path, &service_to_json(service, Some(info)))
 }
 
-/// Reads a service (or autosave) file. Errors are worded for the operator.
-pub fn read_service(path: &Path) -> std::result::Result<(Service, Option<AutosaveInfo>), String> {
-    let text = fs::read_to_string(path).map_err(|e| format!("Can't read {}: {e}", path.display()))?;
-    service_from_json(&text).map_err(|e| format!("Can't open {}: {e}", file_label(path)))
+/// Why a service file couldn't be read. `Display` is the English message
+/// (the console words its own).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ServiceFileError {
+    /// The file couldn't be read at all.
+    Unreadable { path: PathBuf, error: String },
+    /// It was read but isn't a service file.
+    Invalid { file: String, error: String },
+}
+
+impl std::fmt::Display for ServiceFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServiceFileError::Unreadable { path, error } => write!(f, "Can't read {}: {error}", path.display()),
+            ServiceFileError::Invalid { file, error } => write!(f, "Can't open {file}: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServiceFileError {}
+
+/// Reads a service (or autosave) file.
+pub fn read_service(path: &Path) -> std::result::Result<(Service, Option<AutosaveInfo>), ServiceFileError> {
+    let text = fs::read_to_string(path)
+        .map_err(|e| ServiceFileError::Unreadable { path: path.to_path_buf(), error: e.to_string() })?;
+    service_from_json(&text).map_err(|e| ServiceFileError::Invalid { file: file_label(path), error: e.to_string() })
 }
 
 /// What a restart finds in the autosave file.
@@ -71,7 +93,20 @@ pub struct Restored {
     pub info: AutosaveInfo,
     /// Why the autosave couldn't be used, if it existed but was unreadable.
     /// The file is kept beside it as `…corrupt` for inspection.
-    pub problem: Option<String>,
+    pub problem: Option<RestoreProblem>,
+}
+
+/// An autosave that couldn't be read, and where it was moved.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RestoreProblem {
+    pub error: ServiceFileError,
+    pub kept_as: PathBuf,
+}
+
+impl std::fmt::Display for RestoreProblem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} (kept as {})", self.error, self.kept_as.display())
+    }
 }
 
 /// Loads the autosave from `path`, if any. A damaged autosave is moved
@@ -92,7 +127,7 @@ pub fn restore_autosave(path: &Path) -> Restored {
                 .find(|p| !p.exists())
                 .expect("some name is free");
             let _ = fs::rename(path, &aside);
-            Restored { problem: Some(format!("{e} (kept as {})", aside.display())), ..Default::default() }
+            Restored { problem: Some(RestoreProblem { error: e, kept_as: aside }), ..Default::default() }
         }
     }
 }

@@ -16,6 +16,7 @@ use asaf_core::{Song, format_lyrics, parse_lyrics};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 pub use bible::{BibleImport, VerseHit};
+pub use themes::ThemeError;
 pub use import::ImportReport;
 pub use rusqlite::Error;
 pub type Result<T> = rusqlite::Result<T>;

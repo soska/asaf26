@@ -6,6 +6,8 @@
 use anyhow::Result;
 use asaf_core::{Align, DEFAULT_THEME_NAME, Theme, TransitionKind, VAlign, parse_color, sample_song};
 use asaf_fonts::FONTS;
+use asaf_library::ThemeError;
+use asaf_library::media::IMAGE_EXTENSIONS;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
@@ -201,7 +203,10 @@ impl ThemeEditor {
             }
             ready
         });
-        subscriptions.push(cx.observe_global::<crate::i18n::UiLanguage>(|_, cx| cx.notify()));
+        subscriptions.push(cx.observe_global_in::<crate::i18n::UiLanguage>(window, |_, window, cx| {
+            window.set_window_title(lang(cx).t("Themes"));
+            cx.notify()
+        }));
         let mut editor = Self {
             library,
             themes: Vec::new(),
@@ -279,7 +284,7 @@ impl ThemeEditor {
         let (theme, bad) = self.draft(cx);
         if !bad.is_empty() {
             let names: Vec<&str> = bad.iter().map(|f| l.t(f.label())).collect();
-            let note = format!("{} {}", l.t("Fix these first:"), names.join(", "));
+            let note = l.f("Fix these first: {fields}", &[("fields", &names.join(", "))]);
             window.push_notification(Notification::warning(note), cx);
             return;
         }
@@ -290,9 +295,9 @@ impl ThemeEditor {
                 let renamed = (!saved.name.eq(&previous)).then(|| (previous, saved.name.clone()));
                 self.reload(Some(&saved.name), window, cx);
                 cx.emit(ThemesChanged { renamed, deleted: None });
-                window.push_notification(Notification::success(format!("{} “{}”", l.t("Saved"), saved.name)), cx);
+                window.push_notification(Notification::success(l.f("Saved “{name}”", &[("name", &saved.name)])), cx);
             }
-            Err(e) => window.push_notification(Notification::error(e), cx),
+            Err(e) => window.push_notification(Notification::error(theme_error(l, &e)), cx),
         }
     }
 
@@ -305,9 +310,9 @@ impl ThemeEditor {
         let base = if copy { self.stored() } else { Theme::default() };
         let result = {
             let mut lib = self.library.lock().unwrap();
-            let stem = if copy { format!("{} {}", base.name, l.t("copy")) } else { l.t("New theme").to_string() };
+            let stem = if copy { l.f("{name} copy", &[("name", &base.name)]) } else { l.t("New theme").to_string() };
             lib.unused_theme_name(&stem)
-                .map_err(|e| e.to_string())
+                .map_err(|e| ThemeError::Storage(e.to_string()))
                 .and_then(|name| lib.save_theme(&Theme { name, ..base }, None))
         };
         match result {
@@ -316,14 +321,14 @@ impl ThemeEditor {
                 cx.emit(ThemesChanged::default());
                 self.input(Field::Name).update(cx, |s, cx| s.focus(window, cx));
             }
-            Err(e) => window.push_notification(Notification::error(e), cx),
+            Err(e) => window.push_notification(Notification::error(theme_error(l, &e)), cx),
         }
     }
 
     fn delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let l = lang(cx);
         let name = self.stored().name;
-        let message = format!("{} “{name}”?", l.t("Delete the theme"));
+        let message = l.f("Delete the theme “{name}”?", &[("name", &name)]);
         let answer = window.prompt(PromptLevel::Warning, &message, None, &[l.t("Delete"), l.t("Cancel")], cx);
         cx.spawn_in(window, async move |this, cx| {
             if answer.await != Ok(0) {
@@ -336,7 +341,7 @@ impl ThemeEditor {
                         this.reload(None, window, cx);
                         cx.emit(ThemesChanged { renamed: None, deleted: Some(name) });
                     }
-                    Err(e) => window.push_notification(Notification::error(e), cx),
+                    Err(e) => window.push_notification(Notification::error(theme_error(lang(cx), &e)), cx),
                 }
             });
         })
@@ -358,7 +363,10 @@ impl ThemeEditor {
                 cx.emit(ThemesChanged::default());
                 cx.notify();
             }
-            Err(e) => window.push_notification(Notification::error(e.to_string()), cx),
+            Err(e) => {
+                let note = lang(cx).f("Couldn't save the settings: {error}", &[("error", &e.to_string())]);
+                window.push_notification(Notification::error(note), cx)
+            }
         }
     }
 
@@ -377,7 +385,7 @@ impl ThemeEditor {
     /// is `None`) or goes on with `then`.
     fn confirm_discard(&mut self, then: Option<Box<AfterDiscard>>, window: &mut Window, cx: &mut Context<Self>) {
         let l = lang(cx);
-        let message = format!("{} “{}”?", l.t("Discard your changes to"), self.stored().name);
+        let message = l.f("Discard your changes to “{name}”?", &[("name", &self.stored().name)]);
         let answer = window.prompt(PromptLevel::Warning, &message, None, &[l.t("Discard"), l.t("Keep Editing")], cx);
         cx.spawn_in(window, async move |this, cx| {
             if answer.await != Ok(0) {
@@ -423,6 +431,11 @@ impl ThemeEditor {
                     self.choice.background_image = Some(url);
                 }
                 cx.notify();
+            }
+            Err(_) if !is_image_file(path) => {
+                let (file, types) = (path.display().to_string(), IMAGE_EXTENSIONS.join(", "));
+                let note = lang(cx).f("{file} isn't an image Asaf can show (use {types}).", &[("file", &file), ("types", &types)]);
+                window.push_notification(Notification::error(note), cx)
             }
             Err(e) => window.push_notification(Notification::error(e), cx),
         }
@@ -703,6 +716,23 @@ impl Render for ThemeEditor {
                             .disabled(!dirty)
                             .on_click(cx.listener(|this, _, w, cx| this.save(w, cx)))),
             )
+    }
+}
+
+/// Whether `path` has an extension the display page can show.
+fn is_image_file(path: &std::path::Path) -> bool {
+    let ext = path.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
+    ext.is_some_and(|e| IMAGE_EXTENSIONS.contains(&e.as_str()))
+}
+
+/// Why a theme couldn't be saved or deleted, in the console's language.
+fn theme_error(l: Lang, e: &ThemeError) -> String {
+    match e {
+        ThemeError::NameTaken(name) => l.f("There is already a theme called “{name}”.", &[("name", name)]),
+        ThemeError::IsDefault(name) => {
+            l.f("“{name}” is the default theme; choose another default first.", &[("name", name)])
+        }
+        ThemeError::Storage(error) => l.f("The library couldn't be updated: {error}", &[("error", error)]),
     }
 }
 

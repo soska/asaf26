@@ -85,7 +85,13 @@ impl SettingsWindow {
                 }
                 _ => {}
             }),
-            cx.observe_global::<UiLanguage>(|_, cx| cx.notify()),
+            // Re-word what isn't drawn each frame.
+            cx.observe_global_in::<UiLanguage>(window, |this, window, cx| {
+                let l = lang(cx);
+                window.set_window_title(l.t("Settings"));
+                this.pin.update(cx, |s, cx| s.set_placeholder(l.t("No PIN"), window, cx));
+                cx.notify()
+            }),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
         ];
         Self {
@@ -111,7 +117,10 @@ impl SettingsWindow {
                 self.settings = settings.clone();
                 cx.emit(SettingsChanged(settings));
             }
-            Err(e) => window.push_notification(Notification::error(e.to_string()), cx),
+            Err(e) => {
+                let note = lang(cx).f("Couldn't save the settings: {error}", &[("error", &e.to_string())]);
+                window.push_notification(Notification::error(note), cx)
+            }
         }
         cx.notify();
     }

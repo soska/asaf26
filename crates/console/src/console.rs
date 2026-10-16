@@ -22,7 +22,7 @@ use crate::editor::{SongEditor, SongSaved};
 use crate::i18n::{UiLanguage, lang};
 use crate::settings::{LibraryChanged, SettingsChanged, SettingsWindow};
 use crate::theme_editor::{ThemeEditor, ThemesChanged};
-use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState};
+use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState, restore_problem_notice};
 use crate::slides::slide_card;
 use crate::{
     BlankBackground, BlankBlack, BlankLogo, EditNotes, EditSong, FocusSearch, GoLive, ImportOpenLp, LeaveSearch,
@@ -115,6 +115,7 @@ impl Console {
         // starts in the library's default theme.
         let settings = library.lock().unwrap().settings().unwrap_or_default();
         cx.set_global(UiLanguage(settings.language));
+        crate::set_menus(cx);
         if let Ok(theme) = library.lock().unwrap().default_theme() {
             store.set_default_theme(theme);
         }
@@ -142,7 +143,7 @@ impl Console {
                 _ => {}
             }),
             cx.observe_global::<Projector>(|_, cx| cx.notify()),
-            cx.observe_global::<UiLanguage>(|_, cx| cx.notify()),
+            cx.observe_global_in::<UiLanguage>(window, |this, window, cx| this.language_changed(window, cx)),
             // Don't lose the last half second of changes on ⌘Q.
             cx.on_app_quit(|this, _| {
                 this.service.flush_autosave();
@@ -151,13 +152,11 @@ impl Console {
         ];
         subscriptions.extend(service.subscriptions(window, cx));
         // Notifications need the window's root, which exists once this view does.
-        let note = match session.notice.take() {
-            Some(notice) => Some(Notification::warning(notice)),
-            None if !service.service.items.is_empty() => Some(Notification::info(format!(
-                "{} “{}”",
-                l.t("Restored from the last session:"),
-                service.service.display_name()
-            ))),
+        let note = match session.restore_problem.take() {
+            Some(problem) => Some(Notification::warning(restore_problem_notice(l, &problem))),
+            None if !service.service.items.is_empty() => Some(Notification::info(
+                l.f("Restored “{name}” from the last session", &[("name", service.service.display_name())]),
+            )),
             None => None,
         };
         if let Some(note) = note {
@@ -322,6 +321,21 @@ impl Console {
         &self.library
     }
 
+    /// The console's language changed: re-word what isn't drawn each frame
+    /// (placeholders, why the cued item can't be shown).
+    fn language_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let l = lang(cx);
+        let placeholders = [
+            (&self.search, l.t("Search title, lyrics or author")),
+            (&self.service.notes, l.t("Notes for the operator")),
+            (&self.service.theme, l.t("Default theme")),
+        ];
+        for (input, text) in placeholders {
+            input.update(cx, |s, cx| s.set_placeholder(text, window, cx));
+        }
+        self.resolve_cue(cx);
+    }
+
     /// Re-runs the search, keeping the selected song selected if it's still listed.
     pub(crate) fn refresh_search(&mut self, cx: &mut Context<Self>) {
         let query = self.search.read(cx).value();
@@ -397,7 +411,10 @@ impl Console {
                     this.song_saved(song.clone(), cx)
                 }));
             }
-            Err(e) => window.push_notification(Notification::error(format!("Can't open editor: {e}")), cx),
+            Err(e) => {
+                let note = lang(cx).f("Can't open the song editor: {error}", &[("error", &format!("{e:#}"))]);
+                window.push_notification(Notification::error(note), cx)
+            }
         }
     }
 
@@ -654,9 +671,12 @@ impl Console {
                     .text_xs()
                     .text_color(theme.muted_foreground)
                     .child(format!(
-                        "{count}{} {}  ·  {}",
-                        if count == RESULT_LIMIT { "+" } else { "" },
-                        if count == 1 { l.t("song") } else { l.t("songs") },
+                        "{}  ·  {}",
+                        if count == RESULT_LIMIT {
+                            l.f("{count}+ songs", &[("count", &count.to_string())])
+                        } else {
+                            l.n(count as u64, "{count} song", "{count} songs")
+                        },
                         l.t("⏎ go live, ⇧⏎ add to service")
                     )),
             )
@@ -773,7 +793,10 @@ impl Console {
             .service
             .live_key
             .and_then(|k| self.service.service.position(k))
-            .map(|i| format!("{} {} {} {} · ", l.t("Item"), i + 1, l.t("of"), self.service.service.items.len()))
+            .map(|i| {
+                let (number, count) = ((i + 1).to_string(), self.service.service.items.len().to_string());
+                format!("{} · ", l.f("Item {number} of {count}", &[("number", &number), ("count", &count)]))
+            })
             .unwrap_or_else(|| if live.slides.is_empty() { String::new() } else { format!("{} · ", l.t("Not in the service")) });
 
         v_flex()
@@ -808,14 +831,12 @@ impl Console {
                     .child(div().truncate().text_xs().text_color(theme.muted_foreground).child(
                         match live.slides.get(live.current) {
                             Some(slide) => {
+                                let (number, count) = ((live.current + 1).to_string(), live.slides.len().to_string());
                                 format!(
-                                    "{from_service}{} · {} {} {} · {} {}",
+                                    "{from_service}{} · {} · {}",
                                     slide.label,
-                                    live.current + 1,
-                                    l.t("of"),
-                                    live.slides.len(),
-                                    l.t("Theme"),
-                                    live.theme_name
+                                    l.f("{number} of {count}", &[("number", &number), ("count", &count)]),
+                                    l.f("Theme {theme}", &[("theme", &live.theme_name)])
                                 )
                             }
                             None => String::new(),

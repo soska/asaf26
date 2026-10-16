@@ -7,6 +7,34 @@ use rusqlite::{OptionalExtension, params};
 
 use crate::{Library, Result};
 
+/// Why a theme couldn't be saved or deleted. `Display` is the English
+/// message (the console words its own).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ThemeError {
+    /// Another theme already has this name.
+    NameTaken(String),
+    /// The default theme can't be deleted.
+    IsDefault(String),
+    /// Reading or writing the library failed.
+    Storage(String),
+}
+
+impl std::fmt::Display for ThemeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ThemeError::NameTaken(name) => write!(f, "There is already a theme called “{name}”."),
+            ThemeError::IsDefault(name) => write!(f, "“{name}” is the default theme; choose another default first."),
+            ThemeError::Storage(e) => f.write_str(e),
+        }
+    }
+}
+
+impl std::error::Error for ThemeError {}
+
+fn storage(e: impl ToString) -> ThemeError {
+    ThemeError::Storage(e.to_string())
+}
+
 impl Library {
     /// Every theme, by name. There is always at least one.
     pub fn themes(&self) -> Result<Vec<Theme>> {
@@ -36,21 +64,21 @@ impl Library {
     /// over the one called `previous_name`, which renames it. Renaming the
     /// default theme keeps it the default. Fails, changing nothing, if
     /// another theme already has the name. Returns the theme as stored.
-    pub fn save_theme(&mut self, theme: &Theme, previous_name: Option<&str>) -> std::result::Result<Theme, String> {
+    pub fn save_theme(&mut self, theme: &Theme, previous_name: Option<&str>) -> std::result::Result<Theme, ThemeError> {
         let theme = theme.clone().sanitized();
-        let json = serde_json::to_string(&theme).map_err(|e| e.to_string())?;
-        let default_name = self.settings().map_err(|e| e.to_string())?.default_theme;
+        let json = serde_json::to_string(&theme).map_err(storage)?;
+        let default_name = self.settings().map_err(storage)?.default_theme;
         let renames_default = previous_name.is_some_and(|p| p.trim().eq_ignore_ascii_case(&default_name));
-        let tx = self.conn.transaction().map_err(|e| e.to_string())?;
+        let tx = self.conn.transaction().map_err(storage)?;
         let taken: Option<String> = tx
             .query_row("SELECT name FROM themes WHERE name = ?1", [&theme.name], |r| r.get(0))
             .optional()
-            .map_err(|e| e.to_string())?;
+            .map_err(storage)?;
         let same = |a: &str, b: &str| a.eq_ignore_ascii_case(b);
         if let Some(taken) = &taken
             && !previous_name.is_some_and(|p| same(p, taken))
         {
-            return Err(format!("There is already a theme called “{taken}”."));
+            return Err(ThemeError::NameTaken(taken.clone()));
         }
         let updated = match previous_name {
             Some(prev) => tx
@@ -58,12 +86,12 @@ impl Library {
                     "UPDATE themes SET name = ?1, data = ?2, updated_at = unixepoch() WHERE name = ?3",
                     params![theme.name, json, prev.trim()],
                 )
-                .map_err(|e| e.to_string())?,
+                .map_err(storage)?,
             None => 0,
         };
         if updated == 0 {
             tx.execute("INSERT INTO themes (name, data) VALUES (?1, ?2)", params![theme.name, json])
-                .map_err(|e| e.to_string())?;
+                .map_err(storage)?;
         }
         if renames_default {
             tx.execute(
@@ -71,20 +99,20 @@ impl Library {
                  ON CONFLICT (key) DO UPDATE SET value = excluded.value",
                 [&theme.name],
             )
-            .map_err(|e| e.to_string())?;
+            .map_err(storage)?;
         }
-        tx.commit().map_err(|e| e.to_string())?;
+        tx.commit().map_err(storage)?;
         Ok(theme)
     }
 
     /// Deletes a theme. The default theme can't be deleted (choose another
     /// default first), so there's always one left.
-    pub fn delete_theme(&mut self, name: &str) -> std::result::Result<(), String> {
-        let default = self.default_theme().map_err(|e| e.to_string())?;
+    pub fn delete_theme(&mut self, name: &str) -> std::result::Result<(), ThemeError> {
+        let default = self.default_theme().map_err(storage)?;
         if default.name.eq_ignore_ascii_case(name.trim()) {
-            return Err(format!("“{}” is the default theme; choose another default first.", default.name));
+            return Err(ThemeError::IsDefault(default.name));
         }
-        self.conn.execute("DELETE FROM themes WHERE name = ?1", [name.trim()]).map_err(|e| e.to_string())?;
+        self.conn.execute("DELETE FROM themes WHERE name = ?1", [name.trim()]).map_err(storage)?;
         Ok(())
     }
 
