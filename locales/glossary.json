@@ -1,0 +1,67 @@
+{
+  "Asaf": { "translate": false, "note": "The app's name" },
+  "OpenLP": { "translate": false, "note": "Another worship app we import from" },
+  "OpenLyrics": { "translate": false, "note": "Open song file format" },
+  "OSIS": { "translate": false, "note": "Bible file format" },
+  "Zefania": { "translate": false, "note": "Bible file format" },
+  "PIN": { "translate": false, "note": "The remote's numeric code" },
+  "ASAF_PORT": { "translate": false, "note": "Environment variable" },
+  "service": {
+    "note": "The ordered list of songs and Bible passages for one meeting, saved as a file. Not the meeting itself.",
+    "translations": { "es-MX": "servicio" }
+  },
+  "go live": {
+    "note": "Put an item or slide on the projector",
+    "translations": { "es-MX": "proyectar" }
+  },
+  "live": {
+    "note": "What is on the projector right now. Inside \"go live\" it's proyectar.",
+    "translations": { "es-MX": ["en vivo", "proyectar", "se proyecta"] }
+  },
+  "cue": {
+    "note": "Select the next service item so it goes live next",
+    "translations": { "es-MX": "preparar" }
+  },
+  "slide": {
+    "note": "A noun: one screen of text. The transition \"Slide up\" is a verb: deslizar.",
+    "translations": { "es-MX": ["diapositiva", "deslizar"] }
+  },
+  "theme": {
+    "note": "How slides look on the projector: font, colors, background",
+    "translations": { "es-MX": "tema" }
+  },
+  "lyrics": { "translations": { "es-MX": "letra" } },
+  "verse": {
+    "note": "Of a song: estrofa. Of the Bible: versículo.",
+    "translations": { "es-MX": ["estrofa", "versículo"] }
+  },
+  "verse order": { "translations": { "es-MX": "orden de estrofas" } },
+  "reference": {
+    "note": "A Bible reference such as Jn 3:16",
+    "translations": { "es-MX": "cita" }
+  },
+  "passage": {
+    "note": "Bible verses shown together",
+    "translations": { "es-MX": "pasaje" }
+  },
+  "add": { "translations": { "es-MX": "agregar" } },
+  "settings": {
+    "note": "As in Apple's Spanish (Latin America): Configuración",
+    "translations": { "es-MX": "configuración" }
+  },
+  "remote": {
+    "note": "The web page that controls Asaf from a phone",
+    "translations": { "es-MX": "control remoto" }
+  },
+  "phone": { "translations": { "es-MX": "celular" } },
+  "projector": { "translations": { "es-MX": "proyector" } },
+  "background": { "translations": { "es-MX": "fondo" } },
+  "outline": {
+    "note": "The stroke around the slide text",
+    "translations": { "es-MX": "contorno" }
+  },
+  "operator": {
+    "note": "The person running Asaf during the meeting",
+    "translations": { "es-MX": "operador" }
+  }
+}
