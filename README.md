@@ -629,19 +629,17 @@ purpose, since the Rust extractor writes the catalog).
   the outline is drawn as eight offset copies of the text and the shadow as
   one translucent copy, and the size follows a character-width estimate,
   not the display's measured auto-fit.
-- Spanish covers the console's labels, buttons, hints and the theme and
-  settings windows; the song editor is still English. Messages built from
-  other parts (Bible reference errors and hints, import reports, file dialogs' questions, notifications such as
-  "Added … to the service") and the Asaf menu are still English; input
-  placeholders switch on the next start.
+- The whole console, its menu and the remote's error replies are in
+  Spanish (Mexico) too, and switch at once. Still English: the phone remote
+  and stage pages themselves, the command line and logs, and technical
+  detail inside error messages (from the OS, SQLite or file parsers).
 - The OpenLP importer doesn't bring song books, topics, comments, media,
   OpenLP themes or services, and web Bibles can't be imported.
 - Theme images are never removed from `media/`, even when no theme uses them.
 - Packaging is macOS only, signed ad hoc (see "Packaging").
 - One versification (KJV-style chapter counts); a translation that numbers
   Joel or Malachi differently can't be addressed past those counts.
-- References are parsed in English and Spanish only; the console UI is
-  English. The European `Jn 3,16` (comma for colon) style isn't recognised:
+- References are parsed in English and Spanish only. The European `Jn 3,16` (comma for colon) style isn't recognised:
   it reads as chapters 3 and 16.
 - Bible files are read as UTF-8, UTF-16 (with a byte-order mark) or, failing
   those, Latin-1; other encodings come out garbled.

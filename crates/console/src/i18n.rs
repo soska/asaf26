@@ -58,21 +58,19 @@ impl Lang {
 
     /// `en` in the sense given by `context` (`l.tc("Book", "verb")`), for
     /// English text that needs different translations in different places.
-    #[allow(dead_code, reason = "first callers come with ARM-390")]
+    #[allow(dead_code, reason = "no text needs a context yet")]
     pub fn tc(self, en: &'static str, context: &'static str) -> &'static str {
         self.catalog().map_or(en, |c| c.text(en, Some(context)))
     }
 
     /// `en` translated, then each `{name}` filled with its value:
     /// `l.f("Added {title} to the service", &[("title", &name)])`.
-    #[allow(dead_code, reason = "first callers come with ARM-390")]
     pub fn f(self, en: &'static str, args: &[(&str, &str)]) -> String {
         fill(self.t(en), args)
     }
 
     /// The plural form for `count`, with `{count}` filled:
     /// `l.n(count, "{count} song", "{count} songs")`.
-    #[allow(dead_code, reason = "first callers come with ARM-390")]
     pub fn n(self, count: u64, one: &'static str, other: &'static str) -> String {
         let form = self.catalog().map_or_else(|| english_plural(one, other, count), |c| c.plural(one, other, count));
         fill(form, &[("count", &count.to_string())])
@@ -103,9 +101,11 @@ mod tests {
     fn counts_pick_the_plural_form() {
         assert_eq!(Lang(Language::English).n(1, "{count} song", "{count} songs"), "1 song");
         assert_eq!(Lang(Language::English).n(3, "{count} song", "{count} songs"), "3 songs");
-        // No Spanish plurals until the catalog has them: the English forms.
-        assert_eq!(Lang(Language::Spanish).n(1, "{count} song", "{count} songs"), "1 song");
-        assert_eq!(Lang(Language::Spanish).n(0, "{count} song", "{count} songs"), "0 songs");
+        assert_eq!(Lang(Language::Spanish).n(1, "{count} song", "{count} songs"), "1 canción");
+        assert_eq!(Lang(Language::Spanish).n(0, "{count} song", "{count} songs"), "0 canciones");
+        assert_eq!(Lang(Language::Spanish).n(1_000_000, "{count} song", "{count} songs"), "1000000 de canciones");
+        // A plural that isn't in the catalog: the English forms.
+        assert_eq!(Lang(Language::Spanish).n(2, "{count} hymn", "{count} hymns"), "2 hymns");
     }
 
     #[test]
