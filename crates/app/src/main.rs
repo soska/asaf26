@@ -237,7 +237,7 @@ fn run_app(library: Library) -> ExitCode {
     let library = Arc::new(Mutex::new(library));
     let session = restore_service();
 
-    gpui::application().with_assets(gpui::assets::Assets).run(move |cx: &mut App| {
+    gpui::application().with_assets(asaf_console::Assets).run(move |cx: &mut App| {
         gpui::init(cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.bind_keys([gpui::KeyBinding::new("cmd-q", Quit, None)]);

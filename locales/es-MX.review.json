@@ -1485,6 +1485,14 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "o54cnfr1fb": {
+    "status": "machine",
+    "translatedHash": "1d7k1txlwap",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Same as the previous 'Siguiente  ▶'; the arrow is now an icon."
+  },
   "o6unvvqig9": {
     "status": "approved",
     "translatedHash": "1zh0dxt5bnb",
@@ -1569,12 +1577,6 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "rhq4h912js": {
-    "status": "approved",
-    "translatedHash": "t8itl4f1wb",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
   "rj1ngyto0o": {
     "status": "approved",
     "translatedHash": "1sxs2gzbxa1",
@@ -1592,6 +1594,12 @@
     "translatedHash": "umr2j457t4",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "ry4ta3de7l": {
+    "status": "machine",
+    "translatedHash": "1etyer36prw",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "rz6712kzgp": {
     "status": "approved",
@@ -1653,12 +1661,6 @@
     "at": "2026-10-16",
     "by": "armando"
   },
-  "tnnrks4tv6": {
-    "status": "approved",
-    "translatedHash": "1apxkknyltd",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
   "tuuzg9uxg4": {
     "status": "approved",
     "translatedHash": "22givbhp9k8",
@@ -1700,6 +1702,14 @@
     "translatedHash": "ioeixgsz3t",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "vjxiut1gq9": {
+    "status": "machine",
+    "translatedHash": "zj652mozmp",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Same as the previous '◀  Anterior'; the arrow is now an icon."
   },
   "wf2vhke9pu": {
     "status": "approved",

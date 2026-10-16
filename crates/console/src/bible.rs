@@ -10,7 +10,7 @@ use asaf_library::VerseHit;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::checkbox::Checkbox;
 use gpui::component::input::{Input, InputState};
-use gpui::component::{ActiveTheme as _, Selectable as _, Sizable as _, h_flex, v_flex};
+use gpui::component::{ActiveTheme as _, Icon, Selectable as _, Sizable as _, h_flex, v_flex};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AppContext as _, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, ScrollStrategy,
@@ -19,6 +19,7 @@ use gpui::{
 
 use crate::console::Console;
 use crate::i18n::{Lang, UiLanguage, lang};
+use crate::icons::IconName;
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -358,6 +359,7 @@ impl Console {
                             .child(div().flex_1().font_weight(FontWeight::BOLD).child(l.t("Bible")))
                             .child(
                                 Button::new("import-bible")
+                                    .icon(IconName::Download)
                                     .small()
                                     .label(l.t("Import…"))
                                     .tooltip(l.t("Import an OSIS or Zefania Bible"))
@@ -375,7 +377,7 @@ impl Console {
                                 .on_click(cx.listener(move |this, _, _, cx| this.choose_bible(Some(i), cx)))
                         })),
                     )
-                    .child(div().key_context("BibleSearch").child(Input::new(&state.input).cleanable(true)))
+                    .child(div().key_context("BibleSearch").child(Input::new(&state.input).prefix(Icon::new(IconName::Search).text_color(theme.muted_foreground)).cleanable(true)))
                     .child(div().min_h(px(16.)).text_xs().text_color(status_color).child(status)),
             )
             .when(count > 0, |d| {
@@ -490,6 +492,7 @@ impl Console {
                     )
                     .child(
                         Button::new("add-passage")
+                            .icon(IconName::ListPlus)
                             .small()
                             .label(l.t("Add"))
                             .tooltip(l.t("Add to the service (⇧⏎)"))
@@ -507,6 +510,7 @@ impl Console {
                     )
                     .child(
                         Button::new("go-live")
+                            .icon(IconName::Play)
                             .small()
                             .primary()
                             .label(l.t("Go live"))

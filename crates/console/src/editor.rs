@@ -16,6 +16,7 @@ use gpui::{
 };
 
 use crate::i18n::{Lang, UiLanguage, en, lang};
+use crate::icons::IconName;
 use crate::{SaveSong, SharedLibrary};
 
 /// Emitted after a successful save, with the song as stored (id set).
@@ -353,6 +354,7 @@ impl Render for SongEditor {
                     .child(Button::new("cancel").label(l.t("Cancel")).on_click(cx.listener(|this, _, window, cx| this.cancel(window, cx))))
                     .child(
                         Button::new("save")
+                            .icon(IconName::Save)
                             .primary()
                             .label(l.t("Save  ⌘S"))
                             .disabled(draft.title.is_empty() || draft.verses.is_empty())
