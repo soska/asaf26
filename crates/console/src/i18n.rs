@@ -27,6 +27,7 @@ pub fn lang(cx: &App) -> Lang {
 /// Switches the console's language and redraws every window.
 pub fn set_language(language: Language, cx: &mut App) {
     cx.set_global(UiLanguage(language));
+    crate::set_menus(cx);
     cx.refresh_windows();
 }
 

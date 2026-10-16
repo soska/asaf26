@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use asaf_library::Library;
-use gpui::{App, KeyBinding, actions};
+use gpui::{App, KeyBinding, Menu, MenuItem, actions};
 
 pub use console::Console;
 pub use editor::{SongEditor, SongSaved};
@@ -61,9 +61,23 @@ actions!(
         OpenThemes,
         OpenSettings,
         ImportOpenLp,
+        Quit,
     ]
 );
 actions!(asaf_editor, [SaveSong, SaveTheme]);
+
+/// Sets the app menu in the console's language; called again when the
+/// language changes. The app handles [`Quit`].
+pub fn set_menus(cx: &mut App) {
+    let l = i18n::lang(cx);
+    cx.set_menus(vec![Menu::new("Asaf").items([
+        MenuItem::action(l.t("Settings…"), OpenSettings),
+        MenuItem::action(l.t("Themes…"), OpenThemes),
+        MenuItem::action(l.t("Import from OpenLP…"), ImportOpenLp),
+        MenuItem::separator(),
+        MenuItem::action(l.t("Quit Asaf"), Quit),
+    ])]);
+}
 
 /// Makes the bundled fonts available to the console's previews.
 fn load_fonts(cx: &mut App) {

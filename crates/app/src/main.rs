@@ -22,15 +22,13 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
-use asaf_console::{Console, ImportOpenLp, OpenSettings, OpenThemes, ServiceSession, SettingsChanged};
+use asaf_console::{Console, Quit, ServiceSession, SettingsChanged};
 use asaf_core::{Song, Store, sample_song};
 use asaf_library::Library;
 use asaf_library::service::{AUTOSAVE_FILE, restore_autosave};
 use asaf_projector::Projector;
 use gpui::component::theme::{Theme as UiTheme, ThemeMode};
-use gpui::{App, Menu, MenuItem, actions};
-
-actions!(asaf, [Quit]);
+use gpui::App;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -244,13 +242,8 @@ fn run_app(library: Library) -> ExitCode {
         UiTheme::change(ThemeMode::Dark, None, cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.bind_keys([gpui::KeyBinding::new("cmd-q", Quit, None)]);
-        cx.set_menus(vec![Menu::new("Asaf").items([
-            MenuItem::action("Settings…", OpenSettings),
-            MenuItem::action("Themes…", OpenThemes),
-            MenuItem::action("Import from OpenLP…", ImportOpenLp),
-            MenuItem::separator(),
-            MenuItem::action("Quit Asaf", Quit),
-        ])]);
+        // In English until the console applies the language setting.
+        asaf_console::set_menus(cx);
         asaf_console::init(cx);
 
         Projector::init(url.clone(), projector_on_main, settings.display_uuid.clone(), cx);
@@ -285,6 +278,6 @@ fn restore_service() -> ServiceSession {
         path: restored.info.path,
         dirty: restored.info.dirty,
         autosave: Some(autosave),
-        notice: restored.problem.map(|p| format!("Couldn't restore the last service: {p}")),
+        restore_problem: restored.problem,
     }
 }

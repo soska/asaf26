@@ -12,6 +12,7 @@ use futures::channel::mpsc;
 use gpui::{Context, SharedString};
 
 use crate::console::Console;
+use crate::i18n::lang;
 
 impl Console {
     /// Becomes the store's operator, and starts listening for changes made
@@ -55,11 +56,14 @@ impl Console {
     /// Runs a command from the remote. Unlike the same thing done from the
     /// keyboard, it leaves the operator's focus and preview alone.
     pub(crate) fn run_command(&mut self, cmd: Command, cx: &mut Context<Self>) -> Result<Outcome, String> {
+        // Replies are shown on the phone, in the console's language.
+        let l = lang(cx);
         match cmd {
             Command::Item { item, slide } => {
                 let len = self.service.service.items.len();
                 if item >= len {
-                    return Err(format!("There is no item {} (the service has {len}).", item + 1));
+                    let (number, count) = ((item + 1).to_string(), len.to_string());
+                    return Err(l.f("There is no item {number} (the service has {count}).", &[("number", &number), ("count", &count)]));
                 }
                 let cued = self.service.cursor.replace(item);
                 self.resolve_cue(cx);
@@ -78,8 +82,8 @@ impl Console {
                 };
                 let Some(bible) = bible else {
                     return Err(match translation {
-                        Some(abbr) => format!("The {abbr} Bible isn't installed."),
-                        None => "Import a Bible first.".into(),
+                        Some(abbr) => l.f("The {bible} Bible isn't installed.", &[("bible", &abbr)]),
+                        None => l.t("Import a Bible first.").into(),
                     });
                 };
                 let ranges = parse_reference(&reference, &bible.names()).map_err(|e| e.to_string())?;
@@ -96,7 +100,7 @@ impl Console {
                 self.store.command(cmd, move |r| {
                     let _ = tx.send(r);
                 });
-                rx.try_recv().unwrap_or_else(|_| Err("No result.".into()))
+                rx.try_recv().unwrap_or_else(|_| Err(l.t("No result.").into()))
             }
         }
     }

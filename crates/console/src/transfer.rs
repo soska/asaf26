@@ -4,11 +4,14 @@
 use std::path::PathBuf;
 
 use asaf_core::Song;
+use asaf_library::openlp::{OpenLpReport, find_openlp_files};
+use asaf_library::{BibleImport, ImportReport};
+use asaf_i18n::catalog::fill;
 use gpui::component::WindowExt as _;
 use gpui::component::notification::Notification;
 use gpui::{App, Context, PathPromptOptions, Window};
 
-use crate::i18n::lang;
+use crate::i18n::{Lang, lang};
 use crate::{Console, SharedLibrary};
 
 pub fn import(window: &mut Window, cx: &mut Context<Console>) {
@@ -17,7 +20,7 @@ pub fn import(window: &mut Window, cx: &mut Context<Console>) {
         files: true,
         directories: true,
         multiple: true,
-        prompt: Some("Import".into()),
+        prompt: Some(lang(cx).t("Import").into()),
     });
     cx.spawn_in(window, async move |this, cx| {
         let Ok(Ok(Some(paths))) = paths.await else { return };
@@ -26,8 +29,9 @@ pub fn import(window: &mut Window, cx: &mut Context<Console>) {
             .spawn(async move { library.lock().unwrap().import_openlyrics(&paths) })
             .await;
         let _ = this.update_in(cx, |this, window, cx| {
+            let l = lang(cx);
             let note = match report {
-                Ok(r) if r.failed.is_empty() => Notification::success(r.summary()),
+                Ok(r) if r.failed.is_empty() => Notification::success(import_summary(l, &r)),
                 Ok(r) => {
                     let details: Vec<String> = r
                         .failed
@@ -35,9 +39,9 @@ pub fn import(window: &mut Window, cx: &mut Context<Console>) {
                         .take(3)
                         .map(|(p, e)| format!("{}: {e}", file_name(p)))
                         .collect();
-                    Notification::warning(format!("{}\n{}", r.summary(), details.join("\n")))
+                    Notification::warning(format!("{}\n{}", import_summary(l, &r), details.join("\n")))
                 }
-                Err(e) => Notification::error(format!("Import failed: {e}")),
+                Err(e) => Notification::error(l.f("Import failed: {error}", &[("error", &e.to_string())])),
             };
             window.push_notification(note, cx);
             this.refresh_search(cx);
@@ -54,7 +58,7 @@ pub fn import_bible(window: &mut Window, cx: &mut Context<Console>) {
         files: true,
         directories: false,
         multiple: true,
-        prompt: Some("Import Bible".into()),
+        prompt: Some(lang(cx).t("Import Bible").into()),
     });
     cx.spawn_in(window, async move |this, cx| {
         let Ok(Ok(Some(paths))) = paths.await else { return };
@@ -66,14 +70,15 @@ pub fn import_bible(window: &mut Window, cx: &mut Context<Console>) {
             })
             .await;
         let _ = this.update_in(cx, |this, window, cx| {
+            let l = lang(cx);
             let mut last = None;
             for result in results {
                 let note = match result {
                     Ok(report) => {
                         last = report.bible.id;
-                        Notification::success(report.summary())
+                        Notification::success(bible_summary(l, &report))
                     }
-                    Err(e) => Notification::error(format!("Bible import failed: {e}")),
+                    Err(e) => Notification::error(l.f("Bible import failed: {error}", &[("error", &e.to_string())])),
                 };
                 window.push_notification(note, cx);
             }
@@ -100,17 +105,23 @@ pub fn import_openlp<V: 'static>(
     cx.spawn_in(window, async move |this, cx| {
         let Ok(Ok(Some(mut dirs))) = paths.await else { return };
         let Some(dir) = dirs.pop() else { return };
+        let searched = dir.clone();
         let result = cx.background_executor().spawn(async move { library.lock().unwrap().import_openlp(&dir) }).await;
         let _ = this.update_in(cx, |this, window, cx| {
+            let l = lang(cx);
             let note = match result {
                 Ok(report) => {
-                    let problems = report.problems();
+                    let problems = openlp_problems(l, &report);
                     if problems.is_empty() {
-                        Notification::success(report.summary())
+                        Notification::success(openlp_summary(l, &report))
                     } else {
                         let shown: Vec<&str> = problems.iter().take(3).map(String::as_str).collect();
-                        Notification::warning(format!("{}\n{}", report.summary(), shown.join("\n")))
+                        Notification::warning(format!("{}\n{}", openlp_summary(l, &report), shown.join("\n")))
                     }
+                }
+                Err(_) if find_openlp_files(&searched) == Default::default() => {
+                    let dir = searched.display().to_string();
+                    Notification::error(l.f("No OpenLP songs.sqlite or Bible databases in {folder}.", &[("folder", &dir)]))
                 }
                 Err(e) => Notification::error(e),
             };
@@ -127,7 +138,7 @@ pub fn export_all(window: &mut Window, cx: &mut Context<Console>) {
         files: false,
         directories: true,
         multiple: false,
-        prompt: Some("Export Here".into()),
+        prompt: Some(lang(cx).t("Export Here").into()),
     });
     cx.spawn_in(window, async move |_, cx| {
         let Ok(Ok(Some(mut dirs))) = dir.await else { return };
@@ -142,9 +153,13 @@ pub fn export_all(window: &mut Window, cx: &mut Context<Console>) {
             })
             .await;
         let _ = cx.update(|window, cx| {
+            let l = lang(cx);
             let note = match result {
-                Ok((n, dir)) => Notification::success(format!("Exported {n} songs to {}", dir.display())),
-                Err(e) => Notification::error(format!("Export failed: {e}")),
+                Ok((n, dir)) => {
+                    let exported = l.n(n as u64, "Exported {count} song to {folder}", "Exported {count} songs to {folder}");
+                    Notification::success(fill(&exported, &[("folder", &dir.display().to_string())]))
+                }
+                Err(e) => Notification::error(l.f("Export failed: {error}", &[("error", &e)])),
             };
             window.push_notification(note, cx);
         });
@@ -161,9 +176,10 @@ pub fn export_song(song: Song, window: &mut Window, cx: &mut App) {
             let Ok(Ok(Some(path))) = path.await else { return };
             let result = std::fs::write(&path, asaf_openlyrics::to_xml(&song));
             let _ = cx.update(|window, cx| {
+                let l = lang(cx);
                 let note = match result {
-                    Ok(()) => Notification::success(format!("Exported \"{}\"", song.title)),
-                    Err(e) => Notification::error(format!("Export failed: {e}")),
+                    Ok(()) => Notification::success(l.f("Exported “{title}”", &[("title", &song.title)])),
+                    Err(e) => Notification::error(l.f("Export failed: {error}", &[("error", &e.to_string())])),
                 };
                 window.push_notification(note, cx);
             });
@@ -179,6 +195,102 @@ pub(crate) fn documents_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
+/// What an OpenLyrics import did, one sentence per line.
+fn import_summary(l: Lang, r: &ImportReport) -> String {
+    let mut lines = vec![l.n(r.imported as u64, "Imported {count} song.", "Imported {count} songs.")];
+    if r.duplicates > 0 {
+        lines.push(l.n(
+            r.duplicates as u64,
+            "Skipped {count} song already in the library.",
+            "Skipped {count} songs already in the library.",
+        ));
+    }
+    if !r.failed.is_empty() {
+        lines.push(l.n(r.failed.len() as u64, "{count} file couldn't be imported.", "{count} files couldn't be imported."));
+    }
+    lines.join("\n")
+}
+
+/// What importing one Bible did.
+fn bible_summary(l: Lang, b: &BibleImport) -> String {
+    let verses = b.verses.to_string();
+    let mut s = l.f(
+        "Imported {name} ({abbreviation}), {verses} verses.",
+        &[("name", &b.bible.name), ("abbreviation", &b.bible.abbreviation), ("verses", &verses)],
+    );
+    if !b.skipped_books.is_empty() {
+        s.push('\n');
+        s.push_str(&l.f("Skipped books outside the 66: {books}.", &[("books", &b.skipped_books.join(", "))]));
+    }
+    s
+}
+
+/// What an OpenLP migration did, one sentence per line.
+fn openlp_summary(l: Lang, r: &OpenLpReport) -> String {
+    let mut lines = vec![match &r.files.songs {
+        Some(_) => import_summary(l, &r.songs),
+        None => l.t("No OpenLP song database.").to_string(),
+    }];
+    let ok: Vec<&str> = r.bibles.iter().filter_map(|(_, b)| b.as_ref().ok()).map(|b| b.bible.abbreviation.as_str()).collect();
+    let failed = r.bibles.len() - ok.len();
+    lines.push(match ok.len() {
+        0 => l.t("No Bibles imported.").to_string(),
+        n => fill(&l.n(n as u64, "Imported {count} Bible ({names}).", "Imported {count} Bibles ({names})."), &[("names", &ok.join(", "))]),
+    });
+    if failed > 0 {
+        lines.push(l.n(failed as u64, "{count} Bible wasn't imported.", "{count} Bibles weren't imported."));
+    }
+    lines.join("\n")
+}
+
+/// Every problem in an OpenLP migration, one line each.
+fn openlp_problems(l: Lang, r: &OpenLpReport) -> Vec<String> {
+    let mut out: Vec<String> = r.songs.failed.iter().map(|(p, e)| format!("{}: {e}", p.display())).collect();
+    for (path, result) in &r.bibles {
+        match result {
+            Err(e) => out.push(format!("{}: {e}", file_name(path))),
+            Ok(b) if !b.skipped_books.is_empty() => out.push(l.f(
+                "{bible}: skipped books outside the 66: {books}",
+                &[("bible", &b.bible.abbreviation), ("books", &b.skipped_books.join(", "))],
+            )),
+            Ok(_) => {}
+        }
+    }
+    out
+}
+
 fn file_name(p: &std::path::Path) -> String {
     p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.display().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use asaf_core::{Bible, Language};
+
+    use super::*;
+
+    #[test]
+    fn reports_are_whole_sentences() {
+        let l = Lang(Language::English);
+        let songs = ImportReport { imported: 1, duplicates: 2, failed: vec![("a.xml".into(), "bad".into())] };
+        assert_eq!(
+            import_summary(l, &songs),
+            "Imported 1 song.\nSkipped 2 songs already in the library.\n1 file couldn't be imported."
+        );
+        let bible = |abbreviation: &str| BibleImport {
+            bible: Bible { name: "Reina-Valera 1909".into(), abbreviation: abbreviation.into(), ..Default::default() },
+            verses: 31102,
+            skipped_books: Vec::new(),
+        };
+        assert_eq!(bible_summary(l, &bible("RV1909")), "Imported Reina-Valera 1909 (RV1909), 31102 verses.");
+        let openlp = OpenLpReport {
+            files: Default::default(),
+            songs: ImportReport::default(),
+            bibles: vec![("a".into(), Ok(bible("RV1909"))), ("b".into(), Ok(bible("KJV"))), ("c".into(), Err("bad".into()))],
+        };
+        assert_eq!(
+            openlp_summary(l, &openlp),
+            "No OpenLP song database.\nImported 2 Bibles (RV1909, KJV).\n1 Bible wasn't imported."
+        );
+    }
 }

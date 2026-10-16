@@ -94,14 +94,14 @@ fn damaged_autosave_is_kept_aside_not_lost() {
     fs::write(&path, "{\"format\":\"asaf-service\",\"version\":1,\"items\":[{\"type\":").unwrap();
     let restored = restore_autosave(&path);
     assert!(restored.service.items.is_empty());
-    let problem = restored.problem.expect("reported");
+    let problem = restored.problem.expect("reported").to_string();
     assert!(problem.contains("isn't an Asaf service"), "{problem}");
     assert!(!path.exists());
     assert!(dir.path().join("autosave.asaf-service.corrupt").exists());
 
     // Damaged again on a later start: the first damaged copy is kept too.
     fs::write(&path, "second").unwrap();
-    let problem = restore_autosave(&path).problem.expect("reported");
+    let problem = restore_autosave(&path).problem.expect("reported").to_string();
     assert!(problem.contains("autosave.asaf-service.corrupt-2"), "{problem}");
     assert_eq!(fs::read_to_string(dir.path().join("autosave.asaf-service.corrupt-2")).unwrap(), "second");
     assert!(fs::read_to_string(dir.path().join("autosave.asaf-service.corrupt")).unwrap().contains("format"));
@@ -110,11 +110,11 @@ fn damaged_autosave_is_kept_aside_not_lost() {
 #[test]
 fn reading_reports_problems_in_plain_words() {
     let dir = tempfile::tempdir().unwrap();
-    let missing = read_service(&dir.path().join("nope.asaf-service")).unwrap_err();
+    let missing = read_service(&dir.path().join("nope.asaf-service")).unwrap_err().to_string();
     assert!(missing.starts_with("Can't read"), "{missing}");
     let newer = dir.path().join("newer.asaf-service");
     fs::write(&newer, r#"{"format":"asaf-service","version":9}"#).unwrap();
-    let err = read_service(&newer).unwrap_err();
+    let err = read_service(&newer).unwrap_err().to_string();
     assert!(err.contains("newer.asaf-service") && err.contains("newer Asaf"), "{err}");
 }
 

@@ -14,7 +14,9 @@ use std::time::Duration;
 use asaf_core::{
     AutosaveInfo, Bible, ItemContent, Passage, SERVICE_EXTENSION, Service, ServiceItem, Slide, Song,
 };
-use asaf_library::service::{read_service, service_name, with_service_extension, write_autosave, write_service};
+use asaf_library::service::{
+    RestoreProblem, ServiceFileError, read_service, service_name, with_service_extension, write_autosave, write_service,
+};
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
@@ -27,7 +29,7 @@ use gpui::{
 };
 
 use crate::console::{Console, PreviewSource};
-use crate::i18n::lang;
+use crate::i18n::{Lang, lang};
 use crate::slides::slide_card;
 use crate::transfer;
 
@@ -45,8 +47,8 @@ pub struct ServiceSession {
     pub dirty: bool,
     /// Where to autosave; `None` turns autosave off.
     pub autosave: Option<PathBuf>,
-    /// Shown once the console opens, e.g. a damaged autosave.
-    pub notice: Option<String>,
+    /// A damaged autosave, shown once the console opens.
+    pub restore_problem: Option<RestoreProblem>,
 }
 
 pub(crate) struct ServiceState {
@@ -229,7 +231,8 @@ impl Console {
         }
         self.service.list_scroll.scroll_to_item(index);
         self.service_changed(cx);
-        window.push_notification(Notification::success(format!("Added “{title}” to the service")), cx);
+        let note = lang(cx).f("Added “{title}” to the service", &[("title", &title)]);
+        window.push_notification(Notification::success(note), cx);
     }
 
     /// Adds the song chosen in the library.
@@ -365,12 +368,13 @@ impl Console {
 
     /// Looks the cued item up in the library and lays it out for the preview.
     pub(crate) fn resolve_cue(&mut self, cx: &mut Context<Self>) {
-        self.service.resolved = self.service.cued().cloned().map(|item| self.resolve(&item));
+        let l = lang(cx);
+        self.service.resolved = self.service.cued().cloned().map(|item| self.resolve(&item, l));
         self.publish_remote_view();
         cx.notify();
     }
 
-    fn resolve(&self, item: &ServiceItem) -> Resolved {
+    fn resolve(&self, item: &ServiceItem, l: Lang) -> Resolved {
         let missing = |why: String| Resolved {
             key: item.key,
             title: item.title(),
@@ -388,13 +392,13 @@ impl Console {
                         slides: song.slides(),
                         target: Target::Song(Box::new(song)),
                     },
-                    Ok(None) => missing(format!("“{title}” isn't in the song library.")),
-                    Err(e) => missing(format!("Can't read the library: {e}")),
+                    Ok(None) => missing(l.f("“{title}” isn't in the song library.", &[("title", title)])),
+                    Err(e) => missing(l.f("Can't read the library: {error}", &[("error", &e.to_string())])),
                 }
             }
             ItemContent::Passage { bible_id, translation, ranges, .. } => {
                 let Some(bible) = self.find_bible(*bible_id, translation) else {
-                    return missing(format!("The {translation} Bible isn't installed."));
+                    return missing(l.f("The {bible} Bible isn't installed.", &[("bible", translation)]));
                 };
                 match self.lay_out_passage(&bible, ranges.clone()) {
                     Ok(p) => Resolved {
@@ -433,7 +437,7 @@ impl Console {
     /// next item; or says why it can't. Focus and the preview stay as they
     /// are (the remote uses this too).
     pub(crate) fn put_cued_live(&mut self, index: usize, cx: &mut Context<Self>) -> Result<(), String> {
-        let Some(r) = &self.service.resolved else { return Err("Nothing is cued.".into()) };
+        let Some(r) = &self.service.resolved else { return Err(lang(cx).t("Nothing is cued.").into()) };
         let theme = self.service.service.items.iter().find(|i| i.key == r.key).and_then(|i| self.item_theme(i));
         match &r.target {
             Target::Song(song) => self.store.load_song_themed((**song).clone(), index, theme),
@@ -457,7 +461,7 @@ impl Console {
     pub(crate) fn go_live_next(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let cued = self.service.cued().map(|i| i.key);
         if cued.is_some() && cued == self.service.live_key {
-            window.push_notification(Notification::info("End of the service"), cx);
+            window.push_notification(Notification::info(lang(cx).t("End of the service")), cx);
             return;
         }
         self.go_live_cued(0, window, cx);
@@ -479,8 +483,9 @@ impl Console {
     /// Asks before throwing away unsaved changes; resolves to whether to go on.
     fn discard_ok(&self, window: &mut Window, cx: &mut Context<Self>) -> impl Future<Output = bool> + 'static {
         let prompt = self.service.dirty.then(|| {
-            let message = format!("Discard unsaved changes to “{}”?", self.service.service.display_name());
-            window.prompt(PromptLevel::Warning, &message, None, &["Discard Changes", "Cancel"], cx)
+            let l = lang(cx);
+            let message = l.f("Discard unsaved changes to “{name}”?", &[("name", self.service.service.display_name())]);
+            window.prompt(PromptLevel::Warning, &message, None, &[l.t("Discard Changes"), l.t("Cancel")], cx)
         });
         async move {
             match prompt {
@@ -511,7 +516,7 @@ impl Console {
                     files: true,
                     directories: false,
                     multiple: false,
-                    prompt: Some("Open".into()),
+                    prompt: Some(lang(cx).t("Open").into()),
                 })
             }) else {
                 return;
@@ -531,7 +536,7 @@ impl Console {
                 }
                 self.set_service(service, Some(path), cx);
             }
-            Err(e) => window.push_notification(Notification::error(e), cx),
+            Err(e) => window.push_notification(Notification::error(service_file_error(lang(cx), &e)), cx),
         }
     }
 
@@ -582,11 +587,12 @@ impl Console {
                 self.service.path = Some(path);
                 self.service.dirty = false;
                 self.schedule_autosave(cx);
-                let note = format!("Saved “{}”", self.service.service.display_name());
+                let note = lang(cx).f("Saved “{name}”", &[("name", self.service.service.display_name())]);
                 window.push_notification(Notification::success(note), cx);
             }
             Err(e) => {
-                let note = format!("Couldn't save to {}: {e}", path.display());
+                let path = path.display().to_string();
+                let note = lang(cx).f("Couldn't save to {path}: {error}", &[("path", &path), ("error", &e.to_string())]);
                 window.push_notification(Notification::error(note), cx);
             }
         }
@@ -646,7 +652,7 @@ impl Console {
                         .when(!item.notes.is_empty() || item.theme.is_some(), |d| {
                             let mut extra = item.notes.lines().next().unwrap_or_default().to_string();
                             if let Some(t) = &item.theme {
-                                extra = if extra.is_empty() { format!("{}: {t}", l.t("Theme")) } else { format!("{extra} · {t}") };
+                                extra = if extra.is_empty() { l.f("Theme: {theme}", &[("theme", t)]) } else { format!("{extra} · {t}") };
                             }
                             d.child(div().truncate().text_xs().text_color(theme.muted_foreground).child(extra))
                         }),
@@ -803,7 +809,10 @@ impl Console {
         let is_live = self.service.live_key == Some(r.key);
         let notes = item.map(|i| i.notes.clone()).unwrap_or_default();
         let position = self.service.cursor.map(|i| {
-            format!("{} {} {} {} · {} {}", l.t("Item"), i + 1, l.t("of"), self.service.service.items.len(), l.t("Theme"), look.name)
+            let count = self.service.service.items.len().to_string();
+            let number = (i + 1).to_string();
+            let item = l.f("Item {number} of {count}", &[("number", &number), ("count", &count)]);
+            format!("{item} · {}", l.f("Theme {theme}", &[("theme", &look.name)]))
         });
 
         v_flex()
@@ -876,6 +885,25 @@ impl Console {
             )
             .into_any_element()
     }
+}
+
+/// A service file that couldn't be read, in the console's language.
+fn service_file_error(l: Lang, e: &ServiceFileError) -> String {
+    match e {
+        ServiceFileError::Unreadable { path, error } => {
+            l.f("Can't read {path}: {error}", &[("path", &path.display().to_string()), ("error", error)])
+        }
+        ServiceFileError::Invalid { file, error } => l.f("Can't open {file}: {error}", &[("file", file), ("error", error)]),
+    }
+}
+
+/// The notice for an autosave that couldn't be restored.
+pub(crate) fn restore_problem_notice(l: Lang, p: &RestoreProblem) -> String {
+    let kept_as = p.kept_as.display().to_string();
+    l.f(
+        "Couldn't restore the last service: {problem} (kept as {path})",
+        &[("problem", &service_file_error(l, &p.error)), ("path", &kept_as)],
+    )
 }
 
 #[cfg(test)]
@@ -1354,7 +1382,7 @@ mod tests {
             path: restored.info.path,
             dirty: restored.info.dirty,
             autosave: Some(autosave.clone()),
-            notice: restored.problem,
+            restore_problem: restored.problem,
         };
         let (store, console, h) = open_console(cx, library, session);
         with_window(cx, h, |w, cx| w.render_frame(cx));
