@@ -8,19 +8,19 @@
   "108owe9wt0w": {
     "message": "Shadow offset",
     "refs": [
-      "crates/console/src/theme_editor.rs:143:36"
+      "crates/console/src/theme_editor.rs:147:36"
     ]
   },
   "10kcjzmc48r": {
     "message": "Blanked to the logo:",
     "refs": [
-      "crates/console/src/theme_editor.rs:657:62"
+      "crates/console/src/theme_editor.rs:718:62"
     ]
   },
   "10qgoh7fpcr": {
     "message": "Right",
     "refs": [
-      "crates/console/src/theme_editor.rs:547:33"
+      "crates/console/src/theme_editor.rs:586:33"
     ]
   },
   "11jbho8lqqt": {
@@ -118,7 +118,7 @@
   "16l9m8zki7f": {
     "message": "Background color",
     "refs": [
-      "crates/console/src/theme_editor.rs:146:34"
+      "crates/console/src/theme_editor.rs:150:34"
     ]
   },
   "16ohek5rhcb": {
@@ -154,7 +154,7 @@
   "17ugwztue1r": {
     "message": "“{name}” is the default theme; choose another default first.",
     "refs": [
-      "crates/console/src/theme_editor.rs:738:15"
+      "crates/console/src/theme_editor.rs:796:15"
     ]
   },
   "181k3mnn64c": {
@@ -173,7 +173,7 @@
   "184ddtayynn": {
     "message": "New theme",
     "refs": [
-      "crates/console/src/theme_editor.rs:314:89"
+      "crates/console/src/theme_editor.rs:346:89"
     ]
   },
   "18fg3mwr23k": {
@@ -185,7 +185,7 @@
   "18gipka4xzw": {
     "message": "Delete…",
     "refs": [
-      "crates/console/src/theme_editor.rs:705:38"
+      "crates/console/src/theme_editor.rs:763:38"
     ]
   },
   "18nrznktee8": {
@@ -209,7 +209,7 @@
   "194otjr9nxw": {
     "message": "Quit Asaf",
     "refs": [
-      "crates/console/src/lib.rs:82:28"
+      "crates/console/src/lib.rs:83:28"
     ]
   },
   "198ld7kgx1q": {
@@ -221,7 +221,7 @@
   "199o5bbef3w": {
     "message": "Across",
     "refs": [
-      "crates/console/src/theme_editor.rs:636:96"
+      "crates/console/src/theme_editor.rs:675:96"
     ]
   },
   "19jq9j5c082": {
@@ -239,7 +239,7 @@
   "1a1finnyrai": {
     "message": "Slide up",
     "refs": [
-      "crates/console/src/theme_editor.rs:564:42"
+      "crates/console/src/theme_editor.rs:603:42"
     ]
   },
   "1b2uuk9yulj": {
@@ -253,7 +253,7 @@
     "refs": [
       "crates/console/src/editor.rs:354:58",
       "crates/console/src/service.rs:490:93",
-      "crates/console/src/theme_editor.rs:333:93"
+      "crates/console/src/theme_editor.rs:365:93"
     ]
   },
   "1bo8ksxeevn": {
@@ -272,7 +272,7 @@
   "1btz5ox01gd": {
     "message": "Sizes and widths are in % of the screen height; colors are #rrggbb or #rrggbbaa.",
     "refs": [
-      "crates/console/src/theme_editor.rs:634:62"
+      "crates/console/src/theme_editor.rs:673:62"
     ]
   },
   "1bzyzlrfy1x": {
@@ -288,13 +288,13 @@
   "1ce0j82vshj": {
     "message": "Unsaved changes",
     "refs": [
-      "crates/console/src/theme_editor.rs:715:97"
+      "crates/console/src/theme_editor.rs:773:97"
     ]
   },
   "1cen5mjir88": {
     "message": "Delete",
     "refs": [
-      "crates/console/src/theme_editor.rs:333:78"
+      "crates/console/src/theme_editor.rs:365:78"
     ]
   },
   "1cerdrnz08y": {
@@ -345,7 +345,7 @@
   "1gw49ft1ahw": {
     "message": "default",
     "refs": [
-      "crates/console/src/theme_editor.rs:530:93"
+      "crates/console/src/theme_editor.rs:569:93"
     ]
   },
   "1hii77tzvjf": {
@@ -388,7 +388,7 @@
   "1jd7l4ijtux": {
     "message": "Duplicate",
     "refs": [
-      "crates/console/src/theme_editor.rs:699:38"
+      "crates/console/src/theme_editor.rs:757:38"
     ]
   },
   "1jg8keos44w": {
@@ -407,13 +407,13 @@
   "1jlz8t46hzm": {
     "message": "Top and bottom margins (%)",
     "refs": [
-      "crates/console/src/theme_editor.rs:145:31"
+      "crates/console/src/theme_editor.rs:149:31"
     ]
   },
   "1jpp8qowoqe": {
     "message": "Discard your changes to “{name}”?",
     "refs": [
-      "crates/console/src/theme_editor.rs:389:25"
+      "crates/console/src/theme_editor.rs:421:25"
     ]
   },
   "1jq5al3wxp7": {
@@ -462,7 +462,7 @@
   "1kmxz3amydy": {
     "message": "Left",
     "refs": [
-      "crates/console/src/theme_editor.rs:545:32"
+      "crates/console/src/theme_editor.rs:584:32"
     ]
   },
   "1kqez1isi4d": {
@@ -498,7 +498,7 @@
   "1lkta3hllnp": {
     "message": "The library couldn't be updated: {error}",
     "refs": [
-      "crates/console/src/theme_editor.rs:740:41"
+      "crates/console/src/theme_editor.rs:798:41"
     ]
   },
   "1mb2byo88u5": {
@@ -537,7 +537,7 @@
     "refs": [
       "crates/console/src/console.rs:598:46",
       "crates/console/src/service.rs:713:113",
-      "crates/console/src/theme_editor.rs:695:90"
+      "crates/console/src/theme_editor.rs:753:90"
     ]
   },
   "1r0muke0y3x": {
@@ -562,13 +562,13 @@
   "1rct2ktln2u": {
     "message": "Side margins (%)",
     "refs": [
-      "crates/console/src/theme_editor.rs:144:31"
+      "crates/console/src/theme_editor.rs:148:31"
     ]
   },
   "1rfpjkzyjsj": {
     "message": "Smallest text (% of height)",
     "refs": [
-      "crates/console/src/theme_editor.rs:135:31"
+      "crates/console/src/theme_editor.rs:139:31"
     ]
   },
   "1rge700exq4": {
@@ -610,7 +610,7 @@
   "1t4q16jy0vr": {
     "message": "Duration (ms)",
     "refs": [
-      "crates/console/src/theme_editor.rs:147:36"
+      "crates/console/src/theme_editor.rs:151:36"
     ]
   },
   "1tm5xuw8tup": {
@@ -641,14 +641,14 @@
   "1u8m41q0q1j": {
     "message": "Middle",
     "refs": [
-      "crates/console/src/theme_editor.rs:555:35"
+      "crates/console/src/theme_editor.rs:594:35"
     ]
   },
   "1u9ipodc3i4": {
     "message": "Built in",
     "refs": [
-      "crates/console/src/theme_editor.rs:463:72",
-      "crates/console/src/theme_editor.rs:586:111"
+      "crates/console/src/theme_editor.rs:495:72",
+      "crates/console/src/theme_editor.rs:625:111"
     ]
   },
   "1udumq7wu93": {
@@ -666,8 +666,8 @@
   "1vhvb3ck5h3": {
     "message": "Themes",
     "refs": [
-      "crates/console/src/theme_editor.rs:177:67",
-      "crates/console/src/theme_editor.rs:208:46"
+      "crates/console/src/theme_editor.rs:191:67",
+      "crates/console/src/theme_editor.rs:239:46"
     ]
   },
   "1vjv340n74v": {
@@ -694,7 +694,7 @@
   "1w4a8qpsnju": {
     "message": "Transition",
     "refs": [
-      "crates/console/src/theme_editor.rs:643:28"
+      "crates/console/src/theme_editor.rs:682:28"
     ]
   },
   "1x3c1a6iyq1": {
@@ -730,13 +730,13 @@
   "1ymsses24in": {
     "message": "Background",
     "refs": [
-      "crates/console/src/theme_editor.rs:639:28"
+      "crates/console/src/theme_editor.rs:678:28"
     ]
   },
   "1yt83l8faj6": {
     "message": "Font",
     "refs": [
-      "crates/console/src/theme_editor.rs:134:28"
+      "crates/console/src/theme_editor.rs:138:28"
     ]
   },
   "1zl2pj8uous": {
@@ -760,7 +760,7 @@
   "202fykmvcs1": {
     "message": "Import from OpenLP…",
     "refs": [
-      "crates/console/src/lib.rs:80:28",
+      "crates/console/src/lib.rs:81:28",
       "crates/console/src/settings.rs:302:113"
     ]
   },
@@ -798,13 +798,13 @@
   "21dpf1vyepo": {
     "message": "Shadow color",
     "refs": [
-      "crates/console/src/theme_editor.rs:141:35"
+      "crates/console/src/theme_editor.rs:145:35"
     ]
   },
   "21dzvvnew8x": {
     "message": "Delete the theme “{name}”?",
     "refs": [
-      "crates/console/src/theme_editor.rs:332:25"
+      "crates/console/src/theme_editor.rs:364:25"
     ]
   },
   "21ihsq2nghm": {
@@ -819,16 +819,22 @@
       "crates/console/src/console.rs:774:82"
     ]
   },
+  "21rk5k93tpf": {
+    "message": "The display page itself, as the projector shows it.",
+    "refs": [
+      "crates/console/src/theme_editor.rs:702:15"
+    ]
+  },
   "21udbi9oivs": {
     "message": "Make default",
     "refs": [
-      "crates/console/src/theme_editor.rs:712:88"
+      "crates/console/src/theme_editor.rs:770:88"
     ]
   },
   "22d0i688ptf": {
     "message": "{name} copy",
     "refs": [
-      "crates/console/src/theme_editor.rs:314:36"
+      "crates/console/src/theme_editor.rs:346:36"
     ]
   },
   "22u36jfqh2x": {
@@ -841,7 +847,7 @@
     "message": "Keep Editing",
     "refs": [
       "crates/console/src/editor.rs:200:33",
-      "crates/console/src/theme_editor.rs:390:94"
+      "crates/console/src/theme_editor.rs:422:94"
     ]
   },
   "237xkpqu7wt": {
@@ -884,7 +890,7 @@
     "message": "Couldn't save the settings: {error}",
     "refs": [
       "crates/console/src/settings.rs:124:37",
-      "crates/console/src/theme_editor.rs:368:37"
+      "crates/console/src/theme_editor.rs:400:37"
     ]
   },
   "25ymodg257h": {
@@ -903,13 +909,13 @@
   "27adjwkztai": {
     "message": "Center",
     "refs": [
-      "crates/console/src/theme_editor.rs:546:34"
+      "crates/console/src/theme_editor.rs:585:34"
     ]
   },
   "27fsqzn54nu": {
     "message": "Text",
     "refs": [
-      "crates/console/src/theme_editor.rs:608:28"
+      "crates/console/src/theme_editor.rs:647:28"
     ]
   },
   "28zqz2hkg1k": {
@@ -928,7 +934,7 @@
     "message": "Themes…",
     "refs": [
       "crates/console/src/console.rs:910:54",
-      "crates/console/src/lib.rs:79:28"
+      "crates/console/src/lib.rs:80:28"
     ]
   },
   "298nx5vvcpw": {
@@ -940,19 +946,19 @@
   "29khu4kxkkv": {
     "message": "Cut",
     "refs": [
-      "crates/console/src/theme_editor.rs:565:40"
+      "crates/console/src/theme_editor.rs:604:40"
     ]
   },
   "29oskgjeiuz": {
     "message": "There is already a theme called “{name}”.",
     "refs": [
-      "crates/console/src/theme_editor.rs:736:42"
+      "crates/console/src/theme_editor.rs:794:42"
     ]
   },
   "29t20xtc8dz": {
     "message": "Text color",
     "refs": [
-      "crates/console/src/theme_editor.rs:138:29"
+      "crates/console/src/theme_editor.rs:142:29"
     ]
   },
   "29vk0c2p0jm": {
@@ -1023,13 +1029,13 @@
     "message": "Settings…",
     "refs": [
       "crates/console/src/console.rs:919:54",
-      "crates/console/src/lib.rs:78:28"
+      "crates/console/src/lib.rs:79:28"
     ]
   },
   "2e6w9jlixlo": {
     "message": "Position",
     "refs": [
-      "crates/console/src/theme_editor.rs:635:28"
+      "crates/console/src/theme_editor.rs:674:28"
     ]
   },
   "2em5lsa6fd3": {
@@ -1041,7 +1047,7 @@
   "2ezjwq9k481": {
     "message": "{file} isn't an image Asaf can show (use {types}).",
     "refs": [
-      "crates/console/src/theme_editor.rs:438:37"
+      "crates/console/src/theme_editor.rs:470:37"
     ]
   },
   "2fqekqwo5qe": {
@@ -1090,13 +1096,13 @@
   "3dk6he4tyy": {
     "message": "Bottom",
     "refs": [
-      "crates/console/src/theme_editor.rs:556:35"
+      "crates/console/src/theme_editor.rs:595:35"
     ]
   },
   "3ldx1ua32b": {
     "message": "An approximation: the projector shows the real thing.",
     "refs": [
-      "crates/console/src/theme_editor.rs:676:30"
+      "crates/console/src/theme_editor.rs:704:15"
     ]
   },
   "3rqsk7vax8": {
@@ -1146,13 +1152,13 @@
     "message": "Saved “{name}”",
     "refs": [
       "crates/console/src/service.rs:592:37",
-      "crates/console/src/theme_editor.rs:299:66"
+      "crates/console/src/theme_editor.rs:331:66"
     ]
   },
   "7gqysfvinh": {
     "message": "Name",
     "refs": [
-      "crates/console/src/theme_editor.rs:133:28"
+      "crates/console/src/theme_editor.rs:137:28"
     ]
   },
   "7p8z05g2bo": {
@@ -1179,7 +1185,7 @@
   "8vxab5babl": {
     "message": "Largest text (% of height)",
     "refs": [
-      "crates/console/src/theme_editor.rs:136:31"
+      "crates/console/src/theme_editor.rs:140:31"
     ]
   },
   "9dvzsfq64z": {
@@ -1203,7 +1209,7 @@
   "9smctyojxa": {
     "message": "Down",
     "refs": [
-      "crates/console/src/theme_editor.rs:637:96"
+      "crates/console/src/theme_editor.rs:676:96"
     ]
   },
   "9xylbo6x6k": {
@@ -1236,7 +1242,7 @@
   "aw7xoffaa": {
     "message": "Fix these first: {fields}",
     "refs": [
-      "crates/console/src/theme_editor.rs:288:26"
+      "crates/console/src/theme_editor.rs:320:26"
     ]
   },
   "bknnu4gv4j": {
@@ -1291,8 +1297,8 @@
   "d5920flkwz": {
     "message": "None",
     "refs": [
-      "crates/console/src/theme_editor.rs:462:19",
-      "crates/console/src/theme_editor.rs:592:107"
+      "crates/console/src/theme_editor.rs:494:19",
+      "crates/console/src/theme_editor.rs:631:107"
     ]
   },
   "deaaegh0f9": {
@@ -1304,7 +1310,7 @@
   "di10ulmbjv": {
     "message": "Choose…",
     "refs": [
-      "crates/console/src/theme_editor.rs:584:34"
+      "crates/console/src/theme_editor.rs:623:34"
     ]
   },
   "dlbcuuyj70": {
@@ -1316,7 +1322,7 @@
   "dsj5duvebs": {
     "message": "Outline color",
     "refs": [
-      "crates/console/src/theme_editor.rs:139:36"
+      "crates/console/src/theme_editor.rs:143:36"
     ]
   },
   "e433ewmape": {
@@ -1341,7 +1347,7 @@
     "message": "Discard",
     "refs": [
       "crates/console/src/editor.rs:200:17",
-      "crates/console/src/theme_editor.rs:390:78"
+      "crates/console/src/theme_editor.rs:422:78"
     ]
   },
   "f981rxihsr": {
@@ -1353,7 +1359,7 @@
   "fnz9d402kd": {
     "message": "Top",
     "refs": [
-      "crates/console/src/theme_editor.rs:554:32"
+      "crates/console/src/theme_editor.rs:593:32"
     ]
   },
   "g4gf1fzu1c": {
@@ -1387,7 +1393,7 @@
   "goz7h8lw2m": {
     "message": "Shadow blur",
     "refs": [
-      "crates/console/src/theme_editor.rs:142:34"
+      "crates/console/src/theme_editor.rs:146:34"
     ]
   },
   "gqap9kquqa": {
@@ -1412,7 +1418,7 @@
   "hq12sk0vvc": {
     "message": "Weight",
     "refs": [
-      "crates/console/src/theme_editor.rs:610:85"
+      "crates/console/src/theme_editor.rs:649:85"
     ]
   },
   "ieopkhcjo4": {
@@ -1452,7 +1458,7 @@
   "katlmiwzbn": {
     "message": "Outline width",
     "refs": [
-      "crates/console/src/theme_editor.rs:140:31"
+      "crates/console/src/theme_editor.rs:144:31"
     ]
   },
   "kum8aww8g0": {
@@ -1538,7 +1544,7 @@
     "message": "PREVIEW",
     "refs": [
       "crates/console/src/service.rs:861:65",
-      "crates/console/src/theme_editor.rs:655:92"
+      "crates/console/src/theme_editor.rs:716:92"
     ]
   },
   "o54cnfr1fb": {
@@ -1576,7 +1582,7 @@
     "message": "Save  ⌘S",
     "refs": [
       "crates/console/src/editor.rs:359:38",
-      "crates/console/src/theme_editor.rs:720:38"
+      "crates/console/src/theme_editor.rs:778:38"
     ]
   },
   "q8i2bhh0j7": {
@@ -1662,7 +1668,7 @@
   "rz6712kzgp": {
     "message": "Background image",
     "refs": [
-      "crates/console/src/theme_editor.rs:579:82"
+      "crates/console/src/theme_editor.rs:618:82"
     ]
   },
   "s5t6m3243q": {
@@ -1674,7 +1680,7 @@
   "sboe2r4h8e": {
     "message": "The default theme",
     "refs": [
-      "crates/console/src/theme_editor.rs:712:54"
+      "crates/console/src/theme_editor.rs:770:54"
     ]
   },
   "sy45vluzr6": {
@@ -1690,19 +1696,19 @@
   "t0tw3ac5h7": {
     "message": "Line spacing",
     "refs": [
-      "crates/console/src/theme_editor.rs:137:34"
+      "crates/console/src/theme_editor.rs:141:34"
     ]
   },
   "t1hq1dgc8f": {
     "message": "Logo (blank to logo)",
     "refs": [
-      "crates/console/src/theme_editor.rs:579:46"
+      "crates/console/src/theme_editor.rs:618:46"
     ]
   },
   "t45wgt1e4q": {
     "message": "Choose",
     "refs": [
-      "crates/console/src/theme_editor.rs:415:35"
+      "crates/console/src/theme_editor.rs:447:35"
     ]
   },
   "t4tf7v25fy": {
@@ -1726,7 +1732,7 @@
   "tuuzg9uxg4": {
     "message": "Fade",
     "refs": [
-      "crates/console/src/theme_editor.rs:563:41"
+      "crates/console/src/theme_editor.rs:602:41"
     ]
   },
   "u6jx7aupei": {

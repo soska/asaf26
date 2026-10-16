@@ -787,6 +787,14 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "21rk5k93tpf": {
+    "status": "machine",
+    "translatedHash": "1nqb8ly50fj",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Caption under the theme editor's preview when it is the real display page (webview). 'páginas de pantalla' matches the settings text."
+  },
   "21udbi9oivs": {
     "status": "approved",
     "translatedHash": "26fhzlxdkpe",

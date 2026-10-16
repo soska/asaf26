@@ -1,13 +1,17 @@
 //! Theme editor window: the library's themes on the left, the chosen one's
-//! settings in the middle, an approximate preview on the right. Saving writes
+//! settings in the middle, a preview on the right: the display page itself in
+//! webviews, or the console's approximation when there are none. Saving writes
 //! to the library and emits [`ThemesChanged`], so the console can update the
 //! projector at once if the theme is on screen.
 
+use std::rc::Rc;
+
 use anyhow::Result;
-use asaf_core::{Align, DEFAULT_THEME_NAME, Theme, TransitionKind, VAlign, parse_color, sample_song};
+use asaf_core::{Align, Blank, DEFAULT_THEME_NAME, DisplayState, Slide, Theme, TransitionKind, VAlign, parse_color, sample_song};
 use asaf_fonts::FONTS;
 use asaf_library::ThemeError;
 use asaf_library::media::IMAGE_EXTENSIONS;
+use asaf_projector::EmbeddedPage;
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::notification::Notification;
@@ -16,7 +20,7 @@ use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
     InteractiveElement, IntoElement, ParentElement, PathPromptOptions, PromptLevel, Render, SharedString,
-    StatefulInteractiveElement, Styled, StyledImage as _, Subscription, TestSupportExt as _, TitlebarOptions, Window, WindowBounds, WindowOptions, div, px,
+    StatefulInteractiveElement, Styled, StyledImage as _, Subscription, TestSupportExt as _, TitlebarOptions, Window, WindowBounds, WindowOptions, canvas, div, px,
     size,
 };
 
@@ -160,6 +164,9 @@ pub struct ThemeEditor {
     /// alignment, transition, images); text fields are read from the inputs.
     choice: Theme,
     inputs: Vec<Entity<InputState>>,
+    /// The display page showing the sample slide and the logo screen, when
+    /// webviews could be made.
+    pages: Option<[Rc<EmbeddedPage>; 2]>,
     discard_confirmed: bool,
     focus: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -171,7 +178,14 @@ const SAMPLE_SLIDE: usize = 1; // the chorus of the sample hymn: four lines
 
 impl ThemeEditor {
     /// Opens the editor on the theme called `select` (else the default).
-    pub fn open(library: SharedLibrary, select: Option<String>, cx: &mut App) -> Result<(AnyWindowHandle, Entity<Self>)> {
+    /// `display_url` is the display page to preview with; without it the
+    /// preview is the console's approximation.
+    pub fn open(
+        library: SharedLibrary,
+        select: Option<String>,
+        display_url: Option<&str>,
+        cx: &mut App,
+    ) -> Result<(AnyWindowHandle, Entity<Self>)> {
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(1240.), px(780.)), cx))),
             titlebar: Some(TitlebarOptions { title: Some(lang(cx).t("Themes").into()), ..Default::default() }),
@@ -179,7 +193,7 @@ impl ThemeEditor {
             ..Default::default()
         };
         let (handle, editor) = gpui::open_window(options, cx, |window, cx| {
-            cx.new(|cx| ThemeEditor::new(library, select, window, cx))
+            cx.new(|cx| ThemeEditor::new(library, select, display_url, window, cx))
         })?;
         handle.update(cx, |_, window, cx| {
             window.activate_window();
@@ -188,7 +202,24 @@ impl ThemeEditor {
         Ok((handle, editor))
     }
 
-    pub(crate) fn new(library: SharedLibrary, select: Option<String>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(
+        library: SharedLibrary,
+        select: Option<String>,
+        display_url: Option<&str>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let pages = display_url.and_then(|url| {
+            let url = format!("{url}?preview");
+            let page = || EmbeddedPage::new(&url, window).map(Rc::new);
+            match page().and_then(|slide| Ok([slide, page()?])) {
+                Ok(pages) => Some(pages),
+                Err(e) => {
+                    eprintln!("asaf: no webview for the theme preview, showing an approximation: {e:#}");
+                    None
+                }
+            }
+        });
         let inputs: Vec<Entity<InputState>> = Field::ALL.iter().map(|_| cx.new(|cx| InputState::new(window, cx))).collect();
         let mut subscriptions: Vec<Subscription> =
             inputs.iter().map(|i| cx.subscribe(i, |_, _, _: &InputEvent, cx| cx.notify())).collect();
@@ -215,6 +246,7 @@ impl ThemeEditor {
             selected: 0,
             choice: Theme::default(),
             inputs,
+            pages,
             discard_confirmed: false,
             focus: cx.focus_handle(),
             _subscriptions: subscriptions,
@@ -465,12 +497,19 @@ fn image_name(url: &Option<String>, l: Lang) -> String {
     }
 }
 
+/// The call that shows `slide` (or `blank`) in `theme` on a preview page.
+fn preview_script(theme: &Theme, slide: Option<Slide>, blank: Blank) -> String {
+    let state = DisplayState::preview(theme, slide, blank);
+    format!("asafPreview({})", serde_json::to_string(&state).expect("serialize a display state"))
+}
+
 impl Render for ThemeEditor {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let l = lang(cx);
         let (draft, bad) = self.draft(cx);
         let dirty = draft != self.stored();
-        let sample = sample_song().slides().swap_remove(SAMPLE_SLIDE).lines;
+        let sample_slide = sample_song().slides().swap_remove(SAMPLE_SLIDE);
+        let sample = sample_slide.lines.clone();
         let background = image_source(draft.background_image.as_deref(), &self.library);
         let logo = image_source(draft.logo.as_deref(), &self.library);
         let theme = cx.theme().clone();
@@ -643,6 +682,28 @@ impl Render for ThemeEditor {
             .child(heading(en("Transition")))
             .child(h_flex().gap_3().items_end().child(transitions).child(field(Field::TransitionMs, 110.)));
 
+        // The webviews cover whatever GPUI draws over them: step aside for
+        // notifications and dialogs (the approximation shows meanwhile).
+        let covered = !window.notifications(cx).is_empty() || window.has_active_dialog(cx);
+        if let Some([slide, logo]) = &self.pages {
+            slide.send(preview_script(&draft, Some(sample_slide), Blank::None));
+            logo.send(preview_script(&draft, None, Blank::Logo));
+            slide.set_visible(!covered);
+            logo.set_visible(!covered);
+        }
+        let pages = self.pages.clone();
+        let page = |i: usize| {
+            pages.as_ref().map(|p| {
+                let page = p[i].clone();
+                canvas(move |bounds, _, _| page.set_bounds(bounds), |_, _, _, _| {}).absolute().inset_0()
+            })
+        };
+        let caption = if self.pages.is_some() {
+            l.t("The display page itself, as the projector shows it.")
+        } else {
+            l.t("An approximation: the projector shows the real thing.")
+        };
+
         let is_default = self.stored().name == self.default_name;
         let preview = v_flex()
             .w(px(500.))
@@ -653,11 +714,12 @@ impl Render for ThemeEditor {
             .border_l_1()
             .border_color(theme.border)
             .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(muted).child(l.t("PREVIEW")))
-            .child(screen(&draft, &sample, background.clone(), px(468.)))
+            .child(div().relative().w(px(468.)).child(screen(&draft, &sample, background.clone(), px(468.))).children(page(0)))
             .child(div().text_xs().text_color(muted).child(l.t("Blanked to the logo:")))
             .child(
                 div()
                     .relative()
+                    .w(px(234.))
                     .child(screen(&draft, &[], background, px(234.)))
                     .children(logo.map(|src| {
                         gpui::img(src)
@@ -667,14 +729,10 @@ impl Render for ThemeEditor {
                             .w(px(234.))
                             .h(px(234. * 9. / 16. * 0.4))
                             .object_fit(gpui::ObjectFit::Contain)
-                    })),
+                    }))
+                    .children(page(1)),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(muted)
-                    .child(l.t("An approximation: the projector shows the real thing.")),
-            );
+            .child(div().text_xs().text_color(muted).child(caption));
 
         v_flex()
             .key_context("ThemeEditor")
@@ -762,7 +820,7 @@ mod tests {
         });
         let library: SharedLibrary = Arc::new(Mutex::new(lib));
         let lib = library.clone();
-        let (h, editor) = cx.update(|cx| ThemeEditor::open(lib, None, cx).unwrap());
+        let (h, editor) = cx.update(|cx| ThemeEditor::open(lib, None, None, cx).unwrap());
         let events = Rc::new(RefCell::new(Vec::new()));
         let sink = events.clone();
         cx.update(|cx| cx.subscribe(&editor, move |_, e: &ThemesChanged, _| sink.borrow_mut().push(e.clone())).detach());

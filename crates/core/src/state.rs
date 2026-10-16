@@ -51,3 +51,21 @@ pub struct DisplayState {
     /// Unix time in ms when this revision was produced; lets the display measure latency.
     pub changed_at_ms: u64,
 }
+
+impl DisplayState {
+    /// What a display page shows for `slide` (or no slide) in `theme`, apart
+    /// from the live output: the theme editor's preview.
+    pub fn preview(theme: &Theme, slide: Option<Slide>, blank: Blank) -> Self {
+        Self {
+            slide,
+            next: None,
+            up_next: None,
+            blank,
+            theme: theme.clone(),
+            css_vars: theme.css_vars(),
+            transition: Transition::of(theme),
+            revision: 0,
+            changed_at_ms: 0,
+        }
+    }
+}

@@ -1,6 +1,8 @@
 // Asaf display page: renders whatever DisplayState the server pushes.
 // No build step, no framework. Never sends commands (the remote has its own
-// endpoint). Also drives the OBS variant (/obs, <html class="obs">).
+// endpoint). Also drives the OBS variant (/obs, <html class="obs">) and the
+// console's previews (/display?preview), which get their state from the
+// console instead of the server.
 (() => {
   "use strict";
 
@@ -9,7 +11,10 @@
   const black = document.getElementById("black");
   const logo = document.getElementById("logo");
   const debugEl = document.getElementById("debug");
-  const debug = new URLSearchParams(location.search).has("debug");
+  const params = new URLSearchParams(location.search);
+  const debug = params.has("debug");
+  const preview = params.has("preview");
+  root.classList.toggle("preview", preview);
   // Lower thirds: smaller text, in the band obs.css sets, whatever the theme's size range.
   const obs = root.classList.contains("obs");
   const OBS_SIZE_VH = { min: 3, max: 6.5 };
@@ -159,6 +164,18 @@
 
   // ---- socket ---------------------------------------------------------------
 
+  // ---- preview --------------------------------------------------------------
+
+  // The console's webview calls asafPreview(state) with a draft theme, and
+  // hears "ready" (send the state now) and "pointer" (a click took keyboard
+  // focus; give it back) through wry's IPC.
+  function startPreview() {
+    const post = (msg) => window.ipc?.postMessage(msg);
+    window.asafPreview = (next) => render(next, false);
+    document.addEventListener("pointerdown", () => post("pointer"));
+    post("ready");
+  }
+
   let retryMs = 250;
   function connect() {
     const ws = new WebSocket(`ws://${location.host}/ws`);
@@ -182,5 +199,6 @@
     };
     ws.onerror = () => ws.close();
   }
-  connect();
+  if (preview) startPreview();
+  else connect();
 })();

@@ -248,7 +248,7 @@ impl Console {
         }
         // Start on the theme of the cued item, if it has one.
         let select = self.service.cued().and_then(|i| self.item_theme(i)).map(|t| t.name);
-        match ThemeEditor::open(self.library.clone(), select, cx) {
+        match ThemeEditor::open(self.library.clone(), select, Some(&self.display_url), cx) {
             Ok((handle, editor)) => {
                 self.theme_editor = Some((handle, editor.clone()));
                 self._subscriptions.push(cx.subscribe(&editor, |this, _, change: &ThemesChanged, cx| {

@@ -128,10 +128,11 @@ are `#rrggbb` or `#rrggbbaa` (alpha).
 
 The theme editor (`⌘T`, or Themes… in the live pane) lists the themes on the
 left (New, Duplicate, Delete…, Make default), the settings in the middle and
-an approximate preview on the right: the sample chorus on the theme's
-background and image in its font, colours, alignment and margins, sized
-roughly like the display's auto-fit, with the outline and shadow drawn as
-offset copies of the text, plus a small "blanked to the logo" view. Fields
+a preview on the right: the sample chorus, plus a small "blanked to the logo"
+view, drawn by the display page itself (`/display?preview`, in webviews), so
+fonts, outline, shadow and auto-fit are exactly what the projector shows,
+unsaved changes included. While a notification covers it, or if a webview
+can't be made, the console's approximation (`preview.rs`) shows instead. Fields
 that can't be used turn red and block saving. `⌘S` saves; if the theme is on
 screen the projector changes at once. Switching themes or closing with
 unsaved changes asks first. Background and logo images are copied into the
@@ -430,10 +431,10 @@ purpose, since the Rust extractor writes the catalog).
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
 | `crates/server` (`asaf-server`) | axum on 127.0.0.1 (or 0.0.0.0 with LAN access): display, OBS, stage and remote pages, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change, and the remote's PIN-protected command socket `/remote/ws` (`remote.rs`). `examples/display_demo.rs` serves one slide in a theme from a JSON file, `examples/remote_demo.rs` the remote, stage and OBS pages with a sample service (and a stand-in console), for checking output in a browser. |
-| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
+| `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); `?preview` makes the display page take its state from the console (`asafPreview(state)`) instead of the websocket; the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
 | `crates/i18n` (`asaf-i18n`) | Localization in duckalization's format: message IDs (`id.rs`, the same hash as `@duckalization/id`), target catalogs and lookups (`catalog.rs`), plural rules (`plural.rs`), and the extractor that writes `locales/en.json` + `en.meta.json` (`extract.rs`, `bin/i18n-extract.rs`). No UI deps. |
-| `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. |
-| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`) and its approximate preview (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs) light/dark appearance (`appearance.rs`) and its Lucide icons (`icons.rs`: gpui-kit embeds only its own components' icons, so any other `IconName` used must be listed in `ExtraIcons`; a test checks), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
+| `crates/projector` (`asaf-projector`) | Projector window: a GPUI window hosting a wry webview, placed on the chosen display; watches for display hotplug. Also `EmbeddedPage` (`embed.rs`): a webview placed by GPUI layout inside a console window, for the theme editor's preview. |
+| `crates/console` (`asaf-console`) | GPUI operator UI: song library and Bible mode (`bible.rs`) as sources, the service list with files and autosave (`service.rs`), preview and live panes with slide cards (`slides.rs`), song editor, theme editor (`theme_editor.rs`, previewing with the display page) and the approximate preview it falls back to (`preview.rs`), settings (`settings.rs`), the console's language (`i18n.rs`: `Lang` over `asaf-i18n` catalogs) light/dark appearance (`appearance.rs`) and its Lucide icons (`icons.rs`: gpui-kit embeds only its own components' icons, so any other `IconName` used must be listed in `ExtraIcons`; a test checks), import/export and OpenLP migration (`transfer.rs`), and the remote's operator (`remote.rs`: runs service-item and verse commands, publishes the service). Never draws projected output. |
 | `crates/app` (`asaf`) | Binary: opens the library, restores the autosaved service, wires store, server (port, LAN access, PIN and media folder from the settings; a new PIN reaches it at once), projector (remembered display) and console (the LAN address of the remote); `import`/`export`/`import-bible`/`bibles`/`remove-bible`/`import-openlp`/`themes` subcommands. |
 | `packaging/macos` | `package.sh` (builds `Asaf.app`), `Info.plist.in`, the placeholder icon. |
 

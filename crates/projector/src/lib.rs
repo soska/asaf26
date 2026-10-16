@@ -4,7 +4,10 @@
 //! The webview is a child of the GPUI window rather than a tao window, so the
 //! projector shares GPUI's event loop and needs no second process.
 
+mod embed;
 mod native;
+
+pub use embed::EmbeddedPage;
 
 use std::time::Duration;
 
