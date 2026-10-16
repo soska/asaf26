@@ -1,0 +1,954 @@
+{
+  "108owe9wt0w": {
+    "message": "Shadow offset",
+    "refs": [
+      "crates/console/src/theme_editor.rs:140:36"
+    ]
+  },
+  "10kcjzmc48r": {
+    "message": "Blanked to the logo:",
+    "refs": [
+      "crates/console/src/theme_editor.rs:643:62"
+    ]
+  },
+  "10qgoh7fpcr": {
+    "message": "Right",
+    "refs": [
+      "crates/console/src/theme_editor.rs:533:33"
+    ]
+  },
+  "11jbho8lqqt": {
+    "message": "Fit",
+    "refs": [
+      "crates/console/src/bible.rs:542:78"
+    ]
+  },
+  "14ctkt31xkn": {
+    "message": "The remote asks for it before it can control anything. Changing it applies at once.",
+    "refs": [
+      "crates/console/src/settings.rs:252:33"
+    ]
+  },
+  "15j2tbe8i28": {
+    "message": "No PIN",
+    "refs": [
+      "crates/console/src/settings.rs:70:80"
+    ]
+  },
+  "15oh0esxi2p": {
+    "message": "Fix these first:",
+    "refs": [
+      "crates/console/src/theme_editor.rs:282:43"
+    ]
+  },
+  "15tw6p3eopi": {
+    "message": "New service (⇧⌘N)",
+    "refs": [
+      "crates/console/src/service.rs:685:108"
+    ]
+  },
+  "161xe0ajgzu": {
+    "message": "songs",
+    "refs": [
+      "crates/console/src/console.rs:659:64"
+    ]
+  },
+  "16l9m8zki7f": {
+    "message": "Background color",
+    "refs": [
+      "crates/console/src/theme_editor.rs:143:34"
+    ]
+  },
+  "16rgavl4r2z": {
+    "message": "Select a song.",
+    "refs": [
+      "crates/console/src/console.rs:675:87"
+    ]
+  },
+  "17cvwp47g35": {
+    "message": "⏎ show, ⏎ again go live  ·  ⌘⏎ go live  ·  ⇧⏎ add to service  ·  Esc back",
+    "refs": [
+      "crates/console/src/bible.rs:424:30"
+    ]
+  },
+  "181powe3aqk": {
+    "message": "Nothing live yet.",
+    "refs": [
+      "crates/console/src/console.rs:806:66"
+    ]
+  },
+  "184ddtayynn": {
+    "message": "New theme",
+    "refs": [
+      "crates/console/src/theme_editor.rs:308:86"
+    ]
+  },
+  "18cu1oo8u2a": {
+    "message": "Restored from the last session:",
+    "refs": [
+      "crates/console/src/console.rs:158:19"
+    ]
+  },
+  "18gipka4xzw": {
+    "message": "Delete…",
+    "refs": [
+      "crates/console/src/theme_editor.rs:689:38"
+    ]
+  },
+  "195x9bnyduq": {
+    "message": "song",
+    "refs": [
+      "crates/console/src/console.rs:659:43"
+    ]
+  },
+  "198ld7kgx1q": {
+    "message": "Edit song (⌘E)",
+    "refs": [
+      "crates/console/src/console.rs:715:98"
+    ]
+  },
+  "199o5bbef3w": {
+    "message": "Across",
+    "refs": [
+      "crates/console/src/theme_editor.rs:622:96"
+    ]
+  },
+  "1a1finnyrai": {
+    "message": "Slide up",
+    "refs": [
+      "crates/console/src/theme_editor.rs:550:42"
+    ]
+  },
+  "1b2uuk9yulj": {
+    "message": "⏎ go live, ⇧⏎ add to service",
+    "refs": [
+      "crates/console/src/console.rs:660:27"
+    ]
+  },
+  "1bm5zscauco": {
+    "message": "Cancel",
+    "refs": [
+      "crates/console/src/theme_editor.rs:327:93"
+    ]
+  },
+  "1brd9iu3rkj": {
+    "message": "Edit themes (⌘T)",
+    "refs": [
+      "crates/console/src/console.rs:881:56"
+    ]
+  },
+  "1btz5ox01gd": {
+    "message": "Sizes and widths are in % of the screen height; colors are #rrggbb or #rrggbbaa.",
+    "refs": [
+      "crates/console/src/theme_editor.rs:620:62"
+    ]
+  },
+  "1bzyzlrfy1x": {
+    "message": "Go live",
+    "refs": [
+      "crates/console/src/bible.rs:491:38",
+      "crates/console/src/console.rs:733:38",
+      "crates/console/src/service.rs:838:38"
+    ]
+  },
+  "1ce0j82vshj": {
+    "message": "Unsaved changes",
+    "refs": [
+      "crates/console/src/theme_editor.rs:698:97"
+    ]
+  },
+  "1cen5mjir88": {
+    "message": "Delete",
+    "refs": [
+      "crates/console/src/theme_editor.rs:327:78"
+    ]
+  },
+  "1cerdrnz08y": {
+    "message": "Open…",
+    "refs": [
+      "crates/console/src/service.rs:688:89"
+    ]
+  },
+  "1gw49ft1ahw": {
+    "message": "default",
+    "refs": [
+      "crates/console/src/theme_editor.rs:516:93"
+    ]
+  },
+  "1hlo8k9xo3x": {
+    "message": "Display server port",
+    "refs": [
+      "crates/console/src/settings.rs:227:25"
+    ]
+  },
+  "1iroy2vgw8w": {
+    "message": "Search title, lyrics or author",
+    "refs": [
+      "crates/console/src/console.rs:122:76"
+    ]
+  },
+  "1jd7l4ijtux": {
+    "message": "Duplicate",
+    "refs": [
+      "crates/console/src/theme_editor.rs:684:38"
+    ]
+  },
+  "1jg8keos44w": {
+    "message": "B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text",
+    "refs": [
+      "crates/console/src/console.rs:867:38"
+    ]
+  },
+  "1jisoikpyze": {
+    "message": "Projector display",
+    "refs": [
+      "crates/console/src/console.rs:846:38",
+      "crates/console/src/settings.rs:222:25"
+    ]
+  },
+  "1jlz8t46hzm": {
+    "message": "Top and bottom margins (%)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:142:31"
+    ]
+  },
+  "1kmxz3amydy": {
+    "message": "Left",
+    "refs": [
+      "crates/console/src/theme_editor.rs:531:32"
+    ]
+  },
+  "1kqez1isi4d": {
+    "message": "Type a reference and press ⏎.",
+    "refs": [
+      "crates/console/src/bible.rs:439:26"
+    ]
+  },
+  "1mge26ozluc": {
+    "message": "Settings",
+    "refs": [
+      "crates/console/src/settings.rs:49:67"
+    ]
+  },
+  "1qu5zkod4cu": {
+    "message": "New",
+    "refs": [
+      "crates/console/src/console.rs:575:46",
+      "crates/console/src/service.rs:685:88",
+      "crates/console/src/theme_editor.rs:681:69"
+    ]
+  },
+  "1r54hpt6rac": {
+    "message": "Add",
+    "refs": [
+      "crates/console/src/bible.rs:473:38",
+      "crates/console/src/console.rs:725:38"
+    ]
+  },
+  "1r7smbfp2pb": {
+    "message": "Use a number from 1024 to 65535.",
+    "refs": [
+      "crates/console/src/settings.rs:133:42"
+    ]
+  },
+  "1rct2ktln2u": {
+    "message": "Side margins (%)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:141:31"
+    ]
+  },
+  "1rfpjkzyjsj": {
+    "message": "Smallest text (% of height)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:132:31"
+    ]
+  },
+  "1rge700exq4": {
+    "message": "Reference on last slide",
+    "refs": [
+      "crates/console/src/bible.rs:553:30"
+    ]
+  },
+  "1rn5c4kfggs": {
+    "message": "Discard your changes to",
+    "refs": [
+      "crates/console/src/theme_editor.rs:380:45"
+    ]
+  },
+  "1rx6wafgf27": {
+    "message": "Used for everything that has no theme of its own. Edit themes with ⌘T.",
+    "refs": [
+      "crates/console/src/settings.rs:219:33"
+    ]
+  },
+  "1ryzkpay2by": {
+    "message": "Add to the service (⇧⏎)",
+    "refs": [
+      "crates/console/src/bible.rs:474:40"
+    ]
+  },
+  "1t4q16jy0vr": {
+    "message": "Duration (ms)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:144:36"
+    ]
+  },
+  "1u8m41q0q1j": {
+    "message": "Middle",
+    "refs": [
+      "crates/console/src/theme_editor.rs:541:35"
+    ]
+  },
+  "1u9ipodc3i4": {
+    "message": "Built in",
+    "refs": [
+      "crates/console/src/theme_editor.rs:449:72",
+      "crates/console/src/theme_editor.rs:572:111"
+    ]
+  },
+  "1udumq7wu93": {
+    "message": "Choose a song or type a reference on the left and press ⇧⏎ to add it, or drag songs here.",
+    "refs": [
+      "crates/console/src/service.rs:722:42"
+    ]
+  },
+  "1vhvb3ck5h3": {
+    "message": "Themes",
+    "refs": [
+      "crates/console/src/theme_editor.rs:174:67"
+    ]
+  },
+  "1vjv340n74v": {
+    "message": "Without a PIN, anyone on the network can control the projector.",
+    "refs": [
+      "crates/console/src/settings.rs:257:38"
+    ]
+  },
+  "1w2bb0aqr9g": {
+    "message": "Default theme",
+    "refs": [
+      "crates/console/src/service.rs:139:81",
+      "crates/console/src/service.rs:769:56",
+      "crates/console/src/settings.rs:207:25"
+    ]
+  },
+  "1w4a8qpsnju": {
+    "message": "Transition",
+    "refs": [
+      "crates/console/src/theme_editor.rs:629:28"
+    ]
+  },
+  "1x3c1a6iyq1": {
+    "message": "PIN",
+    "refs": [
+      "crates/console/src/settings.rs:248:50"
+    ]
+  },
+  "1x7n1gk2qbk": {
+    "message": "Showing the logo (L)",
+    "refs": [
+      "crates/console/src/console.rs:770:31"
+    ]
+  },
+  "1yi1eprb816": {
+    "message": "Theme",
+    "refs": [
+      "crates/console/src/console.rs:817:39",
+      "crates/console/src/service.rs:649:84",
+      "crates/console/src/service.rs:737:81",
+      "crates/console/src/service.rs:806:111"
+    ]
+  },
+  "1ymsses24in": {
+    "message": "Background",
+    "refs": [
+      "crates/console/src/theme_editor.rs:625:28"
+    ]
+  },
+  "1yt83l8faj6": {
+    "message": "Font",
+    "refs": [
+      "crates/console/src/theme_editor.rs:131:28"
+    ]
+  },
+  "1zsap8x3yrr": {
+    "message": "Save",
+    "refs": [
+      "crates/console/src/service.rs:694:46"
+    ]
+  },
+  "1zxwg9omhiq": {
+    "message": "Allow phones and tablets on this network",
+    "refs": [
+      "crates/console/src/settings.rs:237:38"
+    ]
+  },
+  "202fykmvcs1": {
+    "message": "Import from OpenLP…",
+    "refs": [
+      "crates/console/src/settings.rs:263:88"
+    ]
+  },
+  "208jsmtzxmb": {
+    "message": "Import from OpenLP",
+    "refs": [
+      "crates/console/src/transfer.rs:98:31"
+    ]
+  },
+  "20ciqwdexwc": {
+    "message": "Import OpenLyrics files or folders",
+    "refs": [
+      "crates/console/src/console.rs:583:48"
+    ]
+  },
+  "21dmt9g48s": {
+    "message": "Showing text",
+    "refs": [
+      "crates/console/src/console.rs:767:31"
+    ]
+  },
+  "21dpf1vyepo": {
+    "message": "Shadow color",
+    "refs": [
+      "crates/console/src/theme_editor.rs:138:35"
+    ]
+  },
+  "21jeer7mcdp": {
+    "message": "This song has no slides. Check its verse order.",
+    "refs": [
+      "crates/console/src/console.rs:746:82"
+    ]
+  },
+  "21udbi9oivs": {
+    "message": "Make default",
+    "refs": [
+      "crates/console/src/theme_editor.rs:695:88"
+    ]
+  },
+  "22wr0pbngsh": {
+    "message": "Keep Editing",
+    "refs": [
+      "crates/console/src/theme_editor.rs:381:94"
+    ]
+  },
+  "254ff2tgkup": {
+    "message": "Open a service (⌘O)",
+    "refs": [
+      "crates/console/src/service.rs:688:111"
+    ]
+  },
+  "25dk1atjmtm": {
+    "message": "Import an OSIS or Zefania Bible",
+    "refs": [
+      "crates/console/src/bible.rs:342:48"
+    ]
+  },
+  "27adjwkztai": {
+    "message": "Center",
+    "refs": [
+      "crates/console/src/theme_editor.rs:532:34"
+    ]
+  },
+  "27fsqzn54nu": {
+    "message": "Text",
+    "refs": [
+      "crates/console/src/theme_editor.rs:594:28"
+    ]
+  },
+  "28zqz2hkg1k": {
+    "message": "Blanked to black (B)",
+    "refs": [
+      "crates/console/src/console.rs:768:32"
+    ]
+  },
+  "292zwca4k7u": {
+    "message": "Verses per slide",
+    "refs": [
+      "crates/console/src/bible.rs:538:77"
+    ]
+  },
+  "2975ox420mt": {
+    "message": "Themes…",
+    "refs": [
+      "crates/console/src/console.rs:880:54"
+    ]
+  },
+  "29khu4kxkkv": {
+    "message": "Cut",
+    "refs": [
+      "crates/console/src/theme_editor.rs:551:40"
+    ]
+  },
+  "29t20xtc8dz": {
+    "message": "Text color",
+    "refs": [
+      "crates/console/src/theme_editor.rs:135:29"
+    ]
+  },
+  "2a9gt2mhfgr": {
+    "message": "Blank",
+    "refs": [
+      "crates/console/src/console.rs:935:30"
+    ]
+  },
+  "2aptcultjjr": {
+    "message": "Migrate from OpenLP",
+    "refs": [
+      "crates/console/src/settings.rs:261:25"
+    ]
+  },
+  "2ctz9q6z7z3": {
+    "message": "No second display",
+    "refs": [
+      "crates/console/src/settings.rs:223:68"
+    ]
+  },
+  "2d1tgphjtee": {
+    "message": "Settings…",
+    "refs": [
+      "crates/console/src/console.rs:888:54"
+    ]
+  },
+  "2e6w9jlixlo": {
+    "message": "Position",
+    "refs": [
+      "crates/console/src/theme_editor.rs:621:28"
+    ]
+  },
+  "2em5lsa6fd3": {
+    "message": "Show the first slide (⏎ again, or ⌘⏎)",
+    "refs": [
+      "crates/console/src/bible.rs:492:40"
+    ]
+  },
+  "2fqekqwo5qe": {
+    "message": "Takes effect the next time Asaf starts. ASAF_PORT overrides it.",
+    "refs": [
+      "crates/console/src/settings.rs:231:33"
+    ]
+  },
+  "2g42092g5an": {
+    "message": "Show the first slide (⏎ in search)",
+    "refs": [
+      "crates/console/src/console.rs:734:40"
+    ]
+  },
+  "2gjcf36a6hh": {
+    "message": "Hide text",
+    "refs": [
+      "crates/console/src/console.rs:923:30"
+    ]
+  },
+  "2hl4pgcp8o": {
+    "message": "⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save",
+    "refs": [
+      "crates/console/src/console.rs:868:38"
+    ]
+  },
+  "2i1dltvn2u": {
+    "message": "of",
+    "refs": [
+      "crates/console/src/console.rs:776:70",
+      "crates/console/src/console.rs:815:39",
+      "crates/console/src/service.rs:806:66"
+    ]
+  },
+  "2o2rcra7lp": {
+    "message": "Export…",
+    "refs": [
+      "crates/console/src/console.rs:589:46",
+      "crates/console/src/console.rs:708:79"
+    ]
+  },
+  "3dk6he4tyy": {
+    "message": "Bottom",
+    "refs": [
+      "crates/console/src/theme_editor.rs:542:35"
+    ]
+  },
+  "3ldx1ua32b": {
+    "message": "An approximation: the projector shows the real thing.",
+    "refs": [
+      "crates/console/src/theme_editor.rs:662:30"
+    ]
+  },
+  "40gvy60opr": {
+    "message": "New song (⌘N)",
+    "refs": [
+      "crates/console/src/console.rs:576:48"
+    ]
+  },
+  "4ywu5j20yx": {
+    "message": "Song",
+    "refs": [
+      "crates/console/src/service.rs:659:54"
+    ]
+  },
+  "52fv03gu2z": {
+    "message": "Show the first slide and cue the next item (⏎)",
+    "refs": [
+      "crates/console/src/service.rs:839:40"
+    ]
+  },
+  "6o2ah1zui8": {
+    "message": "Choose it in the live pane; Asaf remembers it and goes back to it when it's plugged in.",
+    "refs": [
+      "crates/console/src/settings.rs:224:33"
+    ]
+  },
+  "7gqysfvinh": {
+    "message": "Name",
+    "refs": [
+      "crates/console/src/theme_editor.rs:130:28"
+    ]
+  },
+  "7p8z05g2bo": {
+    "message": "Logo",
+    "refs": [
+      "crates/console/src/console.rs:929:30"
+    ]
+  },
+  "7zx9ynkbvj": {
+    "message": "Nothing cued. Add songs and passages to the service.",
+    "refs": [
+      "crates/console/src/service.rs:797:26"
+    ]
+  },
+  "89jij4vxze": {
+    "message": "Item",
+    "refs": [
+      "crates/console/src/console.rs:776:50",
+      "crates/console/src/service.rs:806:46"
+    ]
+  },
+  "8vxab5babl": {
+    "message": "Largest text (% of height)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:133:31"
+    ]
+  },
+  "9p81pgo8pm": {
+    "message": "Add to the service (⇧⏎ in search)",
+    "refs": [
+      "crates/console/src/console.rs:726:40"
+    ]
+  },
+  "9smctyojxa": {
+    "message": "Down",
+    "refs": [
+      "crates/console/src/theme_editor.rs:623:96"
+    ]
+  },
+  "a46vpxbw57": {
+    "message": "Edit",
+    "refs": [
+      "crates/console/src/console.rs:715:77"
+    ]
+  },
+  "aiyda7ko5y": {
+    "message": "⌘↑↓ cue  ·  ⏎ go live  ·  ⌥↑↓ move  ·  ⌘⌫ remove",
+    "refs": [
+      "crates/console/src/service.rs:750:30"
+    ]
+  },
+  "c9lwh5obvc": {
+    "message": "Import…",
+    "refs": [
+      "crates/console/src/bible.rs:341:46",
+      "crates/console/src/console.rs:582:46"
+    ]
+  },
+  "d5920flkwz": {
+    "message": "None",
+    "refs": [
+      "crates/console/src/theme_editor.rs:448:19",
+      "crates/console/src/theme_editor.rs:578:107"
+    ]
+  },
+  "di10ulmbjv": {
+    "message": "Choose…",
+    "refs": [
+      "crates/console/src/theme_editor.rs:570:34"
+    ]
+  },
+  "dsj5duvebs": {
+    "message": "Outline color",
+    "refs": [
+      "crates/console/src/theme_editor.rs:136:36"
+    ]
+  },
+  "ecdxv9bzf7": {
+    "message": "PREVIEW · LIBRARY",
+    "refs": [
+      "crates/console/src/console.rs:703:46"
+    ]
+  },
+  "f16f8ceiio": {
+    "message": "Discard",
+    "refs": [
+      "crates/console/src/theme_editor.rs:381:78"
+    ]
+  },
+  "fnz9d402kd": {
+    "message": "Top",
+    "refs": [
+      "crates/console/src/theme_editor.rs:540:32"
+    ]
+  },
+  "g65p2xhor2": {
+    "message": "Bible",
+    "refs": [
+      "crates/console/src/bible.rs:337:89",
+      "crates/console/src/console.rs:549:47",
+      "crates/console/src/service.rs:659:75"
+    ]
+  },
+  "go9kh68fw": {
+    "message": "There's no theme with that name; the default is used.",
+    "refs": [
+      "crates/console/src/service.rs:778:70"
+    ]
+  },
+  "goz7h8lw2m": {
+    "message": "Shadow blur",
+    "refs": [
+      "crates/console/src/theme_editor.rs:139:34"
+    ]
+  },
+  "h0lgupyuht": {
+    "message": "Notes for the operator",
+    "refs": [
+      "crates/console/src/service.rs:138:81"
+    ]
+  },
+  "hq12sk0vvc": {
+    "message": "Weight",
+    "refs": [
+      "crates/console/src/theme_editor.rs:596:85"
+    ]
+  },
+  "ieopkhcjo4": {
+    "message": "Save (⌘S), Save As (⇧⌘S)",
+    "refs": [
+      "crates/console/src/service.rs:695:48"
+    ]
+  },
+  "ilnq3m2kx7": {
+    "message": "copy",
+    "refs": [
+      "crates/console/src/theme_editor.rs:308:64"
+    ]
+  },
+  "j7vv1nk82x": {
+    "message": "No songs found.",
+    "refs": [
+      "crates/console/src/console.rs:675:55"
+    ]
+  },
+  "katlmiwzbn": {
+    "message": "Outline width",
+    "refs": [
+      "crates/console/src/theme_editor.rs:137:31"
+    ]
+  },
+  "kum8aww8g0": {
+    "message": "Words without numbers search the text.",
+    "refs": [
+      "crates/console/src/bible.rs:413:34"
+    ]
+  },
+  "kyo7mj5gsl": {
+    "message": "Export every song as OpenLyrics into a folder",
+    "refs": [
+      "crates/console/src/console.rs:590:48"
+    ]
+  },
+  "l39v82yiv8": {
+    "message": "Imports every song and Bible from an OpenLP data folder in one step. OpenLP's files aren't changed; songs and Bibles already here are skipped.",
+    "refs": [
+      "crates/console/src/settings.rs:262:33"
+    ]
+  },
+  "lw6i0l6umk": {
+    "message": "Delete the theme",
+    "refs": [
+      "crates/console/src/theme_editor.rs:326:49"
+    ]
+  },
+  "m2heui2atv": {
+    "message": "Not in the service",
+    "refs": [
+      "crates/console/src/console.rs:777:102"
+    ]
+  },
+  "nc51nvezgp": {
+    "message": "Songs (⌘1)",
+    "refs": [
+      "crates/console/src/console.rs:548:74"
+    ]
+  },
+  "nx85nszytu": {
+    "message": "PREVIEW",
+    "refs": [
+      "crates/console/src/service.rs:829:65",
+      "crates/console/src/theme_editor.rs:641:92"
+    ]
+  },
+  "o6unvvqig9": {
+    "message": "Bible (⌘2)",
+    "refs": [
+      "crates/console/src/console.rs:549:74"
+    ]
+  },
+  "ohl1i7pnqh": {
+    "message": "The service is empty.",
+    "refs": [
+      "crates/console/src/service.rs:721:42"
+    ]
+  },
+  "pqxfkyyz3z": {
+    "message": "Save  ⌘S",
+    "refs": [
+      "crates/console/src/theme_editor.rs:702:38"
+    ]
+  },
+  "q8i2bhh0j7": {
+    "message": "Use 4 to 8 digits, or leave it empty for no PIN.",
+    "refs": [
+      "crates/console/src/settings.rs:146:37"
+    ]
+  },
+  "qqr9u9goft": {
+    "message": "Songs",
+    "refs": [
+      "crates/console/src/console.rs:548:47",
+      "crates/console/src/console.rs:571:89"
+    ]
+  },
+  "qvz5z6n6hp": {
+    "message": "Notes (⌘I)",
+    "refs": [
+      "crates/console/src/service.rs:735:81"
+    ]
+  },
+  "qzxb9at476": {
+    "message": "Remote for phones:",
+    "refs": [
+      "crates/console/src/console.rs:870:103"
+    ]
+  },
+  "raksrzzeyr": {
+    "message": "PREVIEW · BIBLE",
+    "refs": [
+      "crates/console/src/bible.rs:465:46"
+    ]
+  },
+  "rhq4h912js": {
+    "message": "◀  Previous",
+    "refs": [
+      "crates/console/src/console.rs:910:30"
+    ]
+  },
+  "rj1ngyto0o": {
+    "message": "Language",
+    "refs": [
+      "crates/console/src/settings.rs:198:25"
+    ]
+  },
+  "rrusbj3fvp": {
+    "message": "Saved",
+    "refs": [
+      "crates/console/src/theme_editor.rs:293:85"
+    ]
+  },
+  "rz6712kzgp": {
+    "message": "Background image",
+    "refs": [
+      "crates/console/src/theme_editor.rs:565:82"
+    ]
+  },
+  "s5t6m3243q": {
+    "message": "Takes effect the next time Asaf starts; the live pane then shows the address to open on a phone. Off: only this computer can reach the display and remote pages.",
+    "refs": [
+      "crates/console/src/settings.rs:244:33"
+    ]
+  },
+  "sboe2r4h8e": {
+    "message": "The default theme",
+    "refs": [
+      "crates/console/src/theme_editor.rs:695:54"
+    ]
+  },
+  "t0tw3ac5h7": {
+    "message": "Line spacing",
+    "refs": [
+      "crates/console/src/theme_editor.rs:134:34"
+    ]
+  },
+  "t1hq1dgc8f": {
+    "message": "Logo (blank to logo)",
+    "refs": [
+      "crates/console/src/theme_editor.rs:565:46"
+    ]
+  },
+  "t45wgt1e4q": {
+    "message": "Choose",
+    "refs": [
+      "crates/console/src/theme_editor.rs:406:35"
+    ]
+  },
+  "tjcaurs5c0": {
+    "message": "This item has no slides.",
+    "refs": [
+      "crates/console/src/service.rs:867:64"
+    ]
+  },
+  "tnnrks4tv6": {
+    "message": "Next  ▶",
+    "refs": [
+      "crates/console/src/console.rs:916:30"
+    ]
+  },
+  "tuuzg9uxg4": {
+    "message": "Fade",
+    "refs": [
+      "crates/console/src/theme_editor.rs:549:41"
+    ]
+  },
+  "u6jx7aupei": {
+    "message": "Settings (⌘,)",
+    "refs": [
+      "crates/console/src/console.rs:889:56"
+    ]
+  },
+  "vhkvwmltny": {
+    "message": "Remote control",
+    "refs": [
+      "crates/console/src/settings.rs:234:25"
+    ]
+  },
+  "x5mf57rgr2": {
+    "message": "→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live",
+    "refs": [
+      "crates/console/src/console.rs:866:38"
+    ]
+  },
+  "y646yut1xb": {
+    "message": "● LIVE",
+    "refs": [
+      "crates/console/src/console.rs:797:75"
+    ]
+  },
+  "zcel97o727": {
+    "message": "Text hidden, background only (⇧B)",
+    "refs": [
+      "crates/console/src/console.rs:769:37"
+    ]
+  },
+  "zhl9xbsla": {
+    "message": "Verse numbers",
+    "refs": [
+      "crates/console/src/bible.rs:545:56"
+    ]
+  }
+}
