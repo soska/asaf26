@@ -1,20 +1,21 @@
+use std::rc::Rc;
 use std::sync::Arc;
 
 use anyhow::Result;
 use asaf_core::{Blank, Command, LiveSnapshot, ServiceItem, Song, Store, Theme};
 use asaf_library::SongSummary;
-use asaf_projector::Projector;
+use asaf_projector::{EmbeddedPage, Projector};
 use gpui::component::button::{Button, ButtonVariants as _};
 use gpui::component::input::{Input, InputEvent, InputState};
 use gpui::component::{ActiveTheme as _, Disableable as _, Icon, Selectable as _, Sizable as _, WindowExt as _, h_flex, v_flex};
 use gpui::component::notification::Notification;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
+    AnyElement, AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
     InteractiveElement, IntoElement, ParentElement, Render, ScrollHandle, ScrollStrategy, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Task, TestSupportExt as _, TitlebarOptions, UniformListScrollHandle, Window,
     WindowBounds,
-    WindowOptions, div, px, size, uniform_list,
+    WindowOptions, canvas, div, px, size, uniform_list,
 };
 
 use crate::bible::BibleState;
@@ -24,6 +25,7 @@ use crate::icons::IconName;
 use crate::settings::{LibraryChanged, SettingsChanged, SettingsWindow};
 use crate::theme_editor::{ThemeEditor, ThemesChanged};
 use crate::service::{DragGhost, DraggedSong, ServiceSession, ServiceState, restore_problem_notice};
+use crate::preview::{image_source, screen};
 use crate::slides::slide_card;
 use crate::{
     BlankBackground, BlankBlack, BlankLogo, EditNotes, EditSong, FocusSearch, GoLive, ImportOpenLp, LeaveSearch,
@@ -53,6 +55,9 @@ pub struct Console {
     pub(crate) store: Arc<Store>,
     pub(crate) library: SharedLibrary,
     display_url: SharedString,
+    /// The display page in the live pane, showing exactly what's projected,
+    /// when a webview could be made.
+    monitor: Option<Rc<EmbeddedPage>>,
     pub(crate) focus: FocusHandle,
     pub(crate) mode: Mode,
     pub(crate) bible: BibleState,
@@ -168,10 +173,18 @@ impl Console {
         }
         let preview_source =
             if service.service.items.is_empty() { PreviewSource::Library } else { PreviewSource::Service };
+        let monitor = match EmbeddedPage::new(&format!("{display_url}?monitor"), window) {
+            Ok(page) => Some(Rc::new(page)),
+            Err(e) => {
+                eprintln!("asaf: no webview for the live monitor: {e:#}");
+                None
+            }
+        };
         let mut console = Self {
             store,
             library,
             display_url: display_url.into(),
+            monitor,
             focus: cx.focus_handle(),
             mode: Mode::Songs,
             bible,
@@ -536,7 +549,7 @@ impl Render for Console {
                             self.passage_preview_column(&live, cx).into_any_element()
                         }
                     })
-                    .child(self.live_column(&live, cx)),
+                    .child(self.live_column(&live, window, cx)),
             )
             .child(self.controls(&live, cx))
     }
@@ -781,7 +794,43 @@ impl Console {
             .into_any_element()
     }
 
-    fn live_column(&mut self, live: &LiveSnapshot, cx: &mut Context<Self>) -> impl IntoElement {
+    /// The live monitor: the display page, connected like the projector. It
+    /// covers whatever GPUI draws over it, so it steps aside for
+    /// notifications and dialogs, and the console's approximation of the
+    /// output shows meanwhile.
+    fn live_monitor(&self, live: &LiveSnapshot, look: &Theme, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
+        let page = self.monitor.clone()?;
+        let covered = !window.notifications(cx).is_empty() || window.has_active_dialog(cx);
+        page.set_visible(!covered);
+        let stand_in = page.bounds().filter(|_| covered).map(|b| {
+            let lines = match (live.blank, live.slides.get(live.current)) {
+                (Blank::None, Some(slide)) => slide.lines.clone(),
+                _ => Vec::new(),
+            };
+            let background = image_source(look.background_image.as_deref(), &self.library);
+            match live.blank {
+                Blank::Black => div().size_full().into_any_element(),
+                _ => screen(look, &lines, background, b.size.width).into_any_element(),
+            }
+        });
+        Some(
+            div()
+                .px_3()
+                .pt_3()
+                .child(
+                    div()
+                        .relative()
+                        .w_full()
+                        .aspect_ratio(16. / 9.)
+                        .bg(gpui::black())
+                        .children(stand_in)
+                        .child(canvas(move |bounds, _, _| page.set_bounds(bounds), |_, _, _, _| {}).absolute().inset_0()),
+                )
+                .into_any_element(),
+        )
+    }
+
+    fn live_column(&mut self, live: &LiveSnapshot, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Keep the slide on screen in view as the operator steps through.
         let at = (live.title.clone(), live.current);
         if self.live_scrolled_to.as_ref() != Some(&at) {
@@ -789,6 +838,7 @@ impl Console {
             self.live_scrolled_to = Some(at);
         }
         let look = self.store.theme();
+        let monitor = self.live_monitor(live, &look, window, cx);
         let l = lang(cx);
         let theme = cx.theme();
         let (blank_text, blank_color) = match live.blank {
@@ -851,6 +901,7 @@ impl Console {
                         },
                     )),
             )
+            .children(monitor)
             .child(
                 v_flex()
                     .id("live-slides")

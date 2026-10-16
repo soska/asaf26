@@ -27,8 +27,8 @@ html, body {
   background: #000;
   cursor: none;
 }
-/* In the console's previews the pointer belongs to the console. */
-html.preview, html.preview body { cursor: default; }
+/* In the console's webviews the pointer belongs to the console. */
+html.embedded, html.embedded body { cursor: default; }
 
 #bg, .layer, #logo, #black {
   position: absolute;

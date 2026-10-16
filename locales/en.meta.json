@@ -130,7 +130,7 @@
   "16rgavl4r2z": {
     "message": "Select a song.",
     "refs": [
-      "crates/console/src/console.rs:701:87"
+      "crates/console/src/console.rs:714:87"
     ]
   },
   "175shwyrp1": {
@@ -166,7 +166,7 @@
   "181powe3aqk": {
     "message": "Nothing live yet.",
     "refs": [
-      "crates/console/src/console.rs:837:66",
+      "crates/console/src/console.rs:887:66",
       "display/remote.js:122:48"
     ]
   },
@@ -191,7 +191,7 @@
   "18nrznktee8": {
     "message": "{number} of {count}",
     "refs": [
-      "crates/console/src/console.rs:846:39"
+      "crates/console/src/console.rs:896:39"
     ]
   },
   "18xqt9ok0n1": {
@@ -215,7 +215,7 @@
   "198ld7kgx1q": {
     "message": "Edit song (⌘E)",
     "refs": [
-      "crates/console/src/console.rs:741:121"
+      "crates/console/src/console.rs:754:121"
     ]
   },
   "199o5bbef3w": {
@@ -245,7 +245,7 @@
   "1b2uuk9yulj": {
     "message": "⏎ go live, ⇧⏎ add to service",
     "refs": [
-      "crates/console/src/console.rs:686:27"
+      "crates/console/src/console.rs:699:27"
     ]
   },
   "1bm5zscauco": {
@@ -259,14 +259,14 @@
   "1bo8ksxeevn": {
     "message": "Item {number} of {count}",
     "refs": [
-      "crates/console/src/console.rs:806:36",
+      "crates/console/src/console.rs:856:36",
       "crates/console/src/service.rs:837:26"
     ]
   },
   "1brd9iu3rkj": {
     "message": "Edit themes (⌘T)",
     "refs": [
-      "crates/console/src/console.rs:911:56"
+      "crates/console/src/console.rs:962:56"
     ]
   },
   "1btz5ox01gd": {
@@ -279,7 +279,7 @@
     "message": "Go live",
     "refs": [
       "crates/console/src/bible.rs:516:38",
-      "crates/console/src/console.rs:761:38",
+      "crates/console/src/console.rs:774:38",
       "crates/console/src/service.rs:871:38",
       "display/remote.js:104:35",
       "display/remote.js:175:26"
@@ -375,8 +375,8 @@
   "1iroy2vgw8w": {
     "message": "Search title, lyrics or author",
     "refs": [
-      "crates/console/src/console.rs:125:76",
-      "crates/console/src/console.rs:333:30"
+      "crates/console/src/console.rs:130:76",
+      "crates/console/src/console.rs:346:30"
     ]
   },
   "1j7ts657b2g": {
@@ -394,13 +394,13 @@
   "1jg8keos44w": {
     "message": "B black  ·  ⇧B hide text  ·  L logo  ·  Esc show text",
     "refs": [
-      "crates/console/src/console.rs:896:38"
+      "crates/console/src/console.rs:947:38"
     ]
   },
   "1jisoikpyze": {
     "message": "Projector display",
     "refs": [
-      "crates/console/src/console.rs:875:38",
+      "crates/console/src/console.rs:926:38",
       "crates/console/src/settings.rs:261:25"
     ]
   },
@@ -419,7 +419,7 @@
   "1jq5al3wxp7": {
     "message": "Restored “{name}” from the last session",
     "refs": [
-      "crates/console/src/console.rs:162:19"
+      "crates/console/src/console.rs:167:19"
     ]
   },
   "1jswzl9jc0q": {
@@ -492,7 +492,7 @@
   "1lkgrf799my": {
     "message": "{count}+ songs",
     "refs": [
-      "crates/console/src/console.rs:682:31"
+      "crates/console/src/console.rs:695:31"
     ]
   },
   "1lkta3hllnp": {
@@ -535,7 +535,7 @@
   "1qu5zkod4cu": {
     "message": "New",
     "refs": [
-      "crates/console/src/console.rs:598:46",
+      "crates/console/src/console.rs:611:46",
       "crates/console/src/service.rs:713:113",
       "crates/console/src/theme_editor.rs:753:90"
     ]
@@ -550,7 +550,7 @@
     "message": "Add",
     "refs": [
       "crates/console/src/bible.rs:497:38",
-      "crates/console/src/console.rs:752:38"
+      "crates/console/src/console.rs:765:38"
     ]
   },
   "1r7smbfp2pb": {
@@ -616,7 +616,7 @@
   "1tm5xuw8tup": {
     "message": "Theme {theme}",
     "refs": [
-      "crates/console/src/console.rs:847:39",
+      "crates/console/src/console.rs:897:39",
       "crates/console/src/service.rs:838:38"
     ]
   },
@@ -685,7 +685,7 @@
   "1w2bb0aqr9g": {
     "message": "Default theme",
     "refs": [
-      "crates/console/src/console.rs:335:37",
+      "crates/console/src/console.rs:348:37",
       "crates/console/src/service.rs:143:81",
       "crates/console/src/service.rs:798:56",
       "crates/console/src/settings.rs:246:25"
@@ -706,7 +706,7 @@
   "1x7n1gk2qbk": {
     "message": "Showing the logo (L)",
     "refs": [
-      "crates/console/src/console.rs:798:31"
+      "crates/console/src/console.rs:848:31"
     ]
   },
   "1xeovcbn85p": {
@@ -773,7 +773,7 @@
   "20ciqwdexwc": {
     "message": "Import OpenLyrics files or folders",
     "refs": [
-      "crates/console/src/console.rs:606:48"
+      "crates/console/src/console.rs:619:48"
     ]
   },
   "20hxjyzptb1": {
@@ -791,7 +791,7 @@
   "21dmt9g48s": {
     "message": "Showing text",
     "refs": [
-      "crates/console/src/console.rs:795:31",
+      "crates/console/src/console.rs:845:31",
       "display/remote.js:68:27"
     ]
   },
@@ -816,7 +816,7 @@
   "21jeer7mcdp": {
     "message": "This song has no slides. Check its verse order.",
     "refs": [
-      "crates/console/src/console.rs:774:82"
+      "crates/console/src/console.rs:787:82"
     ]
   },
   "21rk5k93tpf": {
@@ -921,7 +921,7 @@
   "28zqz2hkg1k": {
     "message": "Blanked to black (B)",
     "refs": [
-      "crates/console/src/console.rs:796:32"
+      "crates/console/src/console.rs:846:32"
     ]
   },
   "292zwca4k7u": {
@@ -933,7 +933,7 @@
   "2975ox420mt": {
     "message": "Themes…",
     "refs": [
-      "crates/console/src/console.rs:910:54",
+      "crates/console/src/console.rs:961:54",
       "crates/console/src/lib.rs:80:28"
     ]
   },
@@ -970,7 +970,7 @@
   "2a9gt2mhfgr": {
     "message": "Blank",
     "refs": [
-      "crates/console/src/console.rs:971:30"
+      "crates/console/src/console.rs:1022:30"
     ]
   },
   "2ajg2gpvy1e": {
@@ -1004,7 +1004,7 @@
       "other": "{count} songs"
     },
     "refs": [
-      "crates/console/src/console.rs:684:31"
+      "crates/console/src/console.rs:697:31"
     ]
   },
   "2crgn2ypp16": {
@@ -1028,7 +1028,7 @@
   "2d1tgphjtee": {
     "message": "Settings…",
     "refs": [
-      "crates/console/src/console.rs:919:54",
+      "crates/console/src/console.rs:970:54",
       "crates/console/src/lib.rs:79:28"
     ]
   },
@@ -1065,26 +1065,26 @@
   "2g42092g5an": {
     "message": "Show the first slide (⏎ in search)",
     "refs": [
-      "crates/console/src/console.rs:762:40"
+      "crates/console/src/console.rs:775:40"
     ]
   },
   "2gjcf36a6hh": {
     "message": "Hide text",
     "refs": [
-      "crates/console/src/console.rs:957:30",
+      "crates/console/src/console.rs:1008:30",
       "display/remote.js:108:32"
     ]
   },
   "2hl4pgcp8o": {
     "message": "⌘1 songs  ·  ⌘2 Bible  ·  ⌘E edit  ·  ⌘I notes  ·  ⌘S save",
     "refs": [
-      "crates/console/src/console.rs:897:38"
+      "crates/console/src/console.rs:948:38"
     ]
   },
   "2o2rcra7lp": {
     "message": "Export…",
     "refs": [
-      "crates/console/src/console.rs:734:102"
+      "crates/console/src/console.rs:747:102"
     ]
   },
   "2vps6ici1d": {
@@ -1114,7 +1114,7 @@
   "40gvy60opr": {
     "message": "New song (⌘N)",
     "refs": [
-      "crates/console/src/console.rs:599:48"
+      "crates/console/src/console.rs:612:48"
     ]
   },
   "4twwe1r0w1": {
@@ -1164,7 +1164,7 @@
   "7p8z05g2bo": {
     "message": "Logo",
     "refs": [
-      "crates/console/src/console.rs:964:30",
+      "crates/console/src/console.rs:1015:30",
       "display/remote.js:109:14",
       "display/remote.js:109:26"
     ]
@@ -1203,7 +1203,7 @@
   "9p81pgo8pm": {
     "message": "Add to the service (⇧⏎ in search)",
     "refs": [
-      "crates/console/src/console.rs:753:40"
+      "crates/console/src/console.rs:766:40"
     ]
   },
   "9smctyojxa": {
@@ -1230,7 +1230,7 @@
   "a46vpxbw57": {
     "message": "Edit",
     "refs": [
-      "crates/console/src/console.rs:741:100"
+      "crates/console/src/console.rs:754:100"
     ]
   },
   "aiyda7ko5y": {
@@ -1291,7 +1291,7 @@
   "d4jbup3wov": {
     "message": "Can't open the song editor: {error}",
     "refs": [
-      "crates/console/src/console.rs:419:37"
+      "crates/console/src/console.rs:432:37"
     ]
   },
   "d5920flkwz": {
@@ -1334,7 +1334,7 @@
   "ecdxv9bzf7": {
     "message": "PREVIEW · LIBRARY",
     "refs": [
-      "crates/console/src/console.rs:729:46"
+      "crates/console/src/console.rs:742:46"
     ]
   },
   "erjb0mea9f": {
@@ -1372,7 +1372,7 @@
     "message": "Bible",
     "refs": [
       "crates/console/src/bible.rs:359:89",
-      "crates/console/src/console.rs:571:67",
+      "crates/console/src/console.rs:584:67",
       "crates/console/src/service.rs:672:123",
       "display/remote.js:171:62",
       "display/remote.js:96:73"
@@ -1405,7 +1405,7 @@
   "h0lgupyuht": {
     "message": "Notes for the operator",
     "refs": [
-      "crates/console/src/console.rs:334:37",
+      "crates/console/src/console.rs:347:37",
       "crates/console/src/service.rs:142:81"
     ]
   },
@@ -1446,7 +1446,7 @@
   "j7vv1nk82x": {
     "message": "No songs found.",
     "refs": [
-      "crates/console/src/console.rs:701:55"
+      "crates/console/src/console.rs:714:55"
     ]
   },
   "k48onzr97l": {
@@ -1470,7 +1470,7 @@
   "kyo7mj5gsl": {
     "message": "Export every song as OpenLyrics into a folder",
     "refs": [
-      "crates/console/src/console.rs:613:48"
+      "crates/console/src/console.rs:626:48"
     ]
   },
   "l39v82yiv8": {
@@ -1494,7 +1494,7 @@
   "m2heui2atv": {
     "message": "Not in the service",
     "refs": [
-      "crates/console/src/console.rs:808:102"
+      "crates/console/src/console.rs:858:102"
     ]
   },
   "mhvs651ohl": {
@@ -1531,7 +1531,7 @@
   "nc51nvezgp": {
     "message": "Songs (⌘1)",
     "refs": [
-      "crates/console/src/console.rs:570:91"
+      "crates/console/src/console.rs:583:91"
     ]
   },
   "ngfjskcfqf": {
@@ -1550,13 +1550,13 @@
   "o54cnfr1fb": {
     "message": "Next",
     "refs": [
-      "crates/console/src/console.rs:948:30"
+      "crates/console/src/console.rs:999:30"
     ]
   },
   "o6unvvqig9": {
     "message": "Bible (⌘2)",
     "refs": [
-      "crates/console/src/console.rs:571:94"
+      "crates/console/src/console.rs:584:94"
     ]
   },
   "ohl1i7pnqh": {
@@ -1607,8 +1607,8 @@
   "qqr9u9goft": {
     "message": "Songs",
     "refs": [
-      "crates/console/src/console.rs:570:64",
-      "crates/console/src/console.rs:593:89"
+      "crates/console/src/console.rs:583:64",
+      "crates/console/src/console.rs:606:89"
     ]
   },
   "qvfajoqbhy": {
@@ -1626,7 +1626,7 @@
   "qzxb9at476": {
     "message": "Remote for phones:",
     "refs": [
-      "crates/console/src/console.rs:899:103"
+      "crates/console/src/console.rs:950:103"
     ]
   },
   "r311xm7zy5": {
@@ -1738,7 +1738,7 @@
   "u6jx7aupei": {
     "message": "Settings (⌘,)",
     "refs": [
-      "crates/console/src/console.rs:920:56"
+      "crates/console/src/console.rs:971:56"
     ]
   },
   "u7iepx657e": {
@@ -1774,7 +1774,7 @@
   "vjxiut1gq9": {
     "message": "Previous",
     "refs": [
-      "crates/console/src/console.rs:942:30"
+      "crates/console/src/console.rs:993:30"
     ]
   },
   "wf2vhke9pu": {
@@ -1792,7 +1792,7 @@
   "x5mf57rgr2": {
     "message": "→ ↓ Space next  ·  ← ↑ previous  ·  ⏎ cued item live",
     "refs": [
-      "crates/console/src/console.rs:895:38"
+      "crates/console/src/console.rs:946:38"
     ]
   },
   "xbnzz9ugsf": {
@@ -1804,7 +1804,7 @@
   "y646yut1xb": {
     "message": "● LIVE",
     "refs": [
-      "crates/console/src/console.rs:828:75"
+      "crates/console/src/console.rs:878:75"
     ]
   },
   "yrnrow8klc": {
@@ -1816,7 +1816,7 @@
   "zcel97o727": {
     "message": "Text hidden, background only (⇧B)",
     "refs": [
-      "crates/console/src/console.rs:797:37"
+      "crates/console/src/console.rs:847:37"
     ]
   },
   "zhl9xbsla": {

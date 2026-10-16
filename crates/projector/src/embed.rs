@@ -1,6 +1,6 @@
 //! A web page embedded in a region of a GPUI window, like the projector's
-//! webview but placed by GPUI layout: the console's previews of the display
-//! page.
+//! webview but placed by GPUI layout: the console's live monitor and the
+//! theme editor's previews, both the display page.
 //!
 //! The webview is a native view on top of the window, so it covers any GPUI
 //! element that overlaps it (popovers, notifications): hide it meanwhile.
@@ -78,6 +78,11 @@ impl EmbeddedPage {
         if let Some(webview) = self.inner.webview.get() {
             let _ = webview.set_bounds(rect(bounds));
         }
+    }
+
+    /// Where the page was last placed.
+    pub fn bounds(&self) -> Option<Bounds<Pixels>> {
+        self.bounds.get()
     }
 
     /// Shows or hides the page (it stays loaded).

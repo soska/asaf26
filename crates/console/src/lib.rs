@@ -1,8 +1,8 @@
 //! The operator console: song library and Bible lookup (the sources), the
 //! service list, preview and live panes, the song editor, the theme editor
 //! and settings (including light or dark). It drives the core store and never
-//! draws projected output (its previews are approximations, except the theme
-//! editor's, which embeds the display page).
+//! draws projected output: the live monitor and the theme editor's preview
+//! embed the display page, and the slide cards are approximations.
 
 mod appearance;
 mod bible;

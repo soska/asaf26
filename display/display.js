@@ -1,8 +1,9 @@
 // Asaf display page: renders whatever DisplayState the server pushes.
 // No build step, no framework. Never sends commands (the remote has its own
 // endpoint). Also drives the OBS variant (/obs, <html class="obs">) and the
-// console's previews (/display?preview), which get their state from the
-// console instead of the server.
+// console's webviews: its live monitor (/display?monitor, the real output)
+// and the theme editor's previews (/display?preview, which get their state
+// from the console instead of the server).
 (() => {
   "use strict";
 
@@ -14,7 +15,8 @@
   const params = new URLSearchParams(location.search);
   const debug = params.has("debug");
   const preview = params.has("preview");
-  root.classList.toggle("preview", preview);
+  const embedded = preview || params.has("monitor");
+  root.classList.toggle("embedded", embedded);
   // Lower thirds: smaller text, in the band obs.css sets, whatever the theme's size range.
   const obs = root.classList.contains("obs");
   const OBS_SIZE_VH = { min: 3, max: 6.5 };
@@ -164,15 +166,15 @@
 
   // ---- socket ---------------------------------------------------------------
 
-  // ---- preview --------------------------------------------------------------
+  // ---- in the console -------------------------------------------------------
 
-  // The console's webview calls asafPreview(state) with a draft theme, and
-  // hears "ready" (send the state now) and "pointer" (a click took keyboard
-  // focus; give it back) through wry's IPC.
+  // The console's webviews hear "pointer" (a click took keyboard focus; give
+  // it back) and, for previews, "ready" (send the state now) through wry's
+  // IPC. A preview gets its state, with a draft theme, from asafPreview(state).
+  const post = (msg) => window.ipc?.postMessage(msg);
+  if (embedded) document.addEventListener("pointerdown", () => post("pointer"));
   function startPreview() {
-    const post = (msg) => window.ipc?.postMessage(msg);
     window.asafPreview = (next) => render(next, false);
-    document.addEventListener("pointerdown", () => post("pointer"));
     post("ready");
   }
 
