@@ -301,6 +301,14 @@ name = "asaf-fonts"
 version = "0.0.1"
 
 [[package]]
+name = "asaf-i18n"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "asaf-library"
 version = "0.0.1"
 dependencies = [
