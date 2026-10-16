@@ -36,6 +36,7 @@ const STAGE_JS: &str = include_str!("../../../display/stage.js");
 const REMOTE_HTML: &str = include_str!("../../../display/remote.html");
 const REMOTE_CSS: &str = include_str!("../../../display/remote.css");
 const REMOTE_JS: &str = include_str!("../../../display/remote.js");
+const I18N_JS: &str = include_str!("../../../display/i18n.js");
 static FONTS_CSS: LazyLock<String> = LazyLock::new(asaf_fonts::font_face_css);
 
 /// How to serve.
@@ -49,12 +50,16 @@ pub struct Config {
     pub media_dir: Option<PathBuf>,
     /// The remote's PIN; empty: none.
     pub pin: String,
+    /// The pages' language: a locale from `asaf_i18n::locales` ("en",
+    /// "es-MX"); empty: English.
+    pub locale: String,
 }
 
 /// A running server. It lives on its own thread for the life of the process.
 pub struct ServerHandle {
     pub addr: SocketAddr,
     pin: Arc<RwLock<String>>,
+    locale: Arc<watch::Sender<String>>,
 }
 
 impl ServerHandle {
@@ -84,6 +89,18 @@ impl ServerHandle {
     pub fn set_pin(&self, pin: &str) {
         *self.pin.write().unwrap() = pin.to_string();
     }
+
+    /// Changes the pages' language (a locale such as "es-MX"); open stage
+    /// and remote pages switch at once.
+    pub fn set_locale(&self, locale: &str) {
+        self.locale.send_if_modified(|current| {
+            let changed = current != locale;
+            if changed {
+                *current = locale.to_string();
+            }
+            changed
+        });
+    }
 }
 
 /// The address other machines on the LAN reach this one at: the one the OS
@@ -106,6 +123,8 @@ struct AppState {
     pin_failures: Arc<AsyncMutex<()>>,
     /// Imported theme images, served at `/media/<file>`.
     media_dir: Option<Arc<PathBuf>>,
+    /// Shared with the handle, so it lives as long as the server does.
+    locale: Arc<watch::Sender<String>>,
 }
 
 /// Binds 127.0.0.1:`port` synchronously (so a busy port is reported to the
@@ -145,6 +164,9 @@ pub fn start_with(store: Arc<Store>, config: Config) -> std::io::Result<ServerHa
         });
     });
     let pin = Arc::new(RwLock::new(config.pin));
+    let locale = if config.locale.is_empty() { "en".to_string() } else { config.locale };
+    let locale = Arc::new(watch::Sender::new(locale));
+    let shared_locale = locale.clone();
 
     let shared_pin = pin.clone();
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -164,6 +186,7 @@ pub fn start_with(store: Arc<Store>, config: Config) -> std::io::Result<ServerHa
                     pin: shared_pin,
                     pin_failures: Arc::new(AsyncMutex::new(())),
                     media_dir: config.media_dir.map(Arc::new),
+                    locale: shared_locale,
                 };
                 if let Err(err) = axum::serve(listener, router(state)).await {
                     eprintln!("asaf-server stopped: {err}");
@@ -171,7 +194,7 @@ pub fn start_with(store: Arc<Store>, config: Config) -> std::io::Result<ServerHa
             })
         })?;
 
-    Ok(ServerHandle { addr, pin })
+    Ok(ServerHandle { addr, pin, locale })
 }
 
 fn router(state: AppState) -> Router {
@@ -191,6 +214,8 @@ fn router(state: AppState) -> Router {
         .route("/remote", get(|| async { asset("text/html; charset=utf-8", REMOTE_HTML) }))
         .route("/assets/remote.css", get(|| async { asset("text/css; charset=utf-8", REMOTE_CSS) }))
         .route("/assets/remote.js", get(|| async { asset("text/javascript; charset=utf-8", REMOTE_JS) }))
+        .route("/assets/i18n.js", get(|| async { asset("text/javascript; charset=utf-8", I18N_JS) }))
+        .route("/locale", get(locale))
         .route("/fonts/{file}", get(font))
         .route("/media/{file}", get(media))
         .route("/ws", get(ws_handler))
@@ -250,21 +275,43 @@ fn asset(content_type: &'static str, body: &'static str) -> Response {
         .into_response()
 }
 
+/// The pages' language and its catalog: `{"locale": "es-MX", "messages":
+/// {…}}` (no messages for English). Pages translate with `display/i18n.js`.
+async fn locale(State(state): State<AppState>) -> Response {
+    let locale = state.locale.borrow().clone();
+    let messages = asaf_i18n::locales::catalog_json(&locale).unwrap_or("{}");
+    let body = format!(r#"{{"locale":{},"messages":{messages}}}"#, serde_json::to_string(&locale).expect("serialize locale"));
+    ([(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-cache")], body).into_response()
+}
+
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
-    let rx = state.rx;
-    ws.on_upgrade(move |socket| push_state(socket, rx))
+    let (rx, locale) = (state.rx, state.locale.subscribe());
+    ws.on_upgrade(move |socket| push_state(socket, rx, locale))
 }
 
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 enum ServerMsg<'a> {
     State { state: &'a DisplayState },
+    /// The pages' language changed: fetch `/locale` again.
+    Locale { locale: &'a str },
 }
 
-async fn push_state(mut socket: WebSocket, mut rx: watch::Receiver<DisplayState>) {
+/// Sends every state, and the pages' language when it changes (pages fetch
+/// `/locale` themselves when they connect).
+async fn push_state(mut socket: WebSocket, mut rx: watch::Receiver<DisplayState>, mut locale: watch::Receiver<String>) {
     rx.mark_changed(); // send the current state immediately
     loop {
         tokio::select! {
+            changed = locale.changed() => {
+                if changed.is_err() {
+                    return;
+                }
+                let json = serde_json::to_string(&ServerMsg::Locale { locale: &locale.borrow_and_update() }).expect("serialize locale");
+                if socket.send(Message::text(json)).await.is_err() {
+                    return;
+                }
+            }
             changed = rx.changed() => {
                 if changed.is_err() {
                     return;

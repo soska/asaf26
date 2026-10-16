@@ -252,6 +252,7 @@ version = "0.0.1"
 dependencies = [
  "asaf-console",
  "asaf-core",
+ "asaf-i18n",
  "asaf-library",
  "asaf-openlyrics",
  "asaf-projector",
@@ -350,6 +351,7 @@ version = "0.0.1"
 dependencies = [
  "asaf-core",
  "asaf-fonts",
+ "asaf-i18n",
  "axum",
  "futures-util",
  "serde",

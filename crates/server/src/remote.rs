@@ -60,6 +60,10 @@ enum ServerMsg<'a> {
     State {
         state: &'a RemoteState,
     },
+    /// The pages' language changed: fetch `/locale` again.
+    Locale {
+        locale: &'a str,
+    },
     Result {
         id: Option<u64>,
         ok: bool,
@@ -127,6 +131,8 @@ async fn session(mut socket: WebSocket, state: AppState) {
 
     let mut rx = state.remote_rx.clone();
     rx.mark_changed(); // send the current state immediately
+    // Pages fetch /locale when they (re)connect; this only reports changes.
+    let mut locale = state.locale.subscribe();
     let (results_tx, mut results) = mpsc::unbounded_channel::<Message>();
     // This remote's commands run one at a time, in the order sent: "Go live"
     // then "next" must not have the next applied to the item before.
@@ -136,6 +142,15 @@ async fn session(mut socket: WebSocket, state: AppState) {
     let pin_changed = || *state.pin.read().unwrap() != pin;
     loop {
         tokio::select! {
+            changed = locale.changed() => {
+                if changed.is_err() {
+                    return;
+                }
+                let msg = ServerMsg::Locale { locale: &locale.borrow_and_update() }.text();
+                if socket.send(msg).await.is_err() {
+                    return;
+                }
+            }
             changed = rx.changed() => {
                 if changed.is_err() {
                     return;

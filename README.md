@@ -211,6 +211,7 @@ server: {"type":"hello","pin":true}                 pin: whether one is needed
 client: {"type":"auth","pin":"2468"}
 server: {"type":"auth","ok":true}                   or ok:false + error, then the socket closes
 server: {"type":"state","state":{…}}                on connect (once in) and on every change
+server: {"type":"locale","locale":"es-MX"}          the console's language changed (also on /ws)
 client: {"type":"cmd","id":7,"cmd":"next"}
 server: {"type":"result","id":7,"ok":true,"outcome":"done"}
 ```
@@ -378,9 +379,12 @@ text is the message, and its ID is a hash of that text.
 | `l.f("Added {title} to the service", &[("title", &name)])` | text with `{placeholders}`, filled after translating |
 | `l.n(count, "{count} song", "{count} songs")` | plurals (`{count}` is filled) |
 | `l.tc("Book", "verb")` | the same text with different meanings |
-| `__("Connect")` in `display/*.js` | the web pages (not wired up yet) |
+| `__("Connect")`, `__("{n} of {count}", { n, count })` in `display/*.js` | the remote and stage pages |
 
-Arguments must be string literals so the extractor can find them.
+Arguments must be string literals so the extractor can find them. The web
+pages load `display/i18n.js` (the same IDs and catalogs, served at
+`/locale` in the console's language) before their first render, and reload
+it when the server says the language changed or after reconnecting.
 
 - `locales/en.json` and `en.meta.json` (every message, with where it's used)
   are written by `cargo run -p asaf-i18n --bin i18n-extract`. A test fails
@@ -629,10 +633,11 @@ purpose, since the Rust extractor writes the catalog).
   the outline is drawn as eight offset copies of the text and the shadow as
   one translucent copy, and the size follows a character-width estimate,
   not the display's measured auto-fit.
-- The whole console, its menu and the remote's error replies are in
-  Spanish (Mexico) too, and switch at once. Still English: the phone remote
-  and stage pages themselves, the command line and logs, and technical
-  detail inside error messages (from the OS, SQLite or file parsers).
+- The whole console, its menu, and the remote and stage pages are in
+  Spanish (Mexico) too, and switch at once; the pages follow the console's
+  language, not the phone's. Still English: the command line and logs, and
+  technical detail inside error messages (from the OS, SQLite or file
+  parsers).
 - The OpenLP importer doesn't bring song books, topics, comments, media,
   OpenLP themes or services, and web Bibles can't be imported.
 - Theme images are never removed from `media/`, even when no theme uses them.

@@ -15,11 +15,12 @@
 //! | `l.f("Added {title} to the service", &[("title", &name)])` | `"Added {title} to the service"`; `{name}` is filled in after translating |
 //! | `l.n(count, "{count} song", "{count} songs")` | `{ "one": "{count} song", "other": "{count} songs" }`; `{count}` is filled in |
 //! | `l.tc("Book", "verb")` | `"Book"` with context `"verb"` |
-//! | `__("Connect")` in `display/*.js` | `"Connect"` |
+//! | `__("Connect")` in `display/*.js` | `"Connect"`; `__("{n} of {count}", { n, count })` fills placeholders (`display/i18n.js`) |
 
 pub mod catalog;
 pub mod extract;
 pub mod id;
+pub mod locales;
 pub mod plural;
 
 pub use id::{Message, PluralForm, message_id};

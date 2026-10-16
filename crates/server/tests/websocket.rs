@@ -211,3 +211,34 @@ async fn passages_reach_the_display_as_wrapping_slides() {
     assert_eq!(st["slide"]["footer"], "John 11:35 (KJV)");
     assert_eq!(st["slide"]["wrap"], true);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pages_get_the_language_and_hear_when_it_changes() {
+    let store = Store::new(sample_song(), Theme::default());
+    let config = asaf_server::Config { locale: "es-MX".into(), ..Default::default() };
+    let server = asaf_server::start_with(store, config).unwrap();
+    let port = server.addr.port();
+
+    let (status, _, js) = get(port, "/assets/i18n.js").await;
+    assert!(status.contains("200"), "{status}");
+    assert!(String::from_utf8_lossy(&js).contains("cyrb53"));
+
+    let (status, headers, body) = get(port, "/locale").await;
+    assert!(status.contains("200"), "{status}");
+    assert!(headers.contains("application/json"), "{headers}");
+    let locale: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(locale["locale"], "es-MX");
+    assert_eq!(locale["messages"][asaf_i18n::id::text_id("Connect", None)], "Conectar");
+
+    // Connected pages hear about a change, and nothing when it's the same.
+    let mut ws = connect(port).await;
+    next_state(&mut ws).await;
+    server.set_locale("es-MX");
+    server.set_locale("en");
+    let msg = timeout(Duration::from_secs(2), ws.next()).await.expect("locale within 2s").unwrap().unwrap();
+    let msg: Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
+    assert_eq!(msg, serde_json::json!({ "type": "locale", "locale": "en" }));
+
+    let (_, _, body) = get(port, "/locale").await;
+    assert_eq!(serde_json::from_slice::<Value>(&body).unwrap(), serde_json::json!({ "locale": "en", "messages": {} }));
+}

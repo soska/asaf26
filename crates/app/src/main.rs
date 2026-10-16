@@ -209,6 +209,7 @@ fn run_app(library: Library) -> ExitCode {
         lan: settings.lan,
         media_dir: library.media_dir().map(|d| d.to_path_buf()),
         pin: settings.remote_pin.clone(),
+        locale: asaf_i18n::locales::locale_for(settings.language.code()).to_string(),
     };
     let server = match asaf_server::start_with(store.clone(), config) {
         Ok(server) => Arc::new(server),
@@ -253,7 +254,11 @@ fn run_app(library: Library) -> ExitCode {
                 cx.observe_release(&console, |_, cx| cx.quit()).detach();
                 console.update(cx, |c, cx| c.set_remote_url(remote_url, cx));
                 // A new PIN applies at once; LAN access from the next start.
-                cx.subscribe(&console, move |_, SettingsChanged(s), _| server.set_pin(&s.remote_pin)).detach();
+                cx.subscribe(&console, move |_, SettingsChanged(s), _| {
+                    server.set_pin(&s.remote_pin);
+                    server.set_locale(asaf_i18n::locales::locale_for(s.language.code()));
+                })
+                .detach();
             }
             Err(err) => {
                 eprintln!("asaf: could not open console: {err:#}");
