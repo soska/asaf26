@@ -1,0 +1,87 @@
+[
+  {
+    "message": "Sign in",
+    "canonical": "Sign in",
+    "id": "28ki3q224lm"
+  },
+  {
+    "message": "Songs",
+    "canonical": "Songs",
+    "id": "qqr9u9goft"
+  },
+  {
+    "message": "",
+    "canonical": "",
+    "id": "wvjl67o803"
+  },
+  {
+    "message": "Añadir canción",
+    "canonical": "Añadir canción",
+    "id": "nr5tbis3xd"
+  },
+  {
+    "message": "Restored from the last session:",
+    "canonical": "Restored from the last session:",
+    "id": "18cu1oo8u2a"
+  },
+  {
+    "message": "Takes “quotes” — and dashes…",
+    "canonical": "Takes “quotes” — and dashes…",
+    "id": "20gzyn5dwo0"
+  },
+  {
+    "message": "🎵 Worship 🙏",
+    "canonical": "🎵 Worship 🙏",
+    "id": "13uyry8o2sc"
+  },
+  {
+    "message": "line\nbreak",
+    "canonical": "line\nbreak",
+    "id": "20g7pzdj8na"
+  },
+  {
+    "message": "Book",
+    "context": "verb",
+    "canonical": "Book",
+    "id": "rmk6ltnbut"
+  },
+  {
+    "message": "Added {title} to the service",
+    "canonical": "Added {title} to the service",
+    "id": "2fl3zppqjf7"
+  },
+  {
+    "message": {
+      "one": "{count} song",
+      "other": "{count} songs"
+    },
+    "canonical": "one\u0001{count} song\u0001other\u0001{count} songs",
+    "id": "2c55l469czg"
+  },
+  {
+    "message": {
+      "other": "{count} songs",
+      "one": "{count} song"
+    },
+    "canonical": "one\u0001{count} song\u0001other\u0001{count} songs",
+    "id": "2c55l469czg"
+  },
+  {
+    "message": {
+      "one": "{count} canción",
+      "many": "{count} de canciones",
+      "other": "{count} canciones"
+    },
+    "canonical": "one\u0001{count} canción\u0001many\u0001{count} de canciones\u0001other\u0001{count} canciones",
+    "id": "w705kn48v9"
+  },
+  {
+    "message": {
+      "one": "{count} item",
+      "other": "{count} items"
+    },
+    "context": "cart",
+    "canonical": "one\u0001{count} item\u0001other\u0001{count} items",
+    "id": "r3w17596e5"
+  }
+]
