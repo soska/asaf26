@@ -2,3 +2,6 @@
 
 # duckalization work files (briefs, agent output)
 locales/.work/
+
+# macOS Finder metadata
+.DS_Store
