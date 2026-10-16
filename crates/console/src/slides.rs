@@ -9,7 +9,7 @@ use gpui::prelude::FluentBuilder as _;
 use gpui::{App, Div, ElementId, FontWeight, InteractiveElement, ParentElement, Stateful, Styled, div, px};
 use gpui::component::h_flex;
 
-use crate::preview::color;
+use crate::preview::{color, optional_color, styled_line};
 
 /// A card for `slide` in `look`; `on_air` highlights the slide on screen.
 /// The caller adds the click handler.
@@ -58,6 +58,9 @@ pub(crate) fn slide_card(id: impl Into<ElementId>, slide: &Slide, on_air: bool, 
                     Align::Center => d.items_center(),
                     Align::Right => d.items_end(),
                 })
-                .children(slide.lines.iter().map(|l| div().child(l.clone()))),
+                .children(slide.lines.iter().map(|l| {
+                    let weight = FontWeight(f32::from(look.font_weight));
+                    div().child(styled_line(l, weight, optional_color(&look.strong_color), optional_color(&look.em_color)))
+                })),
         )
 }

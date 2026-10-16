@@ -122,7 +122,8 @@ carries on with the service.
 A theme sets the font (one of the bundled ones, Source Sans 3, Montserrat,
 Oswald and Lora, or any font installed on the machine showing the output),
 the weight, the auto-fit size range and line spacing (in % of the screen
-height), text colour, outline colour and width, shadow colour, blur and
+height), text colour, the colours of `**strong**` and `__emphasis__` words in
+lyrics (empty: the text colour), outline colour and width, shadow colour, blur and
 offset, horizontal and vertical alignment, side and top/bottom margins, the
 background colour and image, the logo shown by "blank to logo", and the
 transition between slides (fade, slide up or cut) and its duration. Colours
@@ -246,8 +247,9 @@ step; OpenLP's files are opened read-only and never changed.
 - Songs keep title, alternate title, authors (each once, whatever their
   role), copyright, CCLI number, verse order and verse tags (`v1`, `c1`,
   `b1`, `p1`, `i1`, `e1`, `o1`); `[---]` optional splits stay slide splits.
-  OpenLP formatting tags (`{r}…{/r}`, `{br}`) and inline chords (`[G]`,
-  `[D/F#]`) are removed. Temporary songs (copies OpenLP makes from opened
+  OpenLP's bold and italic tags (`{st}…{/st}`, `{it}…{/it}`) become
+  `**strong**` and `__emphasis__`; other formatting tags (`{r}…{/r}`, `{br}`)
+  and inline chords (`[G]`, `[D/F#]`) are removed. Temporary songs (copies OpenLP makes from opened
   service files) are skipped, and so is a song already in the library with
   the same title and lyrics, so running the import twice is harmless. A song
   whose lyrics can't be read is reported and the rest still import.
@@ -372,6 +374,16 @@ spelled out in English or Spanish (`[Verse 2]`, `[Chorus]`, `[Coro]`,
 a verse. The editor lists problems (unknown tags in the order, duplicate
 tags) next to the preview; a song needs a title and lyrics to be saved.
 
+Words can be marked inside a line: `**Santo, santo**` is strong and
+`__santo__` is emphasis (unlike Markdown, double underscores mean italic, not
+bold). The display and OBS pages show them as `<strong>` and `<em>` in the
+theme's colours (strong is also bolder, emphasis italic); the stage view
+(bold underlined, italic) and the console's slide cards show them too. That's all the markup there is: a marker
+without a partner on its line is just text, and `\*`, `\_`, `\\` are a
+literal `*`, `_`, `\`. Search, auto-fit and the remote ignore the markers.
+OpenLyrics export writes them as `strong` and `em` formatting tags, and import
+reads those back, along with other files' tags that mean bold or italic.
+
 ## Localization
 
 The console's text is English in the code and translated from catalogs in
@@ -427,11 +439,11 @@ purpose, since the Rust extractor writes the catalog).
 
 | Crate | Role |
 | --- | --- |
-| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format, slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the command API and the remote's view (`remote.rs`: `Command`, `Outcome`, `RemoteView`, `RemoteState`), the `Store` (single source of truth, default and per-item theme, commands and their operator, change listeners for displays and remotes). No UI or IO deps (serde/serde_json only). |
+| `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format and its emphasis markup (`markup.rs`), slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the command API and the remote's view (`remote.rs`: `Command`, `Outcome`, `RemoteView`, `RemoteState`), the `Store` (single source of truth, default and per-item theme, commands and their operator, change listeners for displays and remotes). No UI or IO deps (serde/serde_json only). |
 | `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Themes and settings (`themes.rs`), theme images in the media folder (`media.rs`), the OpenLP importer (`openlp.rs`). Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
 | `crates/fonts` (`asaf-fonts`) | The bundled OFL fonts (Source Sans 3, Montserrat, Oswald, Lora; Google Fonts' variable TTFs) and their licenses, embedded with `include_bytes!`, plus their `@font-face` CSS. |
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
-| `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders. |
+| `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders; bold and italic formatting tags map to `**strong**` and `__em__`. |
 | `crates/server` (`asaf-server`) | axum on 127.0.0.1 (or 0.0.0.0 with LAN access): display, OBS, stage and remote pages, embedded assets, bundled fonts (`/fonts/…`, `/assets/fonts.css`), imported theme images (`/media/…`), `/ws` pushing `{"type":"state","state":…}` on connect and on every change, and the remote's PIN-protected command socket `/remote/ws` (`remote.rs`). `examples/display_demo.rs` serves one slide in a theme from a JSON file, `examples/remote_demo.rs` the remote, stage and OBS pages with a sample service (and a stand-in console), for checking output in a browser. |
 | `display/` | `index.html`, `display.css`, `display.js`, `background.svg`, `logo.svg` (placeholder); the OBS variant (`obs.html`, `obs.css`, same `display.js`); the stage view (`stage.html`, `stage.css`, `stage.js`); `?monitor` and `?preview` are the console's webviews (a visible pointer; a click hands keyboard focus back to the console); `?preview` also takes its state from the console (`asafPreview(state)`) instead of the websocket; the remote (`remote.html`, `remote.css`, `remote.js`). No build step, no framework; embedded into the binary with `include_str!`. |
 | `crates/i18n` (`asaf-i18n`) | Localization in duckalization's format: message IDs (`id.rs`, the same hash as `@duckalization/id`), target catalogs and lookups (`catalog.rs`), plural rules (`plural.rs`), and the extractor that writes `locales/en.json` + `en.meta.json` (`extract.rs`, `bin/i18n-extract.rs`). No UI deps. |

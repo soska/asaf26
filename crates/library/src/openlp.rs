@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 
 use asaf_bible::ImportedBible;
 use asaf_core::bible::BOOKS;
+use asaf_core::markup;
 use asaf_core::{Bible, BibleVerse, SPLIT_MARKER, Song, Verse};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
@@ -294,26 +295,36 @@ fn verse_kind(kind: &str) -> char {
     }
 }
 
-/// Removes OpenLP formatting tags (`{r}…{/r}`, `{br}` becomes a line break)
-/// and inline chords (`[G]`, `[F#m7]`, `[D/F#]`); keeps `[---]` splits.
+/// Turns OpenLP lyrics into Asaf's: `{st}…{/st}` (strong) becomes
+/// `**…**` and `{it}…{/it}` (italics) `__…__`; other formatting tags
+/// (`{r}…{/r}`) and inline chords (`[G]`, `[F#m7]`, `[D/F#]`) are dropped,
+/// `{br}` becomes a line break and `[---]` splits stay.
 pub fn clean_lyrics(text: &str) -> String {
     let text = text.replace("\r\n", "\n").replace('\r', "\n").replace("{br}", "\n");
     let mut out = String::with_capacity(text.len());
     let mut rest = text.as_str();
     while let Some(i) = rest.find(['{', '[']) {
-        out.push_str(&rest[..i]);
+        out.push_str(&markup::escape(&rest[..i]));
         let open = rest.as_bytes()[i] as char;
         let close = if open == '{' { '}' } else { ']' };
         let after = &rest[i + 1..];
         match after.find(close) {
-            Some(j) if is_markup(open, &after[..j]) => rest = &after[j + 1..],
+            Some(j) if is_markup(open, &after[..j]) => {
+                let tag = &after[..j];
+                out.push_str(match tag.strip_prefix('/').unwrap_or(tag) {
+                    "st" if open == '{' => "**",
+                    "it" if open == '{' => "__",
+                    _ => "",
+                });
+                rest = &after[j + 1..];
+            }
             _ => {
                 out.push(open);
                 rest = after;
             }
         }
     }
-    out.push_str(rest);
+    out.push_str(&markup::escape(rest));
     out.lines().map(|l| l.split_whitespace().collect::<Vec<_>>().join(" ")).collect::<Vec<_>>().join("\n")
 }
 
@@ -493,7 +504,9 @@ mod tests {
             ("[x] [Hm] {not a tag}", "[x] [Hm] {not a tag}"),
             ("  spaced   out  ", "spaced out"),
             ("unclosed [G", "unclosed [G"),
-            ("{st}Señor{/st}, mi Dios", "Señor, mi Dios"),
+            ("{st}Señor{/st}, mi Dios", "**Señor**, mi Dios"),
+            ("{it}{st}Santo{/st}{/it} {u}santo{/u}", "__**Santo**__ santo"),
+            ("2 ** 3 {r}__init__{/r}", "2 \\*\\* 3 \\_\\_init\\_\\_"),
         ] {
             assert_eq!(clean_lyrics(raw), want, "{raw:?}");
         }

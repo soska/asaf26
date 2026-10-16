@@ -54,6 +54,15 @@ fn search_by_title_lyrics_author_prefix_and_accents() {
 }
 
 #[test]
+fn search_and_excerpts_ignore_emphasis_markup() {
+    let mut lib = Library::open_in_memory().unwrap();
+    lib.save(&song("Santo", &[("v1", "**¡Santo, santo!** Señor __omnipotente__")])).unwrap();
+    assert_eq!(lib.search("", 10).unwrap()[0].excerpt, "¡Santo, santo! Señor omnipotente");
+    let hit = &lib.search("santo omnipotente", 10).unwrap()[0];
+    assert!(!hit.excerpt.contains('*') && !hit.excerpt.contains('_'), "{hit:?}");
+}
+
+#[test]
 fn edits_survive_reopen() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("asaf.sqlite");

@@ -17,6 +17,7 @@ use gpui::{
 
 use crate::i18n::{Lang, UiLanguage, en, lang};
 use crate::icons::IconName;
+use crate::preview::styled_line;
 use crate::{SaveSong, SharedLibrary};
 
 /// Emitted after a successful save, with the song as stored (id set).
@@ -333,7 +334,9 @@ impl Render for SongEditor {
                                             .text_color(theme.muted_foreground)
                                             .child(slide.label.clone()),
                                     )
-                                    .children(slide.lines.iter().map(|l| div().child(l.clone())))
+                                    .children(slide.lines.iter().map(|l| {
+                                        div().child(styled_line(l, FontWeight::NORMAL, None, None))
+                                    }))
                             })),
                     ),
             )

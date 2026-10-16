@@ -98,15 +98,27 @@
 
   // ---- render ---------------------------------------------------------------
 
+  // One line from its styled runs (**strong**, __em__ in the lyrics), as
+  // text nodes: lyrics come from imports and are never parsed as HTML.
+  function lineElement(runs) {
+    const div = document.createElement("div");
+    for (const run of runs) {
+      let node = document.createTextNode(run.text);
+      for (const [on, tag] of [[run.em, "em"], [run.strong, "strong"]]) {
+        if (!on) continue;
+        const el = document.createElement(tag);
+        el.append(node);
+        node = el;
+      }
+      div.append(node);
+    }
+    return div;
+  }
+
   function fill(layer, slide) {
     const text = layer.querySelector(".text");
-    text.replaceChildren(
-      ...slide.lines.map((line) => {
-        const div = document.createElement("div");
-        div.textContent = line;
-        return div;
-      }),
-    );
+    const runs = slide.runs ?? slide.lines.map((line) => [{ text: line }]);
+    text.replaceChildren(...runs.map(lineElement));
     text.classList.toggle("prose", !!slide.wrap);
     layer.querySelector(".footer").textContent = slide.footer ?? "";
     fit(layer);

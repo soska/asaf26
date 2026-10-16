@@ -241,13 +241,14 @@ fn joined_authors(stored: &str) -> String {
     stored.lines().collect::<Vec<_>>().join(", ")
 }
 
+/// The first line of `lyrics` (editor text) as it shows, without markup.
 fn first_lyric_line(lyrics: &str) -> String {
     lyrics
         .lines()
         .map(str::trim)
         .find(|l| !l.is_empty() && !l.starts_with('['))
+        .map(asaf_core::markup::plain)
         .unwrap_or_default()
-        .to_string()
 }
 
 #[cfg(test)]

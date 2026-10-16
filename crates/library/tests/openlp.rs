@@ -77,7 +77,7 @@ fn imports_songs_and_bibles_in_one_step() {
     assert!(problems.contains("NIV.sqlite: NIV is a web Bible"), "{problems}");
     assert!(problems.contains("KJV: skipped books outside the 66: Judith"), "{problems}");
 
-    // Songs: chords and formatting gone, splits and verse order kept, authors once each.
+    // Songs: chords and other formatting gone, italics kept as emphasis, splits and verse order kept, authors once each.
     let id = lib.search("amazing", 5).unwrap()[0].id;
     let amazing = lib.get(id).unwrap().unwrap();
     assert_eq!(amazing.alt_title.as_deref(), Some("New Britain"));
@@ -86,18 +86,19 @@ fn imports_songs_and_bibles_in_one_step() {
     assert_eq!(amazing.verse_order, ["v1", "v2", "v1", "e1"]);
     assert_eq!(
         amazing.verses[0].lines,
-        ["Amazing grace! How sweet the sound", "That saved a wretch like me!", "[---]", "I once was lost, but now am found;", "Was blind, but now I see."]
+        ["Amazing grace! How sweet the sound", "That saved a wretch like me!", "[---]", "I once was lost, but now am __found__;", "Was blind, but now I see."]
     );
     assert_eq!(amazing.verses[2].lines, ["Praise God, praise God!"]);
     assert_eq!(amazing.slides().len(), 6, "v1 split in two, twice");
     assert_eq!(lib.search("amazing", 5).unwrap().len(), 1, "the temporary copy isn't imported");
+    assert_eq!(lib.search("now am found", 5).unwrap().len(), 1, "search ignores the markers");
 
     let holy = lib.get(lib.search("holy holy", 5).unwrap()[0].id).unwrap().unwrap();
     assert_eq!(holy.authors, ["Reginald Heber", "John B. Dykes"]);
     let castillo = lib.get(lib.search("castillo", 5).unwrap()[0].id).unwrap().unwrap();
     assert_eq!(castillo.verse_order, ["v1", "c1", "v2", "c1"]);
     assert_eq!(castillo.authors, ["Martín Lutero", "Juan B. Cabrera"]);
-    assert_eq!(castillo.verses[1].lines, ["Su reino es, su reino es."]);
+    assert_eq!(castillo.verses[1].lines, ["**Su reino es,** su reino es."]);
     assert!(lib.search("reino", 5).unwrap().iter().any(|s| s.title == "Castillo Fuerte"), "indexed for search");
 
     // Bibles: names, languages and book names from OpenLP; references work.

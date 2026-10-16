@@ -46,6 +46,8 @@ pub(crate) enum Field {
     SizeMax,
     LineHeight,
     Color,
+    StrongColor,
+    EmColor,
     OutlineColor,
     Outline,
     ShadowColor,
@@ -58,13 +60,15 @@ pub(crate) enum Field {
 }
 
 impl Field {
-    pub const ALL: [Field; 15] = [
+    pub const ALL: [Field; 17] = [
         Field::Name,
         Field::Font,
         Field::SizeMin,
         Field::SizeMax,
         Field::LineHeight,
         Field::Color,
+        Field::StrongColor,
+        Field::EmColor,
         Field::OutlineColor,
         Field::Outline,
         Field::ShadowColor,
@@ -89,6 +93,8 @@ impl Field {
             Field::SizeMax => t.size_max_vh.to_string(),
             Field::LineHeight => t.line_height.to_string(),
             Field::Color => t.color.clone(),
+            Field::StrongColor => t.strong_color.clone(),
+            Field::EmColor => t.em_color.clone(),
             Field::OutlineColor => t.outline_color.clone(),
             Field::Outline => t.outline_vh.to_string(),
             Field::ShadowColor => t.shadow_color.clone(),
@@ -108,6 +114,8 @@ impl Field {
             text.replace(',', ".").parse::<f32>().ok().filter(|v| v.is_finite() && (lo..=hi).contains(v)).ok_or("number")
         };
         let colour = || -> Result<String, &'static str> { parse_color(text).map(|_| text.to_string()).ok_or("color") };
+        // Empty: the text colour.
+        let optional_colour = || if text.is_empty() { Ok(String::new()) } else { colour() };
         match self {
             Field::Name if text.is_empty() => return Err("name"),
             Field::Name => t.name = text.to_string(),
@@ -117,6 +125,8 @@ impl Field {
             Field::SizeMax => t.size_max_vh = number(1.0, 40.0)?,
             Field::LineHeight => t.line_height = number(0.8, 3.0)?,
             Field::Color => t.color = colour()?,
+            Field::StrongColor => t.strong_color = optional_colour()?,
+            Field::EmColor => t.em_color = optional_colour()?,
             Field::OutlineColor => t.outline_color = colour()?,
             Field::Outline => t.outline_vh = number(0.0, 3.0)?,
             Field::ShadowColor => t.shadow_color = colour()?,
@@ -140,6 +150,8 @@ impl Field {
             Field::SizeMax => en("Largest text (% of height)"),
             Field::LineHeight => en("Line spacing"),
             Field::Color => en("Text color"),
+            Field::StrongColor => en("Strong color (**word**)"),
+            Field::EmColor => en("Emphasis color (__word__)"),
             Field::OutlineColor => en("Outline color"),
             Field::Outline => en("Outline width"),
             Field::ShadowColor => en("Shadow color"),
@@ -508,7 +520,10 @@ impl Render for ThemeEditor {
         let l = lang(cx);
         let (draft, bad) = self.draft(cx);
         let dirty = draft != self.stored();
-        let sample_slide = sample_song().slides().swap_remove(SAMPLE_SLIDE);
+        let mut sample_slide = sample_song().slides().swap_remove(SAMPLE_SLIDE);
+        // Show off the emphasis colours.
+        sample_slide.lines[0] = "**This is my story**, this is my song,".into();
+        sample_slide.lines[1] = "Praising my __Savior__ all the day long;".into();
         let sample = sample_slide.lines.clone();
         let background = image_source(draft.background_image.as_deref(), &self.library);
         let logo = image_source(draft.logo.as_deref(), &self.library);
@@ -527,6 +542,7 @@ impl Render for ThemeEditor {
                 )
                 .child(Input::new(&self.inputs[f.index()]).small())
         };
+        let or_text = |c: &str| if c.trim().is_empty() { draft.color.clone() } else { c.to_string() };
         let swatch = |c: &str| {
             div()
                 .flex_none()
@@ -658,6 +674,14 @@ impl Render for ThemeEditor {
             .child(
                 h_flex()
                     .gap_2()
+                    .child(field(Field::StrongColor, 160.))
+                    .child(swatch(&or_text(&draft.strong_color)))
+                    .child(field(Field::EmColor, 160.))
+                    .child(swatch(&or_text(&draft.em_color))),
+            )
+            .child(
+                h_flex()
+                    .gap_2()
                     .child(field(Field::OutlineColor, 110.))
                     .child(swatch(&draft.outline_color))
                     .child(field(Field::Outline, 100.)),
@@ -670,7 +694,7 @@ impl Render for ThemeEditor {
                     .child(field(Field::ShadowBlur, 100.))
                     .child(field(Field::ShadowOffset, 100.)),
             )
-            .child(div().text_xs().text_color(muted).child(l.t("Sizes and widths are in % of the screen height; colors are #rrggbb or #rrggbbaa.")))
+            .child(div().text_xs().text_color(muted).child(l.t("Sizes and widths are in % of the screen height; colors are #rrggbb or #rrggbbaa. Leave a strong or emphasis color empty to use the text color.")))
             .child(heading(en("Position")))
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Across"))).child(aligns))
             .child(h_flex().gap_2().child(div().w(px(70.)).text_xs().text_color(muted).child(l.t("Down"))).child(valigns))
@@ -863,6 +887,9 @@ mod tests {
             (Field::SizeMax, "abc", false),
             (Field::Color, "#ff0", true),
             (Field::Color, "red", false),
+            (Field::StrongColor, "", true),
+            (Field::EmColor, "blue", false),
+            (Field::EmColor, "#00f", true),
             (Field::Name, "  ", false),
             (Field::Font, "", false),
             (Field::TransitionMs, "-1", false),
@@ -872,6 +899,7 @@ mod tests {
             assert_eq!(f.set(&mut t, text).is_ok(), ok, "{f:?} {text:?}");
         }
         assert_eq!((t.size_min_vh, t.color.as_str(), t.line_height), (4.5, "#ff0", 1.4));
+        assert_eq!((t.strong_color.as_str(), t.em_color.as_str()), ("", "#00f"));
     }
 
     #[gpui::test]

@@ -1,6 +1,8 @@
 use std::fmt;
 
-use serde::Serialize;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
+
+use crate::markup;
 
 /// A line on its own inside a verse that splits it across two slides.
 pub const SPLIT_MARKER: &str = "[---]";
@@ -28,14 +30,37 @@ pub struct Verse {
 }
 
 /// What a screen shows. Derived from songs and passages, never stored.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// Serialized for the display pages and the remote with `lines` as plain
+/// text and `runs` as each line's styled runs (see [`markup`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Slide {
+    /// As typed, with any emphasis markup.
     pub lines: Vec<String>,
     pub label: String,
     pub footer: Option<String>,
     /// Prose (Bible verses): lines wrap to fill the screen. Lyric lines stay
     /// whole unless they can't fit at the minimum size.
     pub wrap: bool,
+}
+
+impl Slide {
+    /// The lines without markup.
+    pub fn plain_lines(&self) -> Vec<String> {
+        self.lines.iter().map(|l| markup::plain(l)).collect()
+    }
+}
+
+impl Serialize for Slide {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let runs: Vec<Vec<markup::Run>> = self.lines.iter().map(|l| markup::parse(l)).collect();
+        let mut s = serializer.serialize_struct("Slide", 5)?;
+        s.serialize_field("lines", &self.plain_lines())?;
+        s.serialize_field("runs", &runs)?;
+        s.serialize_field("label", &self.label)?;
+        s.serialize_field("footer", &self.footer)?;
+        s.serialize_field("wrap", &self.wrap)?;
+        s.end()
+    }
 }
 
 impl Verse {
@@ -130,13 +155,14 @@ impl Song {
             .collect()
     }
 
-    /// All lyric lines without tags or split markers, for search indexing.
+    /// All lyric lines without tags, split markers or emphasis markup, for
+    /// search indexing.
     pub fn plain_lyrics(&self) -> String {
         self.verses
             .iter()
             .flat_map(|v| v.lines.iter())
             .filter(|l| *l != SPLIT_MARKER)
-            .map(String::as_str)
+            .map(|l| markup::plain(l))
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -262,8 +288,21 @@ mod tests {
     #[test]
     fn plain_lyrics_skip_markers() {
         let mut s = song(&[]);
-        s.verses[0] = Verse::new("v1", "a\n[---]\nb");
+        s.verses[0] = Verse::new("v1", "**a**\n[---]\n__b__");
         assert_eq!(s.plain_lyrics(), "a\nb\nchorus\ntwo");
+    }
+
+    #[test]
+    fn slides_serialize_plain_lines_and_runs() {
+        let mut s = song(&["v1"]);
+        s.verses[0] = Verse::new("v1", "**Santo**, santo\nplain");
+        let json = serde_json::to_value(&s.slides()[0]).unwrap();
+        assert_eq!(json["lines"], serde_json::json!(["Santo, santo", "plain"]));
+        assert_eq!(
+            json["runs"],
+            serde_json::json!([[{"text": "Santo", "strong": true}, {"text": ", santo"}], [{"text": "plain"}]])
+        );
+        assert_eq!(json["label"], "V1");
     }
 
     #[test]

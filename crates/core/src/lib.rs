@@ -5,6 +5,7 @@
 
 pub mod bible;
 mod lyrics;
+pub mod markup;
 pub mod reference;
 mod remote;
 mod sample;
@@ -17,6 +18,7 @@ pub mod theme;
 
 pub use bible::{Bible, BibleLayout, BibleVerse, BookNames, Passage, ReferencePlacement, VersesPerSlide};
 pub use lyrics::{format_lyrics, parse_lyrics};
+pub use markup::Run;
 pub use reference::{RefError, RefRange, VerseRef, format_reference, parse_reference};
 pub use remote::{Command, Operator, Outcome, RemoteState, RemoteView, Reply, ServiceEntry};
 pub use sample::sample_song;

@@ -99,6 +99,10 @@ main {
   white-space: nowrap;
 }
 .text.wrap { white-space: normal; max-width: 100%; }
+/* Emphasis in lyrics, so the singers see it too (not the theme's colours:
+   the stage view has its own look). */
+.text strong { font-weight: 900; text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.15em; }
+.text em { font-style: italic; }
 
 #next-head {
   flex: none;

@@ -51,6 +51,27 @@ fn export_round_trips() {
 }
 
 #[test]
+fn emphasis_round_trips_and_imports_from_format_tags() {
+    let mut song = sample_song();
+    song.verses[1].lines[0] = "**Santo**, __santo__, **__santo__** 2 \\*\\* 3".into();
+    let xml = to_xml(&song);
+    assert!(xml.contains("<tag name=\"strong\">Santo</tag>") && xml.contains("<format>"), "{xml}");
+    assert!(!xml.contains("**Santo") && xml.contains("2 ** 3"), "markers become tags, literal asterisks stay: {xml}");
+    assert_eq!(parse(&xml).unwrap(), song, "{xml}");
+    assert!(!to_xml(&sample_song()).contains("<format>"), "no format block without emphasis");
+
+    // OpenLP-style names and definitions, a tag across a line break, an unknown tag.
+    let other = r#"<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.9">
+      <properties><titles><title>X</title></titles></properties>
+      <format><tags application="OpenLP">
+        <tag name="hl"><open>&lt;span style="font-weight: bold"&gt;</open><close>&lt;/span&gt;</close></tag>
+      </tags></format>
+      <lyrics><verse name="v1"><lines><tag name="it">a<br/>b</tag> <tag name="hl">c</tag> <tag name="red">d</tag> e_f</lines></verse></lyrics>
+    </song>"#;
+    assert_eq!(parse(other).unwrap().verses[0].lines, ["__a__", "__b__ **c** d e_f"]);
+}
+
+#[test]
 fn rejects_bad_files_with_a_reason() {
     assert!(parse("not xml").unwrap_err().to_string().contains("XML"));
     assert!(parse("<foo/>").unwrap_err().to_string().contains("OpenLyrics"));

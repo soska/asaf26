@@ -239,6 +239,14 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "1asw2ljnasd": {
+    "status": "machine",
+    "translatedHash": "2xu09je03h",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "high",
+    "note": "Markup example kept verbatim."
+  },
   "1b2uuk9yulj": {
     "status": "approved",
     "translatedHash": "2eal8d0su2v",
@@ -260,12 +268,6 @@
   "1brd9iu3rkj": {
     "status": "approved",
     "translatedHash": "rqg5lzagoe",
-    "at": "2026-10-16",
-    "by": "armando"
-  },
-  "1btz5ox01gd": {
-    "status": "approved",
-    "translatedHash": "1u3uhvxno1x",
     "at": "2026-10-16",
     "by": "armando"
   },
@@ -298,6 +300,17 @@
     "translatedHash": "21fgs8xr8dy",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1dgbdl1pyf": {
+    "status": "machine",
+    "translatedHash": "1dicp00eep4",
+    "at": "2026-10-16",
+    "by": "claude",
+    "confidence": "medium",
+    "alternatives": [
+      "Color de negritas (**palabra**)"
+    ],
+    "note": "\"Strong\" words are bolder and colored; \"resaltado\" avoids a literal \"fuerte\". The markup example stays as typed."
   },
   "1eio3zz1gui": {
     "status": "approved",
@@ -750,6 +763,12 @@
     "translatedHash": "27n3cd7ecni",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "215116uqkle": {
+    "status": "machine",
+    "translatedHash": "12ewv6my1z9",
+    "at": "2026-10-16",
+    "by": "claude"
   },
   "21cc1d4k7ci": {
     "status": "approved",

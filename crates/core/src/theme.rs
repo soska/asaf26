@@ -27,6 +27,12 @@ pub struct Theme {
     pub line_height: f32,
     /// Colours are `#rgb`, `#rrggbb` or `#rrggbbaa`.
     pub color: String,
+    /// `**strong**` words in lyrics: bolder, in this colour (empty: the
+    /// text colour).
+    pub strong_color: String,
+    /// `__em__` words in lyrics: italic, in this colour (empty: the text
+    /// colour).
+    pub em_color: String,
     pub outline_color: String,
     /// Visible outline width; 0 for none.
     pub outline_vh: f32,
@@ -132,6 +138,8 @@ impl Default for Theme {
             size_max_vh: 11.0,
             line_height: 1.2,
             color: "#ffffff".into(),
+            strong_color: "#ffd166".into(),
+            em_color: String::new(),
             outline_color: "#000000e6".into(),
             outline_vh: 0.45,
             shadow_color: "#000000d9".into(),
@@ -180,6 +188,11 @@ fn css_color(text: &str) -> String {
     } else {
         format!("rgba({r}, {g}, {b}, {})", trim_float(f32::from(a) / 255.0, 3))
     }
+}
+
+/// An optional colour: `inherit` (the text's) when empty.
+fn or_text_color(text: &str) -> String {
+    if text.trim().is_empty() { "inherit".into() } else { css_color(text) }
 }
 
 /// `1.5`, `2`, `0.333`: no trailing zeros.
@@ -239,6 +252,8 @@ impl Theme {
             ("--font-weight", self.font_weight.to_string()),
             ("--line-height", trim_float(self.line_height, 2)),
             ("--color", css_color(&self.color)),
+            ("--strong-color", or_text_color(&self.strong_color)),
+            ("--em-color", or_text_color(&self.em_color)),
             ("--outline-color", css_color(&self.outline_color)),
             // The stroke is centred on the glyph edge and painted under the
             // fill, so only half of it shows: draw twice the visible width.
@@ -287,6 +302,13 @@ impl Theme {
         ] {
             *value = match parse_color(value) {
                 Some(_) => value.trim().to_ascii_lowercase(),
+                None => default.clone(),
+            };
+        }
+        for (value, default) in [(&mut self.strong_color, &d.strong_color), (&mut self.em_color, &d.em_color)] {
+            *value = match parse_color(value) {
+                Some(_) => value.trim().to_ascii_lowercase(),
+                None if value.trim().is_empty() => String::new(),
                 None => default.clone(),
             };
         }
@@ -358,6 +380,10 @@ mod tests {
             ("--shift", |_| {}, "0vh"),
             ("--shift", |t| t.transition = TransitionKind::Slide, "6vh"),
             ("--justify", |t| t.align = Align::Right, "flex-end"),
+            ("--strong-color", |_| {}, "rgb(255, 209, 102)"),
+            ("--strong-color", |t| t.strong_color = " ".into(), "inherit"),
+            ("--em-color", |_| {}, "inherit"),
+            ("--em-color", |t| t.em_color = "#0f0".into(), "rgb(0, 255, 0)"),
         ];
         for (name, change, want) in cases {
             let mut t = base.clone();
@@ -384,6 +410,8 @@ mod tests {
             line_height: 0.0,
             color: "red".into(),
             outline_color: "#ABCDEF".into(),
+            strong_color: "gold".into(),
+            em_color: " ".into(),
             outline_vh: 99.0,
             shadow_blur_vh: -1.0,
             margin_x_pct: 80.0,
@@ -400,6 +428,7 @@ mod tests {
         assert_eq!(t.line_height, 0.8);
         assert_eq!(t.color, "#ffffff");
         assert_eq!(t.outline_color, "#abcdef");
+        assert_eq!((t.strong_color.as_str(), t.em_color.as_str()), ("#ffd166", ""));
         assert_eq!((t.outline_vh, t.shadow_blur_vh, t.margin_x_pct), (3.0, 0.0, 40.0));
         assert_eq!(t.transition_ms, MAX_TRANSITION_MS);
         assert_eq!((t.background_image, t.logo), (None, None));

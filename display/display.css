@@ -7,6 +7,8 @@
   --font-weight: 700;
   --line-height: 1.2;
   --color: #fff;
+  --strong-color: inherit;
+  --em-color: inherit;
   --outline-color: rgba(0, 0, 0, 0.9);
   --outline-width: 0.9vh;
   --shadow: 0 0.4vh 1.2vh rgba(0, 0, 0, 0.85);
@@ -73,6 +75,15 @@ html.embedded, html.embedded body { cursor: default; }
 .text {
   line-height: var(--line-height);
   white-space: nowrap;
+}
+/* Emphasis in lyrics (**strong**, __em__). */
+.text strong {
+  color: var(--strong-color);
+  font-weight: bolder;
+}
+.text em {
+  color: var(--em-color);
+  font-style: italic;
 }
 .text.wrap {
   white-space: normal;

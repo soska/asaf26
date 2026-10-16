@@ -37,15 +37,27 @@
     text.style.fontSize = `${size ?? min}px`;
   }
 
-  function fill(text, lines, prose) {
-    text.replaceChildren(
-      ...lines.map((line) => {
-        const div = document.createElement("div");
-        div.textContent = line;
-        return div;
-      }),
-    );
-    text.classList.toggle("prose", prose);
+  // A line from its styled runs (**strong**, __em__), as text nodes, never HTML.
+  function lineElement(runs) {
+    const div = document.createElement("div");
+    for (const run of runs) {
+      let node = document.createTextNode(run.text);
+      for (const [on, tag] of [[run.em, "em"], [run.strong, "strong"]]) {
+        if (!on) continue;
+        const el = document.createElement(tag);
+        el.append(node);
+        node = el;
+      }
+      div.append(node);
+    }
+    return div;
+  }
+
+  // `slide` is a slide, or a plain string (what's up next).
+  function fill(text, slide) {
+    const runs = typeof slide === "string" ? [[{ text: slide }]] : (slide?.runs ?? []);
+    text.replaceChildren(...runs.map(lineElement));
+    text.classList.toggle("prose", !!slide?.wrap);
   }
 
   function layout() {
@@ -66,13 +78,13 @@
   function render(st) {
     state = st;
     const slide = st.slide;
-    fill(current, slide ? slide.lines : [], !!slide?.wrap);
+    fill(current, slide);
     let head = "";
     if (st.next) {
-      fill(next, st.next.lines, !!st.next.wrap);
+      fill(next, st.next);
       head = __("Next · {slide}", { slide: st.next.label });
     } else {
-      fill(next, st.up_next ? [st.up_next] : [], false);
+      fill(next, st.up_next ?? null);
       head = slide ? (st.up_next ? __("Up next") : __("End")) : "";
     }
     $("next-head").textContent = head;
