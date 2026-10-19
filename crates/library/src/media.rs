@@ -16,7 +16,7 @@ pub const VIDEO_EXTENSIONS: &[&str] = &["mp4", "m4v", "mov", "webm"];
 /// Larger files aren't imported: they'd be read into memory whole.
 pub const MAX_MEDIA_BYTES: u64 = 1 << 30;
 
-fn is_media_extension(ext: &str) -> bool {
+pub(crate) fn is_media_extension(ext: &str) -> bool {
     IMAGE_EXTENSIONS.contains(&ext) || VIDEO_EXTENSIONS.contains(&ext)
 }
 
@@ -39,7 +39,7 @@ impl Library {
     /// contents, so importing the same file twice reuses one copy and two
     /// different files never overwrite each other.
     pub fn import_media(&self, path: &Path) -> Result<String, String> {
-        let dir = self.media_dir().ok_or("This library has no media folder.")?;
+        self.media_dir().ok_or("This library has no media folder.")?;
         let ext = path
             .extension()
             .and_then(|e| e.to_str())
@@ -54,13 +54,26 @@ impl Library {
             return Err(format!("{} is larger than {} MB.", path.display(), MAX_MEDIA_BYTES >> 20));
         }
         let bytes = fs::read(path).map_err(|e| format!("Can't read {}: {e}", path.display()))?;
-        let stem = path.file_stem().and_then(|s| s.to_str()).map(slug).unwrap_or_default();
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
+        self.import_media_bytes(stem, &ext, &bytes)
+    }
+
+    /// [`Library::import_media`] for a file's contents: `stem` names it
+    /// (made a slug), `ext` is its (lowercase, known) extension.
+    pub(crate) fn import_media_bytes(&self, stem: &str, ext: &str, bytes: &[u8]) -> Result<String, String> {
+        let dir = self.media_dir().ok_or("This library has no media folder.")?;
+        let stem = slug(stem);
+        // A name we gave before ("sky-1a2b3c4d") gets a fresh hash, not a second one.
+        let stem = match stem.rsplit_once('-') {
+            Some((head, hash)) if hash.len() == 8 && hash.chars().all(|c| c.is_ascii_hexdigit()) => head.to_string(),
+            _ => stem,
+        };
         let stem = if stem.is_empty() { "media".to_string() } else { stem };
-        let name = format!("{stem}-{:08x}.{ext}", fnv1a(&bytes) as u32);
+        let name = format!("{stem}-{:08x}.{ext}", fnv1a(bytes) as u32);
         fs::create_dir_all(dir).map_err(|e| format!("Can't create {}: {e}", dir.display()))?;
         let target = dir.join(&name);
         if !target.exists() {
-            crate::service::write_atomic_bytes(&target, &bytes).map_err(|e| format!("Can't copy into {}: {e}", dir.display()))?;
+            crate::service::write_atomic_bytes(&target, bytes).map_err(|e| format!("Can't copy into {}: {e}", dir.display()))?;
         }
         Ok(format!("{MEDIA_URL_PREFIX}{name}"))
     }

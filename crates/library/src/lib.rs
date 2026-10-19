@@ -7,6 +7,7 @@ pub mod media;
 mod migrations;
 pub mod openlp;
 pub mod service;
+mod theme_package;
 mod themes;
 
 use std::path::{Path, PathBuf};
@@ -16,6 +17,7 @@ use asaf_core::{Song, format_lyrics, parse_lyrics};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 pub use bible::{BibleImport, VerseHit};
+pub use theme_package::{THEME_EXTENSION, ThemeFileError, with_theme_extension};
 pub use themes::ThemeError;
 pub use import::ImportReport;
 pub use rusqlite::Error;

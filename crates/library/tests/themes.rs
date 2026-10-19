@@ -2,6 +2,7 @@
 
 use asaf_core::{Align, Appearance, Language, Settings, Theme, TransitionKind, builtin_themes};
 use asaf_library::Library;
+use std::path::PathBuf;
 
 /// Theme names that aren't built in.
 fn own_names(lib: &Library) -> Vec<String> {
@@ -171,4 +172,95 @@ fn images_are_copied_into_the_media_folder() {
     assert!(lib.import_media(&dir.path().join("missing.jpg")).unwrap_err().starts_with("Can't read"));
     assert_eq!(lib.media_path("/media/../asaf.sqlite"), None);
     assert!(Library::open_in_memory().unwrap().import_media(&src).is_err());
+}
+
+#[test]
+fn themes_travel_in_files_with_their_media() {
+    let here = tempfile::tempdir().unwrap();
+    let lib = Library::open(&here.path().join("asaf.sqlite")).unwrap();
+    let still = here.path().join("Amanecer.jpg");
+    let clip = here.path().join("Olas.mp4");
+    std::fs::write(&still, b"jpeg bytes").unwrap();
+    std::fs::write(&clip, vec![7u8; 300_000]).unwrap();
+    let theme = Theme {
+        name: "Sunday".into(),
+        background_image: Some(lib.import_media(&still).unwrap()),
+        background_video: Some(lib.import_media(&clip).unwrap()),
+        logo: Some("/assets/logo.svg".into()),
+        color: "#ffee00".into(),
+        ..Theme::default()
+    };
+    let file = asaf_library::with_theme_extension(here.path().join("Sunday"));
+    let missing = Theme { logo: Some("/media/gone-00000000.png".into()), ..theme.clone() };
+    assert_eq!(lib.export_theme(&missing, &file), Err(asaf_library::ThemeFileError::MissingMedia("gone-00000000.png".into())));
+    assert!(!file.exists(), "nothing written");
+    let theme = Theme { logo: theme.background_image.clone(), ..theme };
+    assert!(file.ends_with("Sunday.asaf-theme"));
+    lib.export_theme(&theme, &file).unwrap();
+
+    // Another computer: a fresh library gets the theme and copies of its media.
+    let there = tempfile::tempdir().unwrap();
+    let mut other = Library::open(&there.path().join("asaf.sqlite")).unwrap();
+    let got = other.import_theme(&file).unwrap();
+    assert_eq!(got, Theme { background_image: got.background_image.clone(), background_video: got.background_video.clone(), ..theme.clone() });
+    for (url, bytes) in [(&got.background_image, b"jpeg bytes".to_vec()), (&got.background_video, vec![7u8; 300_000])] {
+        let path = other.media_path(url.as_deref().unwrap()).unwrap();
+        assert!(path.starts_with(there.path()), "{path:?}");
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+    assert!(got.background_image.as_deref().unwrap().starts_with("/media/amanecer-"));
+    assert_eq!(other.theme("Sunday").unwrap(), Some(got.clone()));
+
+    // Again: a copy beside it, never a replacement; the media are shared.
+    let again = other.import_theme(&file).unwrap();
+    assert_eq!((again.name.as_str(), &again.background_video), ("Sunday 2", &got.background_video));
+    assert_eq!(std::fs::read_dir(there.path().join("media")).unwrap().count(), 2);
+}
+
+#[test]
+fn bad_theme_files_are_refused_and_change_nothing() {
+    use asaf_library::ThemeFileError;
+    use std::io::Write;
+    let dir = tempfile::tempdir().unwrap();
+    let mut lib = Library::open(&dir.path().join("asaf.sqlite")).unwrap();
+    let before = lib.themes().unwrap();
+    let zip_with = |name: &str, entries: &[(&str, &[u8])]| {
+        let path = dir.path().join(name);
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        for (entry, bytes) in entries {
+            zip.start_file(*entry, zip::write::SimpleFileOptions::default()).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        zip.finish().unwrap();
+        path
+    };
+    let envelope = |version: u32, theme: &str| format!(r#"{{"format":"asaf-theme","version":{version},"theme":{theme}}}"#);
+    std::fs::write(dir.path().join("plain.asaf-theme"), "not a zip").unwrap();
+    let cases: Vec<(PathBuf, ThemeFileError)> = vec![
+        (dir.path().join("plain.asaf-theme"), ThemeFileError::NotATheme),
+        (zip_with("empty.asaf-theme", &[("readme.txt", b"hi")]), ThemeFileError::NotATheme),
+        (zip_with("other.asaf-theme", &[("theme.json", br#"{"format":"something","version":1,"theme":{}}"#)]), ThemeFileError::NotATheme),
+        (zip_with("newer.asaf-theme", &[("theme.json", envelope(9, "{}").as_bytes())]), ThemeFileError::Newer(9)),
+        (
+            zip_with("missing.asaf-theme", &[("theme.json", envelope(1, r#"{"name":"X","background_image":"/media/sky-1.jpg"}"#).as_bytes())]),
+            ThemeFileError::MissingMedia("sky-1.jpg".into()),
+        ),
+        (
+            zip_with(
+                "sneaky.asaf-theme",
+                &[("theme.json", envelope(1, r#"{"name":"X","logo":"/media/notes.txt"}"#).as_bytes()), ("media/notes.txt", b"x")],
+            ),
+            ThemeFileError::MissingMedia("notes.txt".into()),
+        ),
+    ];
+    for (path, want) in cases {
+        assert_eq!(lib.import_theme(&path), Err(want), "{path:?}");
+    }
+    assert!(matches!(lib.import_theme(&dir.path().join("nowhere.asaf-theme")), Err(ThemeFileError::Io(_))));
+    assert_eq!(lib.themes().unwrap(), before);
+
+    // A theme with no media of its own, and an old one missing newer fields.
+    let ok = zip_with("ok.asaf-theme", &[("theme.json", envelope(1, r##"{"name":"Plain","color":"#00ff00"}"##).as_bytes())]);
+    let got = lib.import_theme(&ok).unwrap();
+    assert_eq!((got.name.as_str(), got.color.as_str(), got.font_weight), ("Plain", "#00ff00", 700));
 }

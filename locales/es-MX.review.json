@@ -189,6 +189,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "17zyd0q69qw": {
+    "status": "machine",
+    "translatedHash": "18bz7wvnf6z",
+    "at": "2026-10-19",
+    "by": "claude"
+  },
   "181k3mnn64c": {
     "status": "approved",
     "translatedHash": "jkhyf9e8p3",
@@ -294,6 +300,12 @@
     "by": "claude",
     "confidence": "high",
     "note": "Markup example kept verbatim."
+  },
+  "1axa73zk100": {
+    "status": "machine",
+    "translatedHash": "1vioboy47c6",
+    "at": "2026-10-19",
+    "by": "claude"
   },
   "1b2uuk9yulj": {
     "status": "approved",
@@ -549,6 +561,12 @@
     "translatedHash": "1av6aaonvjb",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "1lflbzadrk9": {
+    "status": "machine",
+    "translatedHash": "27itavqnqht",
+    "at": "2026-10-19",
+    "by": "claude"
   },
   "1li8587ej1y": {
     "status": "approved",
@@ -1022,6 +1040,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "26ixs9iolbf": {
+    "status": "machine",
+    "translatedHash": "28n9bpedo5i",
+    "at": "2026-10-19",
+    "by": "claude"
+  },
   "273b4fh7eec": {
     "status": "machine",
     "translatedHash": "ju9ipcn4dc",
@@ -1344,6 +1368,12 @@
     "translatedHash": "7p8z05g2bo",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "7pudox4xo8": {
+    "status": "machine",
+    "translatedHash": "14kxwbir832",
+    "at": "2026-10-19",
+    "by": "claude"
   },
   "7zx9ynkbvj": {
     "status": "approved",
@@ -1677,6 +1707,12 @@
     "at": "2026-10-16",
     "by": "armando"
   },
+  "lhaeh6k5h7": {
+    "status": "machine",
+    "translatedHash": "1m77kljjjrg",
+    "at": "2026-10-19",
+    "by": "claude"
+  },
   "lypsgm9x0p": {
     "status": "approved",
     "translatedHash": "287ryemmade",
@@ -1742,6 +1778,12 @@
     "translatedHash": "o1ce7w3fhx",
     "at": "2026-10-16",
     "by": "armando"
+  },
+  "o29nxjyq3p": {
+    "status": "machine",
+    "translatedHash": "z5iob1n0ac",
+    "at": "2026-10-19",
+    "by": "claude"
   },
   "o54cnfr1fb": {
     "status": "approved",

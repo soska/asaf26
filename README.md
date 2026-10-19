@@ -164,7 +164,7 @@ delete (a deleted one doesn't come back), and a theme of your own with the
 same name is left alone.
 
 The theme editor (`⌘T`, or Themes… in the live pane) lists the themes on the
-left (New, Duplicate, Delete…, Make default), the settings in the middle and
+left (New, Duplicate, Delete…, Import…, Export…, Make default), the settings in the middle and
 a preview on the right: the sample chorus or a verse (Song / Scripture), plus
 a small "blanked to the logo" view, drawn by the display page itself (`/display?preview`, in webviews), so
 fonts, outline, shadow and auto-fit are exactly what the projector shows,
@@ -177,6 +177,14 @@ data folder's `media/` (named by a hash of their contents, so re-importing
 the same file reuses it) and served by the local server; the original file
 can be moved or deleted afterwards. "Built in" goes back to the bundled
 placeholder images.
+
+**Theme files** (`.asaf-theme`) take a theme to another computer: Export…
+writes the saved theme with the images and video it uses (a zip holding
+`theme.json` and `media/…`; built-in images aren't included), and Import…
+adds the one in a file as a new theme ("Aurora 2" if the name is taken),
+copying its media into the media folder. Nothing already there is replaced.
+Files from a newer Asaf, files that aren't theme files and ones missing a
+picture are refused without changing anything.
 
 The **default theme** (chosen in the editor or in Settings) is used for
 everything without a theme of its own: ad-hoc songs and verses, and service
@@ -474,7 +482,7 @@ purpose, since the Rust extractor writes the catalog).
 | Crate | Role |
 | --- | --- |
 | `crates/core` (`asaf-core`) | Song/verse/slide types, lyrics text format and its emphasis markup (`markup.rs`), slide generation and splitting, Bible types and the 66-book table with English/Spanish names, the reference parser, verse-to-slide layout, the service model and its JSON file format (`service.rs`), the `Theme` model and its CSS variables (`theme.rs`), `Settings` (`settings.rs`), `DisplayState`, the command API and the remote's view (`remote.rs`: `Command`, `Outcome`, `RemoteView`, `RemoteState`), the `Store` (single source of truth, default and per-item theme, commands and their operator, change listeners for displays and remotes). No UI or IO deps (serde/serde_json only). |
-| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Themes and settings (`themes.rs`), theme images in the media folder (`media.rs`), the OpenLP importer (`openlp.rs`). Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
+| `crates/library` (`asaf-library`) | SQLite storage (rusqlite, bundled SQLite), migrations via `PRAGMA user_version`, FTS5 search indexes (songs, Bible verses), OpenLyrics and Bible import with duplicate skipping, passage lookup. Themes and settings (`themes.rs`), theme images and videos in the media folder (`media.rs`), theme files (`theme_package.rs`), the OpenLP importer (`openlp.rs`). Service files on disk (`service.rs`): atomic writes, reading, autosave restore, finding a service's songs. |
 | `crates/fonts` (`asaf-fonts`) | The bundled OFL fonts (Source Sans 3, Montserrat, Oswald, Lora; Google Fonts' variable TTFs) and their licenses, embedded with `include_bytes!`, plus their `@font-face` CSS. |
 | `crates/bible` (`asaf-bible`) | OSIS and Zefania XML readers (parsing only; depends on `core`). Test fixtures are public-domain excerpts (KJV, Reina-Valera 1909). |
 | `crates/openlyrics` (`asaf-openlyrics`) | OpenLyrics XML read (0.8 and 0.9) and write (0.9), single files and folders; bold and italic formatting tags map to `**strong**` and `__em__`. |

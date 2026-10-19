@@ -12,7 +12,7 @@ use asaf_core::{
     TransitionKind, VAlign, parse_color, sample_song,
 };
 use asaf_fonts::FONTS;
-use asaf_library::ThemeError;
+use asaf_library::{ThemeError, ThemeFileError, with_theme_extension};
 use asaf_library::media::{IMAGE_EXTENSIONS, VIDEO_EXTENSIONS};
 use asaf_projector::EmbeddedPage;
 use gpui::component::button::{Button, ButtonVariants as _};
@@ -601,6 +601,62 @@ impl ThemeEditor {
         .detach();
     }
 
+    /// Saves the theme (as stored) and its media to a file the operator
+    /// picks, for another computer.
+    fn export(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let theme = self.stored();
+        let name = format!("{}.{}", file_stem(&theme.name), asaf_library::THEME_EXTENSION);
+        let path = cx.prompt_for_new_path(&crate::transfer::documents_dir(), Some(&name));
+        cx.spawn_in(window, async move |this, cx| {
+            let Ok(Ok(Some(path))) = path.await else { return };
+            let _ = this.update_in(cx, |this, window, cx| this.export_to(&with_theme_extension(path), window, cx));
+        })
+        .detach();
+    }
+
+    pub(crate) fn export_to(&mut self, path: &std::path::Path, window: &mut Window, cx: &mut Context<Self>) {
+        let theme = self.stored();
+        let result = self.library.lock().unwrap().export_theme(&theme, path);
+        let l = lang(cx);
+        let note = match result {
+            Ok(()) => Notification::success(l.f("Exported “{name}”", &[("name", &theme.name)])),
+            Err(e) => Notification::error(theme_file_error(l, &e)),
+        };
+        window.push_notification(note, cx);
+    }
+
+    /// Adds the theme in a file the operator picks, as a new theme.
+    fn import(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.is_dirty(cx) {
+            return self.confirm_discard(Some(Box::new(|this, w, cx| this.import(w, cx))), window, cx);
+        }
+        let paths = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some(lang(cx).t("Import").into()),
+        });
+        cx.spawn_in(window, async move |this, cx| {
+            let Ok(Ok(Some(mut paths))) = paths.await else { return };
+            let Some(path) = paths.pop() else { return };
+            let _ = this.update_in(cx, |this, window, cx| this.import_from(&path, window, cx));
+        })
+        .detach();
+    }
+
+    pub(crate) fn import_from(&mut self, path: &std::path::Path, window: &mut Window, cx: &mut Context<Self>) {
+        let result = self.library.lock().unwrap().import_theme(path);
+        let l = lang(cx);
+        match result {
+            Ok(theme) => {
+                self.reload(Some(&theme.name), window, cx);
+                cx.emit(ThemesChanged::default());
+                window.push_notification(Notification::success(l.f("Imported “{name}”", &[("name", &theme.name)])), cx);
+            }
+            Err(e) => window.push_notification(Notification::error(theme_file_error(l, &e)), cx),
+        }
+    }
+
     /// Imports an image or video into the media folder for `slot`.
     fn choose_media(&mut self, slot: MediaSlot, window: &mut Window, cx: &mut Context<Self>) {
         let paths = cx.prompt_for_paths(PathPromptOptions {
@@ -1125,6 +1181,19 @@ impl Render for ThemeEditor {
                             .label(l.t("Delete…"))
                             .disabled(is_default)
                             .on_click(cx.listener(|this, _, w, cx| this.delete(w, cx))))
+                    .child(Button::new("theme-import")
+                            .icon(IconName::Download)
+                            .small()
+                            .ghost()
+                            .label(l.t("Import…"))
+                            .on_click(cx.listener(|this, _, w, cx| this.import(w, cx))))
+                    .child(Button::new("theme-export")
+                            .icon(IconName::Upload)
+                            .small()
+                            .ghost()
+                            .label(l.t("Export…"))
+                            .disabled(dirty)
+                            .on_click(cx.listener(|this, _, w, cx| this.export(w, cx))))
                     .child(Button::new("theme-default")
                             .icon(IconName::Star)
                             .small()
@@ -1144,6 +1213,26 @@ impl Render for ThemeEditor {
     }
 }
 
+
+/// A file name for a theme: its name without characters macOS or other
+/// systems refuse.
+fn file_stem(name: &str) -> String {
+    let stem: String = name.chars().map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '-' } else { c }).collect();
+    let stem = stem.trim().trim_start_matches('.').to_string();
+    if stem.is_empty() { "theme".into() } else { stem }
+}
+
+/// Why a theme file couldn't be written or read, in the console's language.
+fn theme_file_error(l: Lang, e: &ThemeFileError) -> String {
+    match e {
+        ThemeFileError::Io(error) => l.f("The file couldn't be used: {error}", &[("error", error)]),
+        ThemeFileError::NotATheme => l.t("This isn't an Asaf theme file.").to_string(),
+        ThemeFileError::Newer(_) => l.t("This theme file is from a newer version of Asaf.").to_string(),
+        ThemeFileError::MissingMedia(name) => l.f("The theme file is missing {file}.", &[("file", name)]),
+        ThemeFileError::TooLarge(name) => l.f("{file} in the theme file is too large.", &[("file", name)]),
+        ThemeFileError::Storage(error) => l.f("The library couldn't be updated: {error}", &[("error", error)]),
+    }
+}
 
 /// Why a theme couldn't be saved or deleted, in the console's language.
 fn theme_error(l: Lang, e: &ThemeError) -> String {
@@ -1408,6 +1497,44 @@ mod tests {
             w.click("video-clear", cx);
         });
         assert_eq!(cx.update(|cx| editor.read(cx).draft(cx).0.background_video), None);
+    }
+
+    #[gpui::test]
+    fn exporting_and_importing_theme_files(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lib = Library::open(&dir.path().join("asaf.sqlite")).unwrap();
+        lib.save_theme(&Theme { name: "Night: Blue".into(), color: "#123456".into(), ..Theme::default() }, None).unwrap();
+        let (library, editor, h, events) = open(cx, lib);
+        let night = cx.update(|cx| editor.read(cx).themes.iter().position(|t| t.name == "Night: Blue").unwrap());
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.select(night, w, cx)));
+
+        // The button asks where; the answer goes to export_to.
+        with(cx, h, |w, cx| {
+            w.render_frame(cx);
+            w.click("theme-export", cx);
+        });
+        cx.run_until_parked();
+        assert!(cx.did_prompt_for_new_path());
+        let file = dir.path().join("night.asaf-theme");
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.export_to(&file, w, cx)));
+        assert!(file.exists());
+        assert_eq!(file_stem("Night: Blue"), "Night- Blue");
+        assert_eq!((file_stem("../x"), file_stem("  ")), ("-x".to_string(), "theme".to_string()));
+
+        events.borrow_mut().clear();
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.import_from(&file, w, cx)));
+        let names: Vec<String> = library.lock().unwrap().themes().unwrap().into_iter().map(|t| t.name).collect();
+        assert!(names.contains(&"Night: Blue 2".to_string()), "{names:?}");
+        let selected = cx.update(|cx| editor.read(cx).stored().name);
+        assert_eq!(selected, "Night: Blue 2", "the imported theme is shown");
+        assert_eq!(events.borrow().len(), 1);
+
+        // Not a theme file: nothing changes.
+        let junk = dir.path().join("junk.asaf-theme");
+        std::fs::write(&junk, "nope").unwrap();
+        with(cx, h, |w, cx| editor.update(cx, |e, cx| e.import_from(&junk, w, cx)));
+        assert_eq!(library.lock().unwrap().themes().unwrap().len(), names.len());
+        assert_eq!(theme_file_error(crate::i18n::Lang(asaf_core::Language::English), &ThemeFileError::NotATheme), "This isn't an Asaf theme file.");
     }
 
     #[gpui::test]
